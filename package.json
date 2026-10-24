@@ -1,0 +1,37 @@
+{
+  "name": "gitdesk",
+  "version": "0.1.0",
+  "description": "A simple, original Git GUI client",
+  "main": "./out/main/index.js",
+  "author": "Bryn Hill",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "start": "electron-vite preview"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.310",
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^3.0.0",
+    "prismjs": "^1.30.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/prismjs": "^1.26.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^32.2.5",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "allowScripts": {
+    "electron@32.3.3": true,
+    "esbuild@0.21.5": true,
+    "fsevents@2.3.3": true
+  }
+}
