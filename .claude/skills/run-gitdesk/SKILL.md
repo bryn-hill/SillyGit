@@ -1,0 +1,109 @@
+---
+name: run-gitdesk
+description: Build, run, and drive the gitdesk Electron desktop app without opening a visible window. Use when asked to start gitdesk, screenshot it, check that a UI change works, or debug its behavior.
+---
+
+gitdesk is an Electron + React app (electron-vite). Its window can run in
+a special mode where it's created but never shown (`GITDESK_E2E=1`,
+see `src/main/index.ts`) — Chromium still renders and can be driven over
+the DevTools Protocol, so this never pops a window on the user's screen or
+steals focus. Drive it via the Playwright REPL at
+`.claude/skills/run-gitdesk/driver.mjs`.
+
+All paths below are relative to the repo root.
+
+## Build
+
+The driver loads the production build (`out/`), not the Vite dev server —
+simpler to automate and closer to what ships.
+
+```bash
+npm install
+npm run build        # rebuild after any source change before testing it
+```
+
+## Run (agent path)
+
+The driver has a **batch mode**: write the commands you want to run (one per
+line) to a file and pass it as an argument. It runs them in order, prints
+all output, quits the app, and exits — one Bash call, no interactive session
+to hold open. This is the primary path since it needs no tmux:
+
+```bash
+cat > /tmp/gitdesk-script.txt <<'EOF'
+launch
+ss 01-landing
+click-text Open Repository
+ss 02-after-click
+EOF
+node .claude/skills/run-gitdesk/driver.mjs /tmp/gitdesk-script.txt
+```
+
+Then open the PNGs (`/tmp/gitdesk-shots/01-landing.png` etc. by default,
+override with `SCREENSHOT_DIR`) to actually look at them.
+
+If tmux happens to be available and you want an interactive session instead
+(e.g. to poke around without planning every command up front), run the
+driver with no argument to get a REPL and wrap it the usual way:
+
+```bash
+tmux new-session -d -s gitdesk -x 200 -y 50
+tmux send-keys -t gitdesk 'cd /path/to/gitdesk && node .claude/skills/run-gitdesk/driver.mjs' Enter
+timeout 20 bash -c 'until tmux capture-pane -t gitdesk -p | grep -q "driver>"; do sleep 0.2; done'
+tmux send-keys -t gitdesk 'launch' Enter
+timeout 30 bash -c 'until tmux capture-pane -t gitdesk -p | grep -q "launched\."; do sleep 0.2; done'
+tmux send-keys -t gitdesk 'ss 01-landing' Enter
+tmux capture-pane -t gitdesk -p
+```
+
+### Commands
+
+| command | what it does |
+|---|---|
+| `launch` | launch the built app hidden, wait for the window |
+| `ss [name]` | screenshot -> `/tmp/gitdesk-shots/<name>.png` |
+| `click <css-sel>` | click element via DOM (works regardless of window geometry) |
+| `rclick <css-sel>` | real coordinate click (mousedown/mouseup) — use when DOM `click` doesn't trigger focus, e.g. the xterm terminal |
+| `click-text <text>` | click button/link containing text |
+| `type <text>` / `press <key>` | keyboard input (`press` accepts combos, e.g. `Control+Backquote`) |
+| `drag <x1> <y1> <x2> <y2>` | real mouse drag, for things like the terminal panel's resize handle |
+| `wait <css-sel>` | wait for element, 10s timeout |
+| `sleep <ms>` | pause (e.g. to let a CSS transition settle before measuring) |
+| `eval <js>` | evaluate in the page, print JSON |
+| `text [css-sel]` | print innerText |
+| `windows` | list window URLs |
+| `quit` | close app, exit |
+
+Renderer `console.log`/`console.error`/uncaught exceptions print live in the
+driver's own output (`[console:...]`, `[pageerror]`), and the app's main
+process log — including renderer messages re-forwarded there — streams in
+as `[app] ...` / `[app:err] ...`. No extra devtools wiring needed.
+
+## Run (human path)
+
+```bash
+npm run dev   # opens a real, visible window
+```
+
+## Gotchas
+
+- **Claude Code's sandboxed Bash sets `ELECTRON_RUN_AS_NODE=1` globally**,
+  which makes the Electron binary behave as plain Node instead of launching
+  Electron at all. The driver's `launch` command explicitly deletes that
+  var from the child process's env before spawning — if you write your own
+  launch code instead of using the driver, do the same.
+- The driver launches against the **production build** (`out/`), not the
+  Vite dev server, so remember to `npm run build` after changing source —
+  otherwise you're testing stale code.
+- Terminal panel tabs run real shells (`node-pty`). Closing the driver
+  (`quit`) kills the Electron process, which kills any pty sessions with it
+  — no manual cleanup needed.
+
+## Troubleshooting
+
+- **`ERROR: no build found at out/main/index.js`**: run `npm run build`.
+- **Launch timeout (30s)**: check `[app:err]` output for a main-process
+  crash (e.g. a native module ABI mismatch) printed before the window would
+  have been ready.
+- **A visible window popped up anyway**: `GITDESK_E2E` wasn't set in the
+  child env — check nothing is stripping it out before `electron.launch()`.

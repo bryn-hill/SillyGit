@@ -29,20 +29,38 @@ function createWindow(): void {
       nodeIntegration: false
     }
   })
+  mainWindow = window
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  window.on('ready-to-show', () => {
+    if (!isE2E) window.show()
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null
+  })
+
+  window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
+  window.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    const file = sourceId ? sourceId.split('/').pop() : ''
+    console.log(`[renderer:${CONSOLE_LEVELS[level] ?? level}] ${message} (${file}:${line})`)
+  })
+
+  window.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[renderer] process gone:', details.reason)
+  })
+
+  window.webContents.on('unresponsive', () => {
+    console.error('[renderer] unresponsive')
+  })
+
   if (process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
