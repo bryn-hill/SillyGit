@@ -4,10 +4,20 @@ import * as git from './git'
 import * as ai from './ai'
 import * as settings from './settings'
 import * as diffSplit from '../shared/diffSplit'
+import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import type { CommitSplitProposal, SplitGroupProposal } from '../shared/types'
 
+let mainWindow: BrowserWindow | null = null
+
+// When set, the window is never shown (still fully rendered, just not mapped
+// to the screen) so a Playwright driver can automate it without disturbing
+// the user's desktop. See .claude/skills/run-gitdesk.
+const isE2E = process.env['GITDESK_E2E'] === '1'
+
+const CONSOLE_LEVELS = ['LOG', 'WARN', 'ERROR', 'INFO', 'DEBUG']
+
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     width: 1280,
     height: 800,
     show: false,
@@ -233,6 +243,8 @@ function registerIpcHandlers(): void {
       await git.applyCommitSplit(repoPath, headHash, parentHash, expectedTreeHash, gitGroups)
     })
   )
+
+  registerTerminalHandlers(() => mainWindow)
 }
 
 app.whenReady().then(() => {
@@ -245,5 +257,18 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  killAllTerminals()
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  killAllTerminals()
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('[main] uncaughtException:', err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] unhandledRejection:', reason)
 })

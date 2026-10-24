@@ -81,7 +81,24 @@ const api = {
   aiApplySplit: (
     repoPath: string,
     proposal: import('../shared/types').CommitSplitProposal
-  ): Wrapped<void> => ipcRenderer.invoke('ai:apply-split', repoPath, proposal)
+  ): Wrapped<void> => ipcRenderer.invoke('ai:apply-split', repoPath, proposal),
+
+  terminalCreate: (cwd: string | undefined, cols: number, rows: number): Promise<number> =>
+    ipcRenderer.invoke('terminal:create', cwd, cols, rows),
+  terminalWrite: (id: number, data: string): void => ipcRenderer.send('terminal:write', id, data),
+  terminalResize: (id: number, cols: number, rows: number): void =>
+    ipcRenderer.send('terminal:resize', id, cols, rows),
+  terminalKill: (id: number): void => ipcRenderer.send('terminal:kill', id),
+  onTerminalData: (callback: (id: number, data: string) => void): (() => void) => {
+    const listener = (_e: unknown, id: number, data: string): void => callback(id, data)
+    ipcRenderer.on('terminal:data', listener)
+    return () => ipcRenderer.removeListener('terminal:data', listener)
+  },
+  onTerminalExit: (callback: (id: number, exitCode: number) => void): (() => void) => {
+    const listener = (_e: unknown, id: number, exitCode: number): void => callback(id, exitCode)
+    ipcRenderer.on('terminal:exit', listener)
+    return () => ipcRenderer.removeListener('terminal:exit', listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)
