@@ -13,6 +13,8 @@ interface Props {
   onStashPop: () => void
   onCheckout: (branch: string) => void
   onOpenSettings: () => void
+  terminalVisible: boolean
+  onToggleTerminal: () => void
 }
 
 function FolderIcon(): JSX.Element {
@@ -90,6 +92,16 @@ function PopIcon(): JSX.Element {
   )
 }
 
+function TerminalIcon(): JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4 6.2 6.8 8 4 9.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.2 9.8h3.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function GearIcon(): JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -115,7 +127,9 @@ export default function TopBar({
   onStash,
   onStashPop,
   onCheckout,
-  onOpenSettings
+  onOpenSettings,
+  terminalVisible,
+  onToggleTerminal
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const repoName = repoPath ? repoPath.split('/').filter(Boolean).pop() : null
@@ -196,6 +210,13 @@ export default function TopBar({
             </div>
           </>
         )}
+        <button
+          className={`icon-button ${terminalVisible ? 'icon-button-active' : ''}`}
+          onClick={onToggleTerminal}
+          title="Toggle terminal (Ctrl+`)"
+        >
+          <TerminalIcon />
+        </button>
         <button className="icon-button" onClick={onOpenSettings} title="Settings">
           <GearIcon />
         </button>

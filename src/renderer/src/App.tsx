@@ -6,6 +6,7 @@ import CommitGraph from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
 import SettingsModal from './components/SettingsModal'
+import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
 import { layoutGraph } from './lib/graphLayout'
 
 export type Selection = { type: 'working' } | { type: 'commit'; hash: string }
@@ -21,6 +22,20 @@ export default function App(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showTerminal, setShowTerminal] = useState(false)
+  const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if (e.code === 'Backquote' && e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        setShowTerminal((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [])
 
   const showError = (message: string): void => setError(message)
 
@@ -199,61 +214,74 @@ export default function App(): JSX.Element {
         onStashPop={handleStashPop}
         onCheckout={handleCheckout}
         onOpenSettings={() => setShowSettings(true)}
+        terminalVisible={showTerminal}
+        onToggleTerminal={() => setShowTerminal((v) => !v)}
       />
       {error && (
         <div className="error-banner" onClick={() => setError(null)}>
           {error}
         </div>
       )}
-      {!repoPath ? (
-        <div className="empty-state">
-          <p>No repository open.</p>
-          <button onClick={handleOpenRepo}>Open Repository</button>
-        </div>
-      ) : fullScreenHash ? (
-        <CommitFullView
-          repoPath={repoPath}
-          hash={fullScreenHash}
-          isHead={fullScreenHash === headHash}
-          onClose={() => {
-            setFullScreenHash(null)
-            refresh(repoPath)
-          }}
-          onNavigateToCommit={(hash) => {
-            setFullScreenHash(hash)
-            setSelection({ type: 'commit', hash })
-          }}
-          onWorkingTreeChanged={() => refresh(repoPath)}
-        />
-      ) : (
-        <div className="main-layout">
-          <Sidebar branches={branches} onCheckout={handleCheckout} onCreateBranch={handleCreateBranch} />
-          <CommitGraph
-            rows={graphRows}
-            selection={selection}
-            hasWorkingChanges={hasWorkingChanges}
-            onSelectWorking={() => setSelection({ type: 'working' })}
-            onSelectCommit={(hash) => {
-              setSelection({ type: 'commit', hash })
-              setFullScreenHash(hash)
-            }}
-            onCheckout={handleCheckout}
-          />
-          <div className="detail-panel">
-            <DetailPanel
+      <div className="workspace">
+        <div className="workspace-main">
+          {!repoPath ? (
+            <div className="empty-state">
+              <p>No repository open.</p>
+              <button onClick={handleOpenRepo}>Open Repository</button>
+            </div>
+          ) : fullScreenHash ? (
+            <CommitFullView
               repoPath={repoPath}
-              selection={selection}
-              status={status}
-              commitMessage={commitMessage}
-              onCommitMessageChange={setCommitMessage}
-              onStage={handleStage}
-              onUnstage={handleUnstage}
-              onDiscard={handleDiscard}
-              onCommit={handleCommit}
+              hash={fullScreenHash}
+              isHead={fullScreenHash === headHash}
+              onClose={() => {
+                setFullScreenHash(null)
+                refresh(repoPath)
+              }}
+              onNavigateToCommit={(hash) => {
+                setFullScreenHash(hash)
+                setSelection({ type: 'commit', hash })
+              }}
+              onWorkingTreeChanged={() => refresh(repoPath)}
             />
-          </div>
+          ) : (
+            <div className="main-layout">
+              <Sidebar branches={branches} onCheckout={handleCheckout} onCreateBranch={handleCreateBranch} />
+              <CommitGraph
+                rows={graphRows}
+                selection={selection}
+                hasWorkingChanges={hasWorkingChanges}
+                onSelectWorking={() => setSelection({ type: 'working' })}
+                onSelectCommit={(hash) => {
+                  setSelection({ type: 'commit', hash })
+                  setFullScreenHash(hash)
+                }}
+                onCheckout={handleCheckout}
+              />
+              <div className="detail-panel">
+                <DetailPanel
+                  repoPath={repoPath}
+                  selection={selection}
+                  status={status}
+                  commitMessage={commitMessage}
+                  onCommitMessageChange={setCommitMessage}
+                  onStage={handleStage}
+                  onUnstage={handleUnstage}
+                  onDiscard={handleDiscard}
+                  onCommit={handleCommit}
+                />
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        <TerminalPanel
+          cwd={repoPath}
+          visible={showTerminal}
+          height={terminalHeight}
+          onToggle={() => setShowTerminal(false)}
+          onHeightChange={setTerminalHeight}
+        />
+      </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   )

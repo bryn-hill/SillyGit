@@ -1,0 +1,61 @@
+import { ipcMain, BrowserWindow } from 'electron'
+import os from 'os'
+import * as pty from 'node-pty'
+
+const sessions = new Map<number, pty.IPty>()
+let nextId = 1
+
+function defaultShell(): string {
+  if (process.platform === 'win32') return process.env.COMSPEC || 'powershell.exe'
+  return process.env.SHELL || '/bin/zsh'
+}
+
+export function registerTerminalHandlers(getWindow: () => BrowserWindow | null): void {
+  ipcMain.handle(
+    'terminal:create',
+    (_e, cwd: string | undefined, cols: number, rows: number): number => {
+      const id = nextId++
+      const ptyProcess = pty.spawn(defaultShell(), [], {
+        name: 'xterm-256color',
+        cols: cols > 0 ? cols : 80,
+        rows: rows > 0 ? rows : 24,
+        cwd: cwd || os.homedir(),
+        env: process.env as Record<string, string>
+      })
+      sessions.set(id, ptyProcess)
+
+      ptyProcess.onData((data) => {
+        getWindow()?.webContents.send('terminal:data', id, data)
+      })
+      ptyProcess.onExit(({ exitCode }) => {
+        sessions.delete(id)
+        getWindow()?.webContents.send('terminal:exit', id, exitCode)
+      })
+
+      return id
+    }
+  )
+
+  ipcMain.on('terminal:write', (_e, id: number, data: string) => {
+    sessions.get(id)?.write(data)
+  })
+
+  ipcMain.on('terminal:resize', (_e, id: number, cols: number, rows: number) => {
+    if (cols <= 0 || rows <= 0) return
+    try {
+      sessions.get(id)?.resize(cols, rows)
+    } catch {
+      // the pty may have already exited; ignore
+    }
+  })
+
+  ipcMain.on('terminal:kill', (_e, id: number) => {
+    sessions.get(id)?.kill()
+    sessions.delete(id)
+  })
+}
+
+export function killAllTerminals(): void {
+  for (const ptyProcess of sessions.values()) ptyProcess.kill()
+  sessions.clear()
+}
