@@ -1,8 +1,10 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, clipboard } from 'electron'
 import { join } from 'path'
+import { promises as fsp } from 'fs'
 import * as git from './git'
 import * as ai from './ai'
 import * as settings from './settings'
+import * as launchpad from './launchpad'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import type { CommitSplitProposal, SplitGroupProposal } from '../shared/types'
@@ -248,6 +250,36 @@ function registerIpcHandlers(): void {
       const result = await shell.openPath(absolutePath)
       if (result) throw new Error(result)
     })
+  )
+
+  ipcMain.handle('shell:open-external', (_e, url: string) =>
+    wrap(async () => {
+      if (!url.startsWith('https://')) throw new Error('Refusing to open a non-https URL.')
+      await shell.openExternal(url)
+    })
+  )
+
+  ipcMain.handle('launchpad:get-data', (_e, repoPaths: string[]) =>
+    wrap(() => launchpad.getLaunchpadData(repoPaths))
+  )
+
+  ipcMain.handle('launchpad:merge-pr', (_e, repoPath: string, number: number) =>
+    wrap(() => launchpad.mergePullRequest(repoPath, number))
+  )
+
+  ipcMain.handle('settings:get-workspace-repos', () => settings.getWorkspaceRepos())
+
+  ipcMain.handle('settings:add-workspace-repo', (_e, repoPath: string) =>
+    wrap(async () => {
+      if (!(await git.isGitRepo(repoPath))) {
+        throw new Error(`"${repoPath}" is not a git repository.`)
+      }
+      return settings.addWorkspaceRepo(repoPath)
+    })
+  )
+
+  ipcMain.handle('settings:remove-workspace-repo', (_e, repoPath: string) =>
+    wrap(() => settings.removeWorkspaceRepo(repoPath))
   )
 
   ipcMain.handle('settings:has-api-key', () => settings.hasStoredApiKey())
