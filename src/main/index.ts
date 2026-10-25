@@ -17,7 +17,7 @@ let mainWindow: BrowserWindow | null = null
 // the user's desktop. See .claude/skills/run-sillygit.
 const isE2E = process.env['SILLYGIT_E2E'] === '1'
 
-const CONSOLE_LEVELS = ['LOG', 'WARN', 'ERROR', 'INFO', 'DEBUG']
+const CONSOLE_LEVELS: Record<string, string> = { info: 'INFO', warning: 'WARN', error: 'ERROR', debug: 'DEBUG' }
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -47,9 +47,9 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  window.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+  window.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
     const file = sourceId ? sourceId.split('/').pop() : ''
-    console.log(`[renderer:${CONSOLE_LEVELS[level] ?? level}] ${message} (${file}:${line})`)
+    console.log(`[renderer:${CONSOLE_LEVELS[level] ?? level}] ${message} (${file}:${lineNumber})`)
   })
 
   window.webContents.on('render-process-gone', (_e, details) => {
