@@ -3,6 +3,10 @@ import type { AiFinding, AiReviewResponse } from '../shared/types'
 import type { DiffUnit } from '../shared/diffSplit'
 
 const MODEL = 'claude-sonnet-5-5'
+// Grouping diff hunks into logical commits is a mechanical classification
+// task, not one that needs frontier reasoning, so it runs on the cheapest
+// current model to keep split proposals fast and low-cost.
+const SPLIT_MODEL = 'claude-haiku-5-5'
 const MAX_DIFF_CHARS = 100000
 const MAX_UNIT_CHARS = 6000
 const MAX_FILE_CONTEXT_CHARS = 20000
@@ -100,7 +104,7 @@ function parseResponse(text: string): AiReviewResponse {
   }
 }
 
-async function callClaude(prompt: string): Promise<string> {
+async function callClaude(prompt: string, model: string = MODEL): Promise<string> {
   // An explicitly stored/env API key overrides subscription billing; otherwise
   // the Agent SDK's subprocess inherits process.env and authenticates via
   // CLAUDE_CODE_OAUTH_TOKEN or the locally logged-in Claude Code session.
@@ -113,7 +117,7 @@ async function callClaude(prompt: string): Promise<string> {
   for await (const message of query({
     prompt,
     options: {
-      model: MODEL,
+      model,
       maxTurns: 1,
       tools: [],
       permissionMode: 'dontAsk',
@@ -257,7 +261,7 @@ export async function proposeCommitSplit(
   units: DiffUnit[]
 ): Promise<SplitGroupResult[]> {
   const prompt = buildSplitPrompt(subject, body, units)
-  const text = await callClaude(prompt)
+  const text = await callClaude(prompt, SPLIT_MODEL)
   return parseSplitResponse(text)
 }
 
