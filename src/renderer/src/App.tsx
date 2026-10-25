@@ -23,6 +23,8 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
+  const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
+  const [showDetail, setShowDetail] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
   const [showLaunchpad, setShowLaunchpad] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
@@ -340,6 +342,7 @@ export default function App(): JSX.Element {
               <CommitFullView
                 repoPath={repoPath}
                 hash={fullScreenHash}
+                initialPath={fullScreenPath}
                 isHead={fullScreenHash === headHash}
                 onClose={() => {
                   setFullScreenHash(null)
@@ -347,6 +350,7 @@ export default function App(): JSX.Element {
                 }}
                 onNavigateToCommit={(hash) => {
                   setFullScreenHash(hash)
+                  setFullScreenPath(null)
                   setSelection({ type: 'commit', hash })
                 }}
                 onWorkingTreeChanged={() => refresh(repoPath)}
@@ -360,10 +364,15 @@ export default function App(): JSX.Element {
                   hasWorkingChanges={hasWorkingChanges}
                   headHash={headHash}
                   currentBranch={status?.branch ?? null}
-                  onSelectWorking={() => setSelection({ type: 'working' })}
+                  onSelectWorking={() => {
+                    // Clicking the selected row again closes the side bar, like GitKraken.
+                    setShowDetail(selection.type !== 'working' || !showDetail)
+                    setSelection({ type: 'working' })
+                  }}
                   onSelectCommit={(hash) => {
+                    const isSelected = selection.type === 'commit' && selection.hash === hash
+                    setShowDetail(!isSelected || !showDetail)
                     setSelection({ type: 'commit', hash })
-                    setFullScreenHash(hash)
                   }}
                   onCheckout={handleCheckout}
                   onCherryPick={handleCherryPick}
@@ -375,19 +384,25 @@ export default function App(): JSX.Element {
                   onCreatePatch={handleCreatePatch}
                   onCopySha={handleCopySha}
                 />
-                <div className="detail-panel">
-                  <DetailPanel
-                    repoPath={repoPath}
-                    selection={selection}
-                    status={status}
-                    commitMessage={commitMessage}
-                    onCommitMessageChange={setCommitMessage}
-                    onStage={handleStage}
-                    onUnstage={handleUnstage}
-                    onDiscard={handleDiscard}
-                    onCommit={handleCommit}
-                  />
-                </div>
+                {showDetail && (
+                  <div className="detail-panel">
+                    <DetailPanel
+                      repoPath={repoPath}
+                      selection={selection}
+                      status={status}
+                      commitMessage={commitMessage}
+                      onCommitMessageChange={setCommitMessage}
+                      onStage={handleStage}
+                      onUnstage={handleUnstage}
+                      onDiscard={handleDiscard}
+                      onCommit={handleCommit}
+                      onOpenCommitFileDiff={(hash, path) => {
+                        setFullScreenHash(hash)
+                        setFullScreenPath(path)
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
