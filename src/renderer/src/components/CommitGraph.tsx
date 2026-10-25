@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { WipGraphCell } from './GraphCell'
 import type { Selection } from '../App'
+import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 interface RefBadge {
   label: string
@@ -45,21 +47,97 @@ interface Props {
   rows: GraphRow[]
   selection: Selection
   hasWorkingChanges: boolean
+  headHash: string | null
+  currentBranch: string | null
   onSelectWorking: () => void
   onSelectCommit: (hash: string) => void
   onCheckout: (branch: string) => void
+  onCherryPick: (hash: string) => void
+  onRevertCommit: (hash: string) => void
+  onResetTo: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
+  onCreateBranchAt: (hash: string) => void
+  onCreateTag: (hash: string) => void
+  onCreateAnnotatedTag: (hash: string) => void
+  onCreatePatch: (hash: string) => void
+  onCopySha: (hash: string) => void
 }
 
 export default function CommitGraph({
   rows,
   selection,
   hasWorkingChanges,
+  headHash,
+  currentBranch,
   onSelectWorking,
   onSelectCommit,
-  onCheckout
+  onCheckout,
+  onCherryPick,
+  onRevertCommit,
+  onResetTo,
+  onCreateBranchAt,
+  onCreateTag,
+  onCreateAnnotatedTag,
+  onCreatePatch,
+  onCopySha
 }: Props): JSX.Element {
   const topLane = rows[0]?.lane ?? 0
   const topColor = rows[0]?.color ?? '#bd93f9'
+  const [menu, setMenu] = useState<{ x: number; y: number; hash: string } | null>(null)
+
+  function buildSections(hash: string): ContextMenuItem[][] {
+    const branchLabel = currentBranch ?? 'HEAD'
+    const sections: ContextMenuItem[][] = []
+
+    if (hash !== headHash) {
+      sections.push([
+        { id: 'checkout', label: 'Checkout this commit', onSelect: () => onCheckout(hash) }
+      ])
+    }
+
+    sections.push([
+      { id: 'branch', label: 'Create branch here…', onSelect: () => onCreateBranchAt(hash) },
+      { id: 'cherry-pick', label: 'Cherry-pick commit', onSelect: () => onCherryPick(hash) },
+      {
+        id: 'reset',
+        label: `Reset ${branchLabel} to this commit`,
+        submenu: [
+          {
+            id: 'reset-soft',
+            label: 'Soft — keep all changes',
+            onSelect: () => onResetTo(hash, 'soft')
+          },
+          {
+            id: 'reset-mixed',
+            label: 'Mixed — keep working copy, reset index',
+            onSelect: () => onResetTo(hash, 'mixed')
+          },
+          {
+            id: 'reset-hard',
+            label: 'Hard — discard all changes',
+            danger: true,
+            onSelect: () => onResetTo(hash, 'hard')
+          }
+        ]
+      },
+      { id: 'revert', label: 'Revert commit', onSelect: () => onRevertCommit(hash) }
+    ])
+
+    sections.push([
+      { id: 'copy-sha', label: 'Copy commit SHA', onSelect: () => onCopySha(hash) },
+      { id: 'patch', label: 'Create patch from commit…', onSelect: () => onCreatePatch(hash) }
+    ])
+
+    sections.push([
+      { id: 'tag', label: 'Create tag here…', onSelect: () => onCreateTag(hash) },
+      {
+        id: 'annotated-tag',
+        label: 'Create annotated tag here…',
+        onSelect: () => onCreateAnnotatedTag(hash)
+      }
+    ])
+
+    return sections
+  }
 
   return (
     <div className="commit-graph">
@@ -85,11 +163,16 @@ export default function CommitGraph({
         {rows.map((row) => {
           const badges = parseRefs(row.commit.refs)
           const isSelected = selection.type === 'commit' && selection.hash === row.commit.hash
+          const isContextTarget = menu?.hash === row.commit.hash
           return (
             <div
               key={row.commit.hash}
-              className={`graph-row ${isSelected ? 'selected' : ''}`}
+              className={`graph-row ${isSelected ? 'selected' : ''} ${isContextTarget ? 'context-target' : ''}`}
               onClick={() => onSelectCommit(row.commit.hash)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash })
+              }}
             >
               <GraphCell row={row} />
               <div className="graph-row-message">
@@ -118,6 +201,14 @@ export default function CommitGraph({
           )
         })}
       </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          sections={buildSections(menu.hash)}
+          onClose={() => setMenu(null)}
+        />
+      )}
     </div>
   )
 }

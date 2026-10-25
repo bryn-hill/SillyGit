@@ -454,7 +454,8 @@ input {
   background: var(--bg-hover);
 }
 
-.graph-row.selected {
+.graph-row.selected,
+.graph-row.context-target {
   background: var(--bg-elevated);
   border-left-color: var(--accent);
 }

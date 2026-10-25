@@ -200,6 +200,85 @@ export default function App(): JSX.Element {
     })
   }
 
+  const handleCherryPick = (hash: string): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.cherryPick(repoPath, hash)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleRevertCommit = (hash: string): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.revertCommit(repoPath, hash)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleResetTo = (hash: string, mode: 'soft' | 'mixed' | 'hard'): void => {
+    if (!repoPath) return
+    if (mode === 'hard') {
+      const ok = window.confirm(
+        'Hard reset will discard all uncommitted changes and move the branch pointer. This cannot be undone easily. Continue?'
+      )
+      if (!ok) return
+    }
+    withBusy(async () => {
+      const res = await window.api.resetTo(repoPath, hash, mode)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleCreateBranchAt = (hash: string): void => {
+    if (!repoPath) return
+    const name = window.prompt('New branch name:')
+    if (!name || !name.trim()) return
+    withBusy(async () => {
+      const res = await window.api.createBranchAt(repoPath, name.trim(), hash)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleCreateTag = (hash: string): void => {
+    if (!repoPath) return
+    const name = window.prompt('Tag name:')
+    if (!name || !name.trim()) return
+    withBusy(async () => {
+      const res = await window.api.createTag(repoPath, name.trim(), hash)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleCreateAnnotatedTag = (hash: string): void => {
+    if (!repoPath) return
+    const name = window.prompt('Annotated tag name:')
+    if (!name || !name.trim()) return
+    const message = window.prompt('Tag message:', name.trim()) ?? ''
+    withBusy(async () => {
+      const res = await window.api.createAnnotatedTag(repoPath, name.trim(), message, hash)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleCreatePatch = (hash: string): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.createPatchFile(repoPath, hash)
+      if (!res.ok) showError(res.error)
+    })
+  }
+
+  const handleCopySha = (hash: string): void => {
+    window.api.copyToClipboard(hash)
+  }
+
   return (
     <div className="app">
       <TopBar
@@ -251,12 +330,22 @@ export default function App(): JSX.Element {
                 rows={graphRows}
                 selection={selection}
                 hasWorkingChanges={hasWorkingChanges}
+                headHash={headHash}
+                currentBranch={status?.branch ?? null}
                 onSelectWorking={() => setSelection({ type: 'working' })}
                 onSelectCommit={(hash) => {
                   setSelection({ type: 'commit', hash })
                   setFullScreenHash(hash)
                 }}
                 onCheckout={handleCheckout}
+                onCherryPick={handleCherryPick}
+                onRevertCommit={handleRevertCommit}
+                onResetTo={handleResetTo}
+                onCreateBranchAt={handleCreateBranchAt}
+                onCreateTag={handleCreateTag}
+                onCreateAnnotatedTag={handleCreateAnnotatedTag}
+                onCreatePatch={handleCreatePatch}
+                onCopySha={handleCopySha}
               />
               <div className="detail-panel">
                 <DetailPanel
