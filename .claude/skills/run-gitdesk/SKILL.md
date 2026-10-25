@@ -95,6 +95,11 @@ npm run dev   # opens a real, visible window
 - The driver launches against the **production build** (`out/`), not the
   Vite dev server, so remember to `npm run build` after changing source —
   otherwise you're testing stale code.
+- If there's no display (a bare Linux container), wrap the driver in
+  `xvfb-run -a`; Electron won't start without an X server even when hidden.
+- The Claude panel (spark button, `Ctrl+Esc`) starts a real Claude Code
+  session through the Agent SDK, so it needs a logged-in `claude` or an API
+  key, and each prompt costs real usage.
 - Terminal panel tabs run real shells (`node-pty`). Closing the driver
   (`quit`) kills the Electron process, which kills any pty sessions with it
   — no manual cleanup needed.
