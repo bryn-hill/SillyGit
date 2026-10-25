@@ -129,6 +129,30 @@ const api = {
     const listener = (_e: unknown, id: number, exitCode: number): void => callback(id, exitCode)
     ipcRenderer.on('terminal:exit', listener)
     return () => ipcRenderer.removeListener('terminal:exit', listener)
+  },
+
+  claudeStart: (opts: import('../shared/claude').ClaudeStartOptions): Wrapped<number> =>
+    ipcRenderer.invoke('claude:start', opts),
+  claudeSend: (id: number, text: string, images?: { mediaType: string; data: string }[]): Wrapped<void> =>
+    ipcRenderer.invoke('claude:send', id, text, images),
+  claudeInterrupt: (id: number): Wrapped<void> => ipcRenderer.invoke('claude:interrupt', id),
+  claudeRespond: (
+    id: number,
+    requestId: string,
+    decision: import('../shared/claude').ClaudePermissionDecision
+  ): Wrapped<void> => ipcRenderer.invoke('claude:respond', id, requestId, decision),
+  claudeSetMode: (id: number, mode: import('../shared/claude').ClaudePermissionMode): Wrapped<void> =>
+    ipcRenderer.invoke('claude:set-mode', id, mode),
+  claudeSetModel: (id: number, model: string): Wrapped<void> => ipcRenderer.invoke('claude:set-model', id, model),
+  claudeClose: (id: number): Wrapped<void> => ipcRenderer.invoke('claude:close', id),
+  claudeListSessions: (cwd: string): Wrapped<import('../shared/claude').ClaudeSessionSummary[]> =>
+    ipcRenderer.invoke('claude:list-sessions', cwd),
+  claudeListFiles: (cwd: string): Wrapped<string[]> => ipcRenderer.invoke('claude:list-files', cwd),
+  onClaudeEvent: (callback: (id: number, event: import('../shared/claude').ClaudeEvent) => void): (() => void) => {
+    const listener = (_e: unknown, id: number, event: import('../shared/claude').ClaudeEvent): void =>
+      callback(id, event)
+    ipcRenderer.on('claude:event', listener)
+    return () => ipcRenderer.removeListener('claude:event', listener)
   }
 }
 

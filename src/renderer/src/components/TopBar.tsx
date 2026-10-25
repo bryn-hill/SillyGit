@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { BranchInfo, RepoStatus } from '../../../shared/types'
+import { SparkIcon } from './claude/ClaudePanel'
 
 interface Props {
   repoPath: string | null
@@ -15,6 +16,8 @@ interface Props {
   onOpenSettings: () => void
   terminalVisible: boolean
   onToggleTerminal: () => void
+  claudeVisible: boolean
+  onToggleClaude: () => void
   launchpadActive: boolean
   onToggleLaunchpad: () => void
 }
@@ -147,6 +150,8 @@ export default function TopBar({
   onOpenSettings,
   terminalVisible,
   onToggleTerminal,
+  claudeVisible,
+  onToggleClaude,
   launchpadActive,
   onToggleLaunchpad
 }: Props): JSX.Element {
@@ -235,6 +240,15 @@ export default function TopBar({
               <LaunchpadIcon />
             </button>
           </>
+        )}
+        {repoPath && (
+          <button
+            className={`icon-button ${claudeVisible ? 'icon-button-active' : ''}`}
+            onClick={onToggleClaude}
+            title="Claude Code (Ctrl+Esc)"
+          >
+            <SparkIcon />
+          </button>
         )}
         <button
           className={`icon-button ${terminalVisible ? 'icon-button-active' : ''}`}
