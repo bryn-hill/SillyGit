@@ -14,8 +14,8 @@ let mainWindow: BrowserWindow | null = null
 
 // When set, the window is never shown (still fully rendered, just not mapped
 // to the screen) so a Playwright driver can automate it without disturbing
-// the user's desktop. See .claude/skills/run-gitdesk.
-const isE2E = process.env['GITDESK_E2E'] === '1'
+// the user's desktop. See .claude/skills/run-sillygit.
+const isE2E = process.env['SILLYGIT_E2E'] === '1'
 
 const CONSOLE_LEVELS = ['LOG', 'WARN', 'ERROR', 'INFO', 'DEBUG']
 

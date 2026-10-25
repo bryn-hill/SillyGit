@@ -1,5 +1,6 @@
 {
-  "name": "gitdesk",
+  "name": "sillygit",
+  "productName": "SillyGit",
   "version": "0.1.0",
   "description": "A simple, original Git GUI client",
   "main": "./out/main/index.js",
