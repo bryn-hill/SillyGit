@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type ReactNode, type JSX } from 'react'
 import { highlightLine, languageForPath } from '../../lib/highlight'
 
 // A small Markdown renderer for Claude's replies. It builds React elements

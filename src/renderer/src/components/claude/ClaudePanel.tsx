@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type JSX } from 'react'
 import Markdown from './Markdown'
 import PromptBox, { type PromptBoxHandle, type PromptImage } from './PromptBox'
 import { PermissionCard, ThinkingBlock, TodoList, ToolRow } from './ChatItems'

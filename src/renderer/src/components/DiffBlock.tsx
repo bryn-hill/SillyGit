@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type JSX } from 'react'
 
 function lineClass(line: string): string {
   if (line.startsWith('+++') || line.startsWith('---')) return 'diff-file-header'

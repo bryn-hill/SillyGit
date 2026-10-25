@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import type { BlameLine, CommitInfo } from '../../../shared/types'
 import { pairForSplit, renderFileDiff, type RenderedHunk } from '../lib/diffRender'
 import { highlightLine, languageForPath } from '../lib/highlight'

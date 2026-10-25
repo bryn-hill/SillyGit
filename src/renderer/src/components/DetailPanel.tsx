@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import type { CommitDetail, FileStatus, RepoStatus } from '../../../shared/types'
 import type { Selection } from '../App'
 import DiffBlock from './DiffBlock'

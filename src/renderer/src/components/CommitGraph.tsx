@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { WipGraphCell } from './GraphCell'
 import type { Selection } from '../App'
