@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 
 const ROW_HEIGHT = 32

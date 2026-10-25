@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import type { CommitDetail } from '../../../shared/types'
 import FileDiffViewer from './FileDiffViewer'
 import AiResults, { idleAiRun, type AiRun } from './AiResults'

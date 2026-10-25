@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type JSX } from 'react'
 import type { BranchInfo, RepoStatus } from '../../../shared/types'
 import { SparkIcon } from './claude/ClaudePanel'
 

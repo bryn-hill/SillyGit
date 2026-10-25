@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import DiffBlock from '../DiffBlock'
 import Markdown from './Markdown'
 import type { ChatItem } from '../../lib/claudeChat'

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { BranchInfo, FileStatus, GraphCommit, RepoStatus } from '../../shared/types'
 import TopBar from './components/TopBar'
 import Sidebar from './components/Sidebar'

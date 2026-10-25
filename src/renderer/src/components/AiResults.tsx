@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import type { AiReviewResponse } from '../../../shared/types'
 
 export type AiRunState = 'idle' | 'loading' | 'done' | 'error'
