@@ -505,4 +505,50 @@ export async function revertHunk(repoPath: string, diffText: string, unitId: str
   }
 }
 
+export async function cherryPick(repoPath: string, hash: string): Promise<void> {
+  await runGit(repoPath, ['cherry-pick', hash])
+}
+
+export async function revertCommit(repoPath: string, hash: string): Promise<void> {
+  await runGit(repoPath, ['revert', '--no-edit', hash])
+}
+
+export async function resetTo(
+  repoPath: string,
+  hash: string,
+  mode: 'soft' | 'mixed' | 'hard'
+): Promise<void> {
+  await runGit(repoPath, ['reset', `--${mode}`, hash])
+}
+
+export async function createBranchAt(
+  repoPath: string,
+  branch: string,
+  startPoint: string,
+  checkout = true
+): Promise<void> {
+  if (checkout) {
+    await runGit(repoPath, ['checkout', '-b', branch, startPoint])
+  } else {
+    await runGit(repoPath, ['branch', branch, startPoint])
+  }
+}
+
+export async function createTag(repoPath: string, name: string, hash: string): Promise<void> {
+  await runGit(repoPath, ['tag', name, hash])
+}
+
+export async function createAnnotatedTag(
+  repoPath: string,
+  name: string,
+  message: string,
+  hash: string
+): Promise<void> {
+  await runGit(repoPath, ['tag', '-a', name, '-m', message, hash])
+}
+
+export async function createPatchFromCommit(repoPath: string, hash: string): Promise<string> {
+  return runGit(repoPath, ['format-patch', '-1', hash, '--stdout'])
+}
+
 export { GitError }

@@ -198,6 +198,51 @@ function registerIpcHandlers(): void {
     wrap(() => git.revertHunk(repoPath, diffText, unitId))
   )
 
+  ipcMain.handle('git:cherry-pick', (_e, repoPath: string, hash: string) =>
+    wrap(() => git.cherryPick(repoPath, hash))
+  )
+
+  ipcMain.handle('git:revert-commit', (_e, repoPath: string, hash: string) =>
+    wrap(() => git.revertCommit(repoPath, hash))
+  )
+
+  ipcMain.handle(
+    'git:reset-to',
+    (_e, repoPath: string, hash: string, mode: 'soft' | 'mixed' | 'hard') =>
+      wrap(() => git.resetTo(repoPath, hash, mode))
+  )
+
+  ipcMain.handle(
+    'git:create-branch-at',
+    (_e, repoPath: string, branch: string, startPoint: string, checkout?: boolean) =>
+      wrap(() => git.createBranchAt(repoPath, branch, startPoint, checkout))
+  )
+
+  ipcMain.handle('git:create-tag', (_e, repoPath: string, name: string, hash: string) =>
+    wrap(() => git.createTag(repoPath, name, hash))
+  )
+
+  ipcMain.handle(
+    'git:create-annotated-tag',
+    (_e, repoPath: string, name: string, message: string, hash: string) =>
+      wrap(() => git.createAnnotatedTag(repoPath, name, message, hash))
+  )
+
+  ipcMain.handle('git:create-patch-file', (_e, repoPath: string, hash: string) =>
+    wrap(async () => {
+      const patch = await git.createPatchFromCommit(repoPath, hash)
+      const result = await dialog.showSaveDialog({
+        defaultPath: join(repoPath, `${hash.slice(0, 7)}.patch`)
+      })
+      if (result.canceled || !result.filePath) return
+      await fsp.writeFile(result.filePath, patch, 'utf-8')
+    })
+  )
+
+  ipcMain.handle('clipboard:write-text', (_e, text: string) => {
+    clipboard.writeText(text)
+  })
+
   ipcMain.handle('shell:open-path', (_e, absolutePath: string) =>
     wrap(async () => {
       const result = await shell.openPath(absolutePath)

@@ -60,6 +60,27 @@ const api = {
   revertHunk: (repoPath: string, diffText: string, unitId: string): Wrapped<void> =>
     ipcRenderer.invoke('git:revert-hunk', repoPath, diffText, unitId),
   openPath: (absolutePath: string): Wrapped<void> => ipcRenderer.invoke('shell:open-path', absolutePath),
+  openExternal: (url: string): Wrapped<void> => ipcRenderer.invoke('shell:open-external', url),
+
+  cherryPick: (repoPath: string, hash: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:cherry-pick', repoPath, hash),
+  revertCommit: (repoPath: string, hash: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:revert-commit', repoPath, hash),
+  resetTo: (repoPath: string, hash: string, mode: 'soft' | 'mixed' | 'hard'): Wrapped<void> =>
+    ipcRenderer.invoke('git:reset-to', repoPath, hash, mode),
+  createBranchAt: (
+    repoPath: string,
+    branch: string,
+    startPoint: string,
+    checkout?: boolean
+  ): Wrapped<void> => ipcRenderer.invoke('git:create-branch-at', repoPath, branch, startPoint, checkout),
+  createTag: (repoPath: string, name: string, hash: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:create-tag', repoPath, name, hash),
+  createAnnotatedTag: (repoPath: string, name: string, message: string, hash: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:create-annotated-tag', repoPath, name, message, hash),
+  createPatchFile: (repoPath: string, hash: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:create-patch-file', repoPath, hash),
+  copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write-text', text),
 
   hasApiKey: (): Promise<boolean> => ipcRenderer.invoke('settings:has-api-key'),
   setApiKey: (key: string): Wrapped<void> => ipcRenderer.invoke('settings:set-api-key', key),
