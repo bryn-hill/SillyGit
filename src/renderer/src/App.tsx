@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BranchInfo, FileStatus, GraphCommit, RepoStatus } from '../../shared/types'
 import TopBar from './components/TopBar'
 import Sidebar from './components/Sidebar'
@@ -8,6 +8,7 @@ import CommitFullView from './components/CommitFullView'
 import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
 import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
+import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
 
 export type Selection = { type: 'working' } | { type: 'commit'; hash: string }
@@ -26,6 +27,8 @@ export default function App(): JSX.Element {
   const [showLaunchpad, setShowLaunchpad] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
+  const [showClaude, setShowClaude] = useState(false)
+  const [claudeWidth, setClaudeWidth] = useState(DEFAULT_CLAUDE_WIDTH)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -33,6 +36,10 @@ export default function App(): JSX.Element {
         e.preventDefault()
         e.stopPropagation()
         setShowTerminal((v) => !v)
+      } else if (e.key === 'Escape' && (e.metaKey || e.ctrlKey) && !e.altKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        setShowClaude((v) => !v)
       }
     }
     window.addEventListener('keydown', handler, true)
@@ -55,6 +62,14 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     if (repoPath) refresh(repoPath)
+  }, [repoPath, refresh])
+
+  // Claude's edits and commands land in bursts; refresh once they settle.
+  const claudeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleClaudeFilesChanged = useCallback(() => {
+    if (!repoPath) return
+    if (claudeRefreshTimer.current) clearTimeout(claudeRefreshTimer.current)
+    claudeRefreshTimer.current = setTimeout(() => refresh(repoPath), 400)
   }, [repoPath, refresh])
 
   const graphRows = useMemo(() => layoutGraph(graphCommits), [graphCommits])
@@ -297,6 +312,8 @@ export default function App(): JSX.Element {
         onOpenSettings={() => setShowSettings(true)}
         terminalVisible={showTerminal}
         onToggleTerminal={() => setShowTerminal((v) => !v)}
+        claudeVisible={showClaude}
+        onToggleClaude={() => setShowClaude((v) => !v)}
         launchpadActive={showLaunchpad}
         onToggleLaunchpad={() => setShowLaunchpad((v) => !v)}
       />
@@ -305,81 +322,94 @@ export default function App(): JSX.Element {
           {error}
         </div>
       )}
-      <div className="workspace">
-        <div className="workspace-main">
-          {!repoPath ? (
-            <div className="empty-state">
-              <p>No repository open.</p>
-              <button onClick={handleOpenRepo}>Open Repository</button>
-            </div>
-          ) : showLaunchpad ? (
-            <Launchpad
-              repoPath={repoPath}
-              onClose={() => setShowLaunchpad(false)}
-              onOpenTerminal={() => setShowTerminal(true)}
-            />
-          ) : fullScreenHash ? (
-            <CommitFullView
-              repoPath={repoPath}
-              hash={fullScreenHash}
-              isHead={fullScreenHash === headHash}
-              onClose={() => {
-                setFullScreenHash(null)
-                refresh(repoPath)
-              }}
-              onNavigateToCommit={(hash) => {
-                setFullScreenHash(hash)
-                setSelection({ type: 'commit', hash })
-              }}
-              onWorkingTreeChanged={() => refresh(repoPath)}
-            />
-          ) : (
-            <div className="main-layout">
-              <Sidebar branches={branches} onCheckout={handleCheckout} onCreateBranch={handleCreateBranch} />
-              <CommitGraph
-                rows={graphRows}
-                selection={selection}
-                hasWorkingChanges={hasWorkingChanges}
-                headHash={headHash}
-                currentBranch={status?.branch ?? null}
-                onSelectWorking={() => setSelection({ type: 'working' })}
-                onSelectCommit={(hash) => {
-                  setSelection({ type: 'commit', hash })
-                  setFullScreenHash(hash)
-                }}
-                onCheckout={handleCheckout}
-                onCherryPick={handleCherryPick}
-                onRevertCommit={handleRevertCommit}
-                onResetTo={handleResetTo}
-                onCreateBranchAt={handleCreateBranchAt}
-                onCreateTag={handleCreateTag}
-                onCreateAnnotatedTag={handleCreateAnnotatedTag}
-                onCreatePatch={handleCreatePatch}
-                onCopySha={handleCopySha}
-              />
-              <div className="detail-panel">
-                <DetailPanel
-                  repoPath={repoPath}
-                  selection={selection}
-                  status={status}
-                  commitMessage={commitMessage}
-                  onCommitMessageChange={setCommitMessage}
-                  onStage={handleStage}
-                  onUnstage={handleUnstage}
-                  onDiscard={handleDiscard}
-                  onCommit={handleCommit}
-                />
+      <div className="workspace-row">
+        <div className="workspace">
+          <div className="workspace-main">
+            {!repoPath ? (
+              <div className="empty-state">
+                <p>No repository open.</p>
+                <button onClick={handleOpenRepo}>Open Repository</button>
               </div>
-            </div>
-          )}
+            ) : showLaunchpad ? (
+              <Launchpad
+                repoPath={repoPath}
+                onClose={() => setShowLaunchpad(false)}
+                onOpenTerminal={() => setShowTerminal(true)}
+              />
+            ) : fullScreenHash ? (
+              <CommitFullView
+                repoPath={repoPath}
+                hash={fullScreenHash}
+                isHead={fullScreenHash === headHash}
+                onClose={() => {
+                  setFullScreenHash(null)
+                  refresh(repoPath)
+                }}
+                onNavigateToCommit={(hash) => {
+                  setFullScreenHash(hash)
+                  setSelection({ type: 'commit', hash })
+                }}
+                onWorkingTreeChanged={() => refresh(repoPath)}
+              />
+            ) : (
+              <div className="main-layout">
+                <Sidebar branches={branches} onCheckout={handleCheckout} onCreateBranch={handleCreateBranch} />
+                <CommitGraph
+                  rows={graphRows}
+                  selection={selection}
+                  hasWorkingChanges={hasWorkingChanges}
+                  headHash={headHash}
+                  currentBranch={status?.branch ?? null}
+                  onSelectWorking={() => setSelection({ type: 'working' })}
+                  onSelectCommit={(hash) => {
+                    setSelection({ type: 'commit', hash })
+                    setFullScreenHash(hash)
+                  }}
+                  onCheckout={handleCheckout}
+                  onCherryPick={handleCherryPick}
+                  onRevertCommit={handleRevertCommit}
+                  onResetTo={handleResetTo}
+                  onCreateBranchAt={handleCreateBranchAt}
+                  onCreateTag={handleCreateTag}
+                  onCreateAnnotatedTag={handleCreateAnnotatedTag}
+                  onCreatePatch={handleCreatePatch}
+                  onCopySha={handleCopySha}
+                />
+                <div className="detail-panel">
+                  <DetailPanel
+                    repoPath={repoPath}
+                    selection={selection}
+                    status={status}
+                    commitMessage={commitMessage}
+                    onCommitMessageChange={setCommitMessage}
+                    onStage={handleStage}
+                    onUnstage={handleUnstage}
+                    onDiscard={handleDiscard}
+                    onCommit={handleCommit}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <TerminalPanel
+            cwd={repoPath}
+            visible={showTerminal}
+            height={terminalHeight}
+            onToggle={() => setShowTerminal(false)}
+            onHeightChange={setTerminalHeight}
+          />
         </div>
-        <TerminalPanel
-          cwd={repoPath}
-          visible={showTerminal}
-          height={terminalHeight}
-          onToggle={() => setShowTerminal(false)}
-          onHeightChange={setTerminalHeight}
-        />
+        {repoPath && (
+          <ClaudePanel
+            key={repoPath}
+            repoPath={repoPath}
+            visible={showClaude}
+            width={claudeWidth}
+            onWidthChange={setClaudeWidth}
+            onClose={() => setShowClaude(false)}
+            onFilesChanged={handleClaudeFilesChanged}
+          />
+        )}
       </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>

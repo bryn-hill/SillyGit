@@ -7,6 +7,7 @@ import * as settings from './settings'
 import * as launchpad from './launchpad'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
+import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
 import type { CommitSplitProposal, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -373,6 +374,7 @@ function registerIpcHandlers(): void {
   )
 
   registerTerminalHandlers(() => mainWindow)
+  registerClaudeHandlers(() => mainWindow)
 }
 
 app.whenReady().then(() => {
@@ -386,11 +388,13 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   killAllTerminals()
+  closeAllClaudeChats()
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
   killAllTerminals()
+  closeAllClaudeChats()
 })
 
 process.on('uncaughtException', (err) => {
