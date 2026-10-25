@@ -14,6 +14,19 @@ interface Props {
   onWorkingTreeChanged?: () => void
 }
 
+function SparkleIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M8 2.5 9.2 6.8 13.5 8 9.2 9.2 8 13.5 6.8 9.2 2.5 8 6.8 6.8 8 2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export default function CommitFullView({
   repoPath,
   hash,
@@ -167,7 +180,6 @@ export default function CommitFullView({
                     disabled={commitAi.state === 'loading'}
                     onClick={runCommitAi}
                   >
-                    ✨{' '}
                     {commitAi.state === 'loading' ? 'Reviewing commit…' : 'Ask AI to review commit'}
                   </button>
                   <AiResults run={commitAi} onSelectFinding={handleSelectFinding} />
@@ -220,7 +232,7 @@ export default function CommitFullView({
                                 runFileAi(f.path)
                               }}
                             >
-                              ✨
+                              <SparkleIcon />
                             </button>
                           </span>
                         </div>
