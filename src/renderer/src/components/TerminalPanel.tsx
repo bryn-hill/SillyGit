@@ -232,7 +232,7 @@ export default function TerminalPanel({ cwd, visible, height, onToggle, onHeight
   }
 
   return (
-    <div className="terminal-panel" style={{ height: visible ? height : 0 }}>
+    <div className="terminal-panel" role="region" aria-label="Terminal" style={{ height: visible ? height : 0 }}>
       {visible && <div className="terminal-resize-handle" onMouseDown={handleDragStart} />}
       <div className="terminal-panel-header">
         <div className="terminal-tabs">
@@ -240,6 +240,7 @@ export default function TerminalPanel({ cwd, visible, height, onToggle, onHeight
             <div
               key={tab.id}
               className={`terminal-tab ${tab.id === activeId ? 'active' : ''}`}
+              data-testid="terminal-tab"
               onClick={() => setActiveId(tab.id)}
             >
               <TerminalTabIcon />

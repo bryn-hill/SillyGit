@@ -399,7 +399,12 @@ export default function ClaudePanel({
   }
 
   return (
-    <div className="claude-panel" style={{ width: visible ? width : 0, display: visible ? 'flex' : 'none' }}>
+    <div
+      className="claude-panel"
+      role="complementary"
+      aria-label="Claude Code"
+      style={{ width: visible ? width : 0, display: visible ? 'flex' : 'none' }}
+    >
       <div className="claude-resize-handle" onMouseDown={handleDragStart} />
       <div className="claude-panel-header">
         <div className="claude-tabs">
@@ -407,6 +412,7 @@ export default function ClaudePanel({
             <div
               key={tab.id}
               className={`terminal-tab ${tab.id === activeId ? 'active' : ''}`}
+              data-testid="claude-tab"
               onClick={() => setActiveId(tab.id)}
               title={tab.title}
             >

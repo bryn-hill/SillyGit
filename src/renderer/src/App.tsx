@@ -417,7 +417,7 @@ export default function App(): JSX.Element {
                   onCopySha={handleCopySha}
                 />
                 {selection.type !== 'none' && (
-                  <div className="detail-panel">
+                  <div className="detail-panel" role="complementary" aria-label="Details">
                     <DetailPanel
                       repoPath={repoPath}
                       selection={selection}
