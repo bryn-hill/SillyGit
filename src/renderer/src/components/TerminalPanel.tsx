@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { CanvasAddon } from '@xterm/addon-canvas'
 import '@xterm/xterm/css/xterm.css'
 
 const MIN_HEIGHT = 120
@@ -82,6 +83,12 @@ function TerminalInstance({ cwd, shown, onExit }: TerminalInstanceProps): JSX.El
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(container)
+    // The default DOM renderer draws every glyph from the loaded font, so it
+    // can't render Powerline/box-drawing separators the font doesn't have
+    // (they show as flat color blocks with no shape). The canvas renderer
+    // draws those as vector shapes instead, matching what most real
+    // terminals (incl. VS Code's) show regardless of the font installed.
+    term.loadAddon(new CanvasAddon())
     termRef.current = term
     fitRef.current = fit
 
