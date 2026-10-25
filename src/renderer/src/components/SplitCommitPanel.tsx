@@ -56,7 +56,7 @@ export default function SplitCommitPanel({ repoPath, hash, onApplied }: Props): 
     return (
       <div className="split-section">
         <button className="ai-ask-button" onClick={runPropose}>
-          🔀 Split commit with AI
+          Split commit with AI
         </button>
         {state.kind === 'error' && <div className="ai-error">{state.message}</div>}
       </div>
@@ -67,7 +67,7 @@ export default function SplitCommitPanel({ repoPath, hash, onApplied }: Props): 
     return (
       <div className="split-section">
         <button className="ai-ask-button" disabled>
-          🔀 Split commit with AI
+          Split commit with AI
         </button>
         <div className="ai-status">Analyzing commit…</div>
       </div>
