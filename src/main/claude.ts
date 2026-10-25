@@ -169,7 +169,7 @@ async function proposedDiff(
     return undefined
   }
 
-  const dir = join(tmpdir(), `gitdesk-claude-${randomUUID()}`)
+  const dir = join(tmpdir(), `sillygit-claude-${randomUUID()}`)
   await fsp.mkdir(dir, { recursive: true })
   try {
     const a = join(dir, 'before')

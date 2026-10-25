@@ -8,12 +8,29 @@ interface StoredSettings {
 }
 
 function settingsPath(): string {
-  return join(app.getPath('userData'), 'gitdesk-settings.json')
+  return join(app.getPath('userData'), 'sillygit-settings.json')
+}
+
+// Where settings lived before the app was renamed from gitdesk to SillyGit
+// (userData was <appData>/gitdesk). Copied over once, left in place.
+function legacySettingsPath(): string {
+  return join(app.getPath('appData'), 'gitdesk', 'gitdesk-settings.json')
 }
 
 async function readSettings(): Promise<StoredSettings> {
+  let raw: string
   try {
-    const raw = await fs.readFile(settingsPath(), 'utf-8')
+    raw = await fs.readFile(settingsPath(), 'utf-8')
+  } catch {
+    try {
+      raw = await fs.readFile(legacySettingsPath(), 'utf-8')
+      await fs.mkdir(app.getPath('userData'), { recursive: true })
+      await fs.writeFile(settingsPath(), raw, 'utf-8')
+    } catch {
+      return {}
+    }
+  }
+  try {
     return JSON.parse(raw) as StoredSettings
   } catch {
     return {}
