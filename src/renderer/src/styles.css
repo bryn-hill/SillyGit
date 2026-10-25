@@ -820,11 +820,25 @@ input {
 
 .ai-ask-button {
   width: 100%;
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: none;
+  background: rgba(189, 147, 249, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(189, 147, 249, 0.4);
+  border-radius: 6px;
   font-weight: 600;
   padding: 7px 10px;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+
+button.ai-ask-button:hover:not(:disabled) {
+  background: rgba(189, 147, 249, 0.18);
+  border-color: var(--accent);
+}
+
+button.ai-ask-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.35);
 }
 
 .ai-status {
@@ -835,8 +849,20 @@ input {
 
 .ai-error {
   margin-top: 8px;
+  padding: 6px 8px;
   font-size: 12px;
+  line-height: 1.45;
   color: var(--red);
+  background: rgba(255, 85, 85, 0.08);
+  border: 1px solid rgba(255, 85, 85, 0.3);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.split-section .ai-error {
+  margin-top: 0;
 }
 
 .ai-results {

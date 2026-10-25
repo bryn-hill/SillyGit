@@ -7,15 +7,30 @@ import SplitCommitPanel from './SplitCommitPanel'
 interface Props {
   repoPath: string
   hash: string
+  initialPath?: string | null
   isHead: boolean
   onClose: () => void
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
 }
 
+function SparkleIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M8 2.5 9.2 6.8 13.5 8 9.2 9.2 8 13.5 6.8 9.2 2.5 8 6.8 6.8 8 2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export default function CommitFullView({
   repoPath,
   hash,
+  initialPath,
   isHead,
   onClose,
   onNavigateToCommit,
@@ -50,7 +65,8 @@ export default function CommitFullView({
       if (cancelled) return
       if (res.ok) {
         setDetail(res.data)
-        if (res.data.files.length > 0) setSelectedPath(res.data.files[0].path)
+        const initial = res.data.files.find((f) => f.path === initialPath) ?? res.data.files[0]
+        if (initial) setSelectedPath(initial.path)
       } else {
         setError(res.error)
       }
@@ -164,7 +180,6 @@ export default function CommitFullView({
                     disabled={commitAi.state === 'loading'}
                     onClick={runCommitAi}
                   >
-                    ✨{' '}
                     {commitAi.state === 'loading' ? 'Reviewing commit…' : 'Ask AI to review commit'}
                   </button>
                   <AiResults run={commitAi} onSelectFinding={handleSelectFinding} />
@@ -201,7 +216,10 @@ export default function CommitFullView({
                       <li key={f.path}>
                         <div
                           className={`file-row ${selectedPath === f.path ? 'active' : ''}`}
-                          onClick={() => setSelectedPath(f.path)}
+                          // Clicking the open file again closes the diff.
+                          onClick={() =>
+                            selectedPath === f.path ? onClose() : setSelectedPath(f.path)
+                          }
                         >
                           <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
                           <span className="file-path">{f.path}</span>
@@ -214,7 +232,7 @@ export default function CommitFullView({
                                 runFileAi(f.path)
                               }}
                             >
-                              ✨
+                              <SparkleIcon />
                             </button>
                           </span>
                         </div>
