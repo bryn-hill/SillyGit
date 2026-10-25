@@ -104,6 +104,16 @@ const api = {
     proposal: import('../shared/types').CommitSplitProposal
   ): Wrapped<void> => ipcRenderer.invoke('ai:apply-split', repoPath, proposal),
 
+  launchpadGetData: (repoPaths: string[]): Wrapped<import('../shared/types').LaunchpadData> =>
+    ipcRenderer.invoke('launchpad:get-data', repoPaths),
+  launchpadMergePr: (repoPath: string, number: number): Wrapped<void> =>
+    ipcRenderer.invoke('launchpad:merge-pr', repoPath, number),
+  getWorkspaceRepos: (): Promise<string[]> => ipcRenderer.invoke('settings:get-workspace-repos'),
+  addWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
+    ipcRenderer.invoke('settings:add-workspace-repo', repoPath),
+  removeWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
+    ipcRenderer.invoke('settings:remove-workspace-repo', repoPath),
+
   terminalCreate: (cwd: string | undefined, cols: number, rows: number): Promise<number> =>
     ipcRenderer.invoke('terminal:create', cwd, cols, rows),
   terminalWrite: (id: number, data: string): void => ipcRenderer.send('terminal:write', id, data),

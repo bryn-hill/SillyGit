@@ -15,6 +15,8 @@ interface Props {
   onOpenSettings: () => void
   terminalVisible: boolean
   onToggleTerminal: () => void
+  launchpadActive: boolean
+  onToggleLaunchpad: () => void
 }
 
 function FolderIcon(): JSX.Element {
@@ -92,6 +94,21 @@ function PopIcon(): JSX.Element {
   )
 }
 
+function LaunchpadIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M8 1.8c2.4 1 3.6 3.3 3.6 6.2 0 1.6-.4 3-1 4.1l-2.6 1.4-2.6-1.4c-.6-1.1-1-2.5-1-4.1 0-2.9 1.2-5.2 3.6-6.2Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="7.2" r="1.3" stroke="currentColor" strokeWidth="1.1" />
+      <path d="M5.6 11 4 14.2M10.4 11 12 14.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function TerminalIcon(): JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -129,7 +146,9 @@ export default function TopBar({
   onCheckout,
   onOpenSettings,
   terminalVisible,
-  onToggleTerminal
+  onToggleTerminal,
+  launchpadActive,
+  onToggleLaunchpad
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const repoName = repoPath ? repoPath.split('/').filter(Boolean).pop() : null
@@ -208,6 +227,13 @@ export default function TopBar({
                 Pop
               </button>
             </div>
+            <button
+              className={`icon-button ${launchpadActive ? 'icon-button-active' : ''}`}
+              onClick={onToggleLaunchpad}
+              title="Launchpad — your open pull requests"
+            >
+              <LaunchpadIcon />
+            </button>
           </>
         )}
         <button

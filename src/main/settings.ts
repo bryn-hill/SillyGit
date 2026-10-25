@@ -4,6 +4,7 @@ import { promises as fs } from 'fs'
 
 interface StoredSettings {
   anthropicApiKey?: string
+  workspaceRepos?: string[]
 }
 
 function settingsPath(): string {
@@ -33,4 +34,26 @@ export async function setApiKey(key: string): Promise<void> {
 export async function hasStoredApiKey(): Promise<boolean> {
   const key = await getApiKey()
   return !!key
+}
+
+export async function getWorkspaceRepos(): Promise<string[]> {
+  const stored = await readSettings()
+  return stored.workspaceRepos ?? []
+}
+
+export async function addWorkspaceRepo(repoPath: string): Promise<string[]> {
+  const current = await readSettings()
+  const list = current.workspaceRepos ?? []
+  if (!list.includes(repoPath)) list.push(repoPath)
+  current.workspaceRepos = list
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  return list
+}
+
+export async function removeWorkspaceRepo(repoPath: string): Promise<string[]> {
+  const current = await readSettings()
+  const list = (current.workspaceRepos ?? []).filter((p) => p !== repoPath)
+  current.workspaceRepos = list
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  return list
 }

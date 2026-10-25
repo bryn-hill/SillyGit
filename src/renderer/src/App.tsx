@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar'
 import CommitGraph from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
+import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
 import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
 import { layoutGraph } from './lib/graphLayout'
@@ -22,6 +23,7 @@ export default function App(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showLaunchpad, setShowLaunchpad] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
 
@@ -295,6 +297,8 @@ export default function App(): JSX.Element {
         onOpenSettings={() => setShowSettings(true)}
         terminalVisible={showTerminal}
         onToggleTerminal={() => setShowTerminal((v) => !v)}
+        launchpadActive={showLaunchpad}
+        onToggleLaunchpad={() => setShowLaunchpad((v) => !v)}
       />
       {error && (
         <div className="error-banner" onClick={() => setError(null)}>
@@ -308,6 +312,12 @@ export default function App(): JSX.Element {
               <p>No repository open.</p>
               <button onClick={handleOpenRepo}>Open Repository</button>
             </div>
+          ) : showLaunchpad ? (
+            <Launchpad
+              repoPath={repoPath}
+              onClose={() => setShowLaunchpad(false)}
+              onOpenTerminal={() => setShowTerminal(true)}
+            />
           ) : fullScreenHash ? (
             <CommitFullView
               repoPath={repoPath}
