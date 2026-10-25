@@ -11,7 +11,8 @@ import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './comp
 import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
 
-export type Selection = { type: 'working' } | { type: 'commit'; hash: string }
+// 'none' means nothing is selected and the side bar is closed.
+export type Selection = { type: 'none' } | { type: 'working' } | { type: 'commit'; hash: string }
 
 export default function App(): JSX.Element {
   const [repoPath, setRepoPath] = useState<string | null>(null)
@@ -23,6 +24,7 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
+  const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showLaunchpad, setShowLaunchpad] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
@@ -82,7 +84,7 @@ export default function App(): JSX.Element {
   const hasWorkingChanges = !!status && (status.staged.length > 0 || status.unstaged.length > 0)
 
   useEffect(() => {
-    if (graphRows.length === 0) return
+    if (graphRows.length === 0 || selection.type === 'none') return
     const selectedExists =
       selection.type === 'commit' && graphRows.some((r) => r.commit.hash === selection.hash)
     if (!hasWorkingChanges && (selection.type === 'working' || !selectedExists)) {
@@ -91,6 +93,35 @@ export default function App(): JSX.Element {
       setSelection({ type: 'working' })
     }
   }, [hasWorkingChanges, selection, graphRows])
+
+  // ArrowUp/ArrowDown move the selection through the graph (WIP row first, then commits).
+  useEffect(() => {
+    if (fullScreenHash || showLaunchpad || showSettings) return
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+      const items: Selection[] = [
+        ...(hasWorkingChanges ? [{ type: 'working' } as const] : []),
+        ...graphRows.map((r) => ({ type: 'commit', hash: r.commit.hash }) as const)
+      ]
+      if (items.length === 0) return
+      e.preventDefault()
+      const current = items.findIndex((item) =>
+        item.type === 'commit'
+          ? selection.type === 'commit' && selection.hash === item.hash
+          : selection.type === item.type
+      )
+      const next =
+        current === -1
+          ? 0
+          : Math.min(items.length - 1, Math.max(0, current + (e.key === 'ArrowDown' ? 1 : -1)))
+      setSelection(items[next])
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [fullScreenHash, showLaunchpad, showSettings, hasWorkingChanges, graphRows, selection])
 
   const handleOpenRepo = async (): Promise<void> => {
     const picked = await window.api.openRepoDialog()
@@ -340,6 +371,7 @@ export default function App(): JSX.Element {
               <CommitFullView
                 repoPath={repoPath}
                 hash={fullScreenHash}
+                initialPath={fullScreenPath}
                 isHead={fullScreenHash === headHash}
                 onClose={() => {
                   setFullScreenHash(null)
@@ -347,6 +379,7 @@ export default function App(): JSX.Element {
                 }}
                 onNavigateToCommit={(hash) => {
                   setFullScreenHash(hash)
+                  setFullScreenPath(null)
                   setSelection({ type: 'commit', hash })
                 }}
                 onWorkingTreeChanged={() => refresh(repoPath)}
@@ -360,11 +393,19 @@ export default function App(): JSX.Element {
                   hasWorkingChanges={hasWorkingChanges}
                   headHash={headHash}
                   currentBranch={status?.branch ?? null}
-                  onSelectWorking={() => setSelection({ type: 'working' })}
-                  onSelectCommit={(hash) => {
-                    setSelection({ type: 'commit', hash })
-                    setFullScreenHash(hash)
-                  }}
+                  onSelectWorking={() =>
+                    // Clicking the selected row again deselects it and closes the side bar.
+                    setSelection(
+                      selection.type === 'working' ? { type: 'none' } : { type: 'working' }
+                    )
+                  }
+                  onSelectCommit={(hash) =>
+                    setSelection(
+                      selection.type === 'commit' && selection.hash === hash
+                        ? { type: 'none' }
+                        : { type: 'commit', hash }
+                    )
+                  }
                   onCheckout={handleCheckout}
                   onCherryPick={handleCherryPick}
                   onRevertCommit={handleRevertCommit}
@@ -375,19 +416,25 @@ export default function App(): JSX.Element {
                   onCreatePatch={handleCreatePatch}
                   onCopySha={handleCopySha}
                 />
-                <div className="detail-panel">
-                  <DetailPanel
-                    repoPath={repoPath}
-                    selection={selection}
-                    status={status}
-                    commitMessage={commitMessage}
-                    onCommitMessageChange={setCommitMessage}
-                    onStage={handleStage}
-                    onUnstage={handleUnstage}
-                    onDiscard={handleDiscard}
-                    onCommit={handleCommit}
-                  />
-                </div>
+                {selection.type !== 'none' && (
+                  <div className="detail-panel">
+                    <DetailPanel
+                      repoPath={repoPath}
+                      selection={selection}
+                      status={status}
+                      commitMessage={commitMessage}
+                      onCommitMessageChange={setCommitMessage}
+                      onStage={handleStage}
+                      onUnstage={handleUnstage}
+                      onDiscard={handleDiscard}
+                      onCommit={handleCommit}
+                      onOpenCommitFileDiff={(hash, path) => {
+                        setFullScreenHash(hash)
+                        setFullScreenPath(path)
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
