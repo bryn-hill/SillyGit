@@ -70,6 +70,37 @@ function wrap<T>(fn: () => Promise<T>): Promise<{ ok: true; data: T } | { ok: fa
     .catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : String(err) }))
 }
 
+const MAX_REVIEW_CONTEXT_FILES = 20
+
+// Fetches each changed file's full post-change content, for the AI review
+// prompt. Skips deletions (nothing to fetch) and pure additions (the diff
+// already contains the whole file, so fetching it again wastes prompt
+// budget), and silently drops any file that fails to read (binary content,
+// git errors) rather than failing the review over it.
+async function fetchReviewFileContexts(
+  repoPath: string,
+  hash: string,
+  files: { path: string; status: string }[]
+): Promise<ai.FileContext[]> {
+  const candidates = files
+    .filter((f) => !f.status.startsWith('D') && !f.status.startsWith('A'))
+    .slice(0, MAX_REVIEW_CONTEXT_FILES)
+
+  const results = await Promise.all(
+    candidates.map(async (f): Promise<ai.FileContext | null> => {
+      try {
+        const content = await git.getFileAtRef(repoPath, hash, f.path)
+        if (content.includes('\u0000')) return null
+        return { path: f.path, content }
+      } catch {
+        return null
+      }
+    })
+  )
+
+  return results.filter((r): r is ai.FileContext => r !== null)
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('repo:open-dialog', async () => {
     const result = await dialog.showOpenDialog({
@@ -182,14 +213,16 @@ function registerIpcHandlers(): void {
     wrap(async () => {
       const detail = await git.getCommitDetail(repoPath, hash)
       const diff = await git.getCommitFullDiff(repoPath, hash)
-      return ai.reviewCommit(detail.subject, detail.body, diff)
+      const fileContexts = await fetchReviewFileContexts(repoPath, hash, detail.files)
+      return ai.reviewCommit(detail.subject, detail.body, diff, fileContexts)
     })
   )
 
   ipcMain.handle('ai:review-file', (_e, repoPath: string, hash: string, path: string) =>
     wrap(async () => {
       const diff = await git.getCommitFileDiff(repoPath, hash, path)
-      return ai.reviewFile(path, diff)
+      const fileContexts = await fetchReviewFileContexts(repoPath, hash, [{ path, status: 'M' }])
+      return ai.reviewFile(path, diff, fileContexts)
     })
   )
 
