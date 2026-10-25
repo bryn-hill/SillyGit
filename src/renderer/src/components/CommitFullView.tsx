@@ -7,6 +7,7 @@ import SplitCommitPanel from './SplitCommitPanel'
 interface Props {
   repoPath: string
   hash: string
+  initialPath?: string | null
   isHead: boolean
   onClose: () => void
   onNavigateToCommit: (hash: string) => void
@@ -16,6 +17,7 @@ interface Props {
 export default function CommitFullView({
   repoPath,
   hash,
+  initialPath,
   isHead,
   onClose,
   onNavigateToCommit,
@@ -50,7 +52,8 @@ export default function CommitFullView({
       if (cancelled) return
       if (res.ok) {
         setDetail(res.data)
-        if (res.data.files.length > 0) setSelectedPath(res.data.files[0].path)
+        const initial = res.data.files.find((f) => f.path === initialPath) ?? res.data.files[0]
+        if (initial) setSelectedPath(initial.path)
       } else {
         setError(res.error)
       }
