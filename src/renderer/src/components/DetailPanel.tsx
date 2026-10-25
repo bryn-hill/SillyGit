@@ -137,7 +137,7 @@ function WorkingDirectoryView({
             disabled={staged.length === 0 || generating}
             onClick={handleGenerateMessage}
           >
-            {generating ? 'Generating…' : '✨ Generate message'}
+            {generating ? 'Generating…' : 'Generate message'}
           </button>
         </div>
         {generateError && <div className="ai-error">{generateError}</div>}
