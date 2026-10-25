@@ -196,7 +196,9 @@ function CommitDetailView({
       <div className="detail-header-row">
         <span>commit: {detail.hash.slice(0, 7)}</span>
       </div>
-      <div className="commit-subject-large">{detail.subject}</div>
+      <div className="commit-subject-large" data-testid="commit-subject">
+        {detail.subject}
+      </div>
       {detail.body && <div className="commit-body">{detail.body}</div>}
       <div className="commit-author-row">
         <div className="author-avatar">{detail.author.slice(0, 1).toUpperCase()}</div>

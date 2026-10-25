@@ -151,10 +151,12 @@ export default function CommitGraph({
         <span className="col-graph">Graph</span>
         <span className="col-message">Commit message</span>
       </div>
-      <div className="commit-graph-body" ref={bodyRef}>
+      <div className="commit-graph-body" ref={bodyRef} role="listbox" aria-label="Commits">
         {hasWorkingChanges && (
           <div
             className={`graph-row wip-row ${selection.type === 'working' ? 'selected' : ''}`}
+            role="option"
+            aria-selected={selection.type === 'working'}
             onClick={onSelectWorking}
           >
             <WipGraphCell lane={topLane} color={topColor} />
@@ -174,6 +176,8 @@ export default function CommitGraph({
             <div
               key={row.commit.hash}
               className={`graph-row ${isSelected ? 'selected' : ''} ${isContextTarget ? 'context-target' : ''}`}
+              role="option"
+              aria-selected={isSelected}
               onClick={() => onSelectCommit(row.commit.hash)}
               onContextMenu={(e) => {
                 e.preventDefault()
