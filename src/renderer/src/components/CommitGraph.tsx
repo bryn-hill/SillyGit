@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { WipGraphCell } from './GraphCell'
 import type { Selection } from '../App'
@@ -83,6 +83,12 @@ export default function CommitGraph({
   const topLane = rows[0]?.lane ?? 0
   const topColor = rows[0]?.color ?? '#bd93f9'
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string } | null>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  // Keep the selected row visible when the selection moves with the arrow keys.
+  useEffect(() => {
+    bodyRef.current?.querySelector('.graph-row.selected')?.scrollIntoView({ block: 'nearest' })
+  }, [selection])
 
   function buildSections(hash: string): ContextMenuItem[][] {
     const branchLabel = currentBranch ?? 'HEAD'
@@ -145,7 +151,7 @@ export default function CommitGraph({
         <span className="col-graph">Graph</span>
         <span className="col-message">Commit message</span>
       </div>
-      <div className="commit-graph-body">
+      <div className="commit-graph-body" ref={bodyRef}>
         {hasWorkingChanges && (
           <div
             className={`graph-row wip-row ${selection.type === 'working' ? 'selected' : ''}`}

@@ -158,17 +158,22 @@ function WorkingDirectoryView({
   )
 }
 
-function CommitDetailView({ repoPath, hash }: { repoPath: string; hash: string }): JSX.Element {
+function CommitDetailView({
+  repoPath,
+  hash,
+  onOpenFileDiff
+}: {
+  repoPath: string
+  hash: string
+  onOpenFileDiff: (path: string) => void
+}): JSX.Element {
   const [detail, setDetail] = useState<CommitDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [diffText, setDiffText] = useState('')
 
   useEffect(() => {
     let cancelled = false
     setDetail(null)
     setError(null)
-    setExpanded(null)
     window.api.commitDetail(repoPath, hash).then((res) => {
       if (cancelled) return
       if (res.ok) setDetail(res.data)
@@ -178,16 +183,6 @@ function CommitDetailView({ repoPath, hash }: { repoPath: string; hash: string }
       cancelled = true
     }
   }, [repoPath, hash])
-
-  const toggleExpand = async (path: string): Promise<void> => {
-    if (expanded === path) {
-      setExpanded(null)
-      return
-    }
-    setExpanded(path)
-    const res = await window.api.commitFileDiff(repoPath, hash, path)
-    setDiffText(res.ok ? res.data : `Unable to load diff: ${res.error}`)
-  }
 
   if (error) return <div className="detail-panel-content">{error}</div>
   if (!detail) return <div className="detail-panel-content">Loading…</div>
@@ -226,15 +221,10 @@ function CommitDetailView({ repoPath, hash }: { repoPath: string; hash: string }
         <ul className="file-list">
           {detail.files.map((f) => (
             <li key={f.path}>
-              <div className="file-row" onClick={() => toggleExpand(f.path)}>
+              <div className="file-row" onClick={() => onOpenFileDiff(f.path)}>
                 <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
                 <span className="file-path">{f.path}</span>
               </div>
-              {expanded === f.path && (
-                <div className="inline-diff">
-                  <DiffBlock diffText={diffText} />
-                </div>
-              )}
             </li>
           ))}
         </ul>
@@ -253,11 +243,19 @@ interface Props {
   onUnstage: (paths: string[]) => void
   onDiscard: (file: FileStatus) => void
   onCommit: () => void
+  onOpenCommitFileDiff: (hash: string, path: string) => void
 }
 
 export default function DetailPanel(props: Props): JSX.Element {
   if (props.selection.type === 'commit') {
-    return <CommitDetailView repoPath={props.repoPath} hash={props.selection.hash} />
+    const { hash } = props.selection
+    return (
+      <CommitDetailView
+        repoPath={props.repoPath}
+        hash={hash}
+        onOpenFileDiff={(path) => props.onOpenCommitFileDiff(hash, path)}
+      />
+    )
   }
   return (
     <WorkingDirectoryView
