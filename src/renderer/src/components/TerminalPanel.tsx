@@ -140,7 +140,12 @@ function TerminalInstance({ cwd, shown, onExit }: TerminalInstanceProps): JSX.El
       offExit()
       inputDisposable.dispose()
       if (ptyIdRef.current != null) window.api.terminalKill(ptyIdRef.current)
-      term.dispose()
+      // xterm queues a setTimeout from open() that reads the renderer's
+      // dimensions. Disposing synchronously (e.g. StrictMode's mount/unmount
+      // in dev, or closing a tab right after opening it) leaves that timer to
+      // fire against a disposed renderer and throw. Dispose on a later tick so
+      // xterm's own pending timer runs first.
+      setTimeout(() => term.dispose())
     }
     // pty session is created once per tab; cwd is captured at creation time only
     // eslint-disable-next-line react-hooks/exhaustive-deps
