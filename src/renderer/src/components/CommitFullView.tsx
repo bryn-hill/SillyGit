@@ -204,7 +204,10 @@ export default function CommitFullView({
                       <li key={f.path}>
                         <div
                           className={`file-row ${selectedPath === f.path ? 'active' : ''}`}
-                          onClick={() => setSelectedPath(f.path)}
+                          // Clicking the open file again closes the diff.
+                          onClick={() =>
+                            selectedPath === f.path ? onClose() : setSelectedPath(f.path)
+                          }
                         >
                           <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
                           <span className="file-path">{f.path}</span>
