@@ -79,6 +79,38 @@ driver's own output (`[console:...]`, `[pageerror]`), and the app's main
 process log — including renderer messages re-forwarded there — streams in
 as `[app] ...` / `[app:err] ...`. No extra devtools wiring needed.
 
+## End-to-end tests
+
+For checks worth keeping, add a Playwright test instead of a one-off driver
+script. The suite runs in CI (`.github/workflows/ci.yml`) and uses the same
+hidden-window launch:
+
+```bash
+npm run test:e2e                      # builds, then runs playwright test
+xvfb-run -a npm run test:e2e          # in a container with no display
+CI=1 xvfb-run -a npm run test:e2e     # ~4x faster: shows the window (unfocused) on xvfb
+```
+
+Layout (page object model):
+
+- `e2e/specs/*.spec.ts`: tests, one file per area. They talk only to page
+  objects, never to raw selectors.
+- `e2e/pages/`: one class per area (`CommitGraph`, `DetailPanel`,
+  `CommitView`, `ClaudePanel`, `TerminalPanel`), all reachable from
+  `SillyGitApp`. Locators prefer roles and accessible names; add an ARIA
+  role/label or a `data-testid` to the component rather than reaching for a
+  CSS class.
+- `e2e/fixtures.ts`: `repo` (a fresh two-commit `FixtureRepo`),
+  `electronApp` (isolated `--user-data-dir`, trace kept on failure) and
+  `sillygit` (the page object).
+- `e2e/support/`: `FixtureRepo` and `stubIpc()` for replacing a main-process
+  handler (the Claude panel tests stub `claude:start`).
+
+With `CI` or `E2E_SHOW_WINDOW=1` set, the window is shown inactive, which
+makes clicks fast and lets failed tests attach a screenshot; leave both unset
+on a real desktop so no window pops up. Open a failure's trace with
+`npx playwright show-trace test-results/<test>/attachments/trace-*.zip`.
+
 ## Run (human path)
 
 ```bash

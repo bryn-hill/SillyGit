@@ -133,7 +133,7 @@ export default function CommitFullView({
   const deleted = detail?.files.filter((f) => f.status === 'D').length ?? 0
 
   return (
-    <div className="commit-fullview">
+    <div className="commit-fullview" role="region" aria-label="Commit diff">
       <div className="commit-fullview-header">
         <button className="icon-button" onClick={onClose} title="Back to repository view">
           ←
@@ -151,7 +151,7 @@ export default function CommitFullView({
         <div className="detail-panel-content">{error}</div>
       ) : (
         <div className="commit-fullview-body">
-          <div className="commit-fullview-diff">
+          <div className="commit-fullview-diff" data-testid="diff">
             {!selectedPath ? (
               <div className="commit-fullview-empty">No file changes in this commit.</div>
             ) : diffLoading ? (
@@ -216,6 +216,7 @@ export default function CommitFullView({
                       <li key={f.path}>
                         <div
                           className={`file-row ${selectedPath === f.path ? 'active' : ''}`}
+                          aria-current={selectedPath === f.path}
                           // Clicking the open file again closes the diff.
                           onClick={() =>
                             selectedPath === f.path ? onClose() : setSelectedPath(f.path)

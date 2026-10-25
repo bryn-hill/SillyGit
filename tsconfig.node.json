@@ -10,5 +10,5 @@
     "strict": true,
     "types": ["electron-vite/node"]
   },
-  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/shared/**/*"]
+  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "e2e/**/*", "playwright.config.ts"]
 }
