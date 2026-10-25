@@ -1,5 +1,5 @@
-// REPL driver for gitdesk (Electron + React, electron-vite).
-// Launches the built app with its window never shown (GITDESK_E2E=1, see
+// REPL driver for SillyGit (Electron + React, electron-vite).
+// Launches the built app with its window never shown (SILLYGIT_E2E=1, see
 // src/main/index.ts) and drives it over the DevTools Protocol via
 // playwright-core's Electron support. Chromium still renders and can be
 // screenshotted/clicked even though the window is never mapped to the
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const APP_DIR = path.resolve(__dirname, '../../..')
-const SHOT_DIR = process.env.SCREENSHOT_DIR || '/tmp/gitdesk-shots'
+const SHOT_DIR = process.env.SCREENSHOT_DIR || '/tmp/sillygit-shots'
 fs.mkdirSync(SHOT_DIR, { recursive: true })
 
 let app = null
@@ -35,12 +35,12 @@ const COMMANDS = {
       return
     }
 
-    // The window must never be shown (GITDESK_E2E=1). Also strip
+    // The window must never be shown (SILLYGIT_E2E=1). Also strip
     // ELECTRON_RUN_AS_NODE: some shells (including Claude Code's sandboxed
     // Bash) set it globally to stop Electron GUIs launching from Bash, which
     // would make Electron start as a plain Node process instead. We want a
     // real (just hidden) Electron process here.
-    const env = { ...process.env, GITDESK_E2E: '1' }
+    const env = { ...process.env, SILLYGIT_E2E: '1' }
     delete env.ELECTRON_RUN_AS_NODE
 
     app = await electron.launch({
@@ -220,6 +220,6 @@ if (scriptPath) {
     process.exit(0)
   })
 
-  console.log('gitdesk driver - "help" for commands, "launch" to start')
+  console.log('SillyGit driver - "help" for commands, "launch" to start')
   rl.prompt()
 }

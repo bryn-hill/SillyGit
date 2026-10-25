@@ -390,7 +390,7 @@ export async function applyCommitSplit(
   try {
     for (const group of groups) {
       await runGit(repoPath, ['read-tree', parentHash])
-      const patchFile = join(tmpdir(), `gitdesk-split-${randomUUID()}.patch`)
+      const patchFile = join(tmpdir(), `sillygit-split-${randomUUID()}.patch`)
       await fsp.writeFile(patchFile, group.patch, 'utf-8')
       try {
         await runGit(repoPath, ['apply', '--cached', '--binary', '--whitespace=nowarn', patchFile])
@@ -491,7 +491,7 @@ export async function revertHunk(repoPath: string, diffText: string, unitId: str
     throw new GitError('That change no longer matches the current diff; try again.')
   }
   const patch = diffSplit.buildPatchForUnits(fileBlocks, new Set([unitId]))
-  const patchFile = join(tmpdir(), `gitdesk-revert-${randomUUID()}.patch`)
+  const patchFile = join(tmpdir(), `sillygit-revert-${randomUUID()}.patch`)
   await fsp.writeFile(patchFile, patch, 'utf-8')
   try {
     await runGit(repoPath, ['apply', '-R', '--whitespace=nowarn', patchFile])
