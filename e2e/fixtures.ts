@@ -16,8 +16,30 @@ const SHOW_WINDOW = !!process.env['CI'] || process.env['E2E_SHOW_WINDOW'] === '1
 
 type Fixtures = {
   repo: FixtureRepo
+  userData: string
   electronApp: ElectronApplication
   sillygit: SillyGitApp
+  /** Quits the app and starts it again with the same settings, like a real relaunch. */
+  relaunch: () => Promise<SillyGitApp>
+}
+
+function launchApp(userData: string): Promise<ElectronApplication> {
+  // SILLYGIT_E2E keeps the window hidden (see src/main/index.ts). Some
+  // shells set ELECTRON_RUN_AS_NODE globally, which would start Electron as
+  // plain Node; the CLAUDE* vars would make the Claude panel reuse the
+  // parent Claude Code session.
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), SILLYGIT_E2E: '1' }
+  for (const key of ['ELECTRON_RUN_AS_NODE', 'CLAUDECODE', 'CLAUDE_CODE_SESSION_ID']) delete env[key]
+  return electron.launch({ args: [APP_DIR, `--user-data-dir=${userData}`], env, timeout: 30_000 })
+}
+
+async function openWindow(electronApp: ElectronApplication): Promise<SillyGitApp> {
+  const page = await electronApp.firstWindow()
+  if (SHOW_WINDOW) {
+    await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].showInactive())
+  }
+  await page.waitForLoadState('domcontentloaded')
+  return new SillyGitApp(electronApp, page)
 }
 
 export const test = base.extend<Fixtures>({
@@ -29,49 +51,54 @@ export const test = base.extend<Fixtures>({
   },
 
   // eslint-disable-next-line no-empty-pattern
-  electronApp: async ({}, use, testInfo) => {
-    // Fresh settings for every test, so saved workspace repos or API keys
-    // from a developer's own install never leak in. The empty settings file
-    // also stops the one-time copy from the old gitdesk settings location.
+  userData: async ({}, use) => {
+    // Fresh settings for every test, so saved workspace repos, recent repos
+    // or API keys from a developer's own install never leak in. The empty
+    // settings file also stops the one-time copy from the old gitdesk
+    // settings location.
     const userData = mkdtempSync(join(tmpdir(), 'sillygit-e2e-userdata-'))
     writeFileSync(join(userData, 'sillygit-settings.json'), '{}')
+    await use(userData)
+    rmSync(userData, { recursive: true, force: true })
+  },
 
-    // SILLYGIT_E2E keeps the window hidden (see src/main/index.ts). Some
-    // shells set ELECTRON_RUN_AS_NODE globally, which would start Electron as
-    // plain Node; the CLAUDE* vars would make the Claude panel reuse the
-    // parent Claude Code session.
-    const env: Record<string, string> = { ...(process.env as Record<string, string>), SILLYGIT_E2E: '1' }
-    for (const key of ['ELECTRON_RUN_AS_NODE', 'CLAUDECODE', 'CLAUDE_CODE_SESSION_ID']) delete env[key]
-
-    const app = await electron.launch({ args: [APP_DIR, `--user-data-dir=${userData}`], env, timeout: 30_000 })
+  electronApp: async ({ userData }, use, testInfo) => {
+    const app = await launchApp(userData)
 
     // The config's `trace` option only covers the built-in browser page, so
     // record one here and keep it when a test fails.
     await app.context().tracing.start({ screenshots: SHOW_WINDOW, snapshots: true })
     await use(app)
+    // A test that used `relaunch` has already closed this app, and its trace with it.
     if (testInfo.status !== testInfo.expectedStatus) {
       const tracePath = testInfo.outputPath('trace.zip')
-      await app.context().tracing.stop({ path: tracePath })
-      await testInfo.attach('trace', { path: tracePath, contentType: 'application/zip' })
+      const saved = await app.context().tracing.stop({ path: tracePath }).then(() => true, () => false)
+      if (saved) await testInfo.attach('trace', { path: tracePath, contentType: 'application/zip' })
     } else {
-      await app.context().tracing.stop()
+      await app.context().tracing.stop().catch(() => {})
     }
 
     await app.close().catch(() => {})
-    rmSync(userData, { recursive: true, force: true })
   },
 
   sillygit: async ({ electronApp }, use, testInfo) => {
-    const page = await electronApp.firstWindow()
-    if (SHOW_WINDOW) {
-      await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].showInactive())
-    }
-    await page.waitForLoadState('domcontentloaded')
-    await use(new SillyGitApp(electronApp, page))
+    const sillygit = await openWindow(electronApp)
+    await use(sillygit)
     if (SHOW_WINDOW && testInfo.status !== testInfo.expectedStatus) {
-      const shot = await page.screenshot({ timeout: 5_000 }).catch(() => null)
+      const shot = await sillygit.page.screenshot({ timeout: 5_000 }).catch(() => null)
       if (shot) await testInfo.attach('screenshot', { body: shot, contentType: 'image/png' })
     }
+  },
+
+  relaunch: async ({ electronApp, userData }, use) => {
+    const relaunched: ElectronApplication[] = []
+    await use(async () => {
+      await (relaunched.at(-1) ?? electronApp).close()
+      const app = await launchApp(userData)
+      relaunched.push(app)
+      return openWindow(app)
+    })
+    for (const app of relaunched) await app.close().catch(() => {})
   }
 })
 

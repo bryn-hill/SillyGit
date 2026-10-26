@@ -161,6 +161,11 @@ const api = {
     ipcRenderer.invoke('launchpad:get-data', repoPaths),
   launchpadMergePr: (repoPath: string, number: number): Wrapped<void> =>
     ipcRenderer.invoke('launchpad:merge-pr', repoPath, number),
+  getSession: (): Promise<import('../shared/types').SavedSession> => ipcRenderer.invoke('session:get'),
+  recordOpenedRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:repo-opened', repoPath),
+  forgetRecentRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:forget-repo', repoPath),
+  saveLayout: (layout: Partial<import('../shared/types').SavedLayout>): Wrapped<void> =>
+    ipcRenderer.invoke('session:save-layout', layout),
   getWorkspaceRepos: (): Promise<string[]> => ipcRenderer.invoke('settings:get-workspace-repos'),
   addWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
     ipcRenderer.invoke('settings:add-workspace-repo', repoPath),

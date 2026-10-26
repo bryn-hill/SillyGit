@@ -58,6 +58,16 @@ export class SillyGitApp {
     await expect(this.graph.rows.first()).toBeVisible()
   }
 
+  /** Opens `repoPath` through the repository crumb's menu, with the folder picker stubbed. */
+  async openRepositoryFromMenu(repoPath: string): Promise<void> {
+    await this.electronApp.evaluate(({ dialog }, path) => {
+      dialog.showOpenDialog = (() => Promise.resolve({ canceled: false, filePaths: [path] })) as never
+    }, repoPath)
+    await this.repositoryCrumb.click()
+    await this.page.getByRole('menuitem', { name: 'Open repository…' }).click()
+    await expect(this.repositoryCrumb).toContainText(repoPath.split('/').pop()!)
+  }
+
   async toggleClaude(): Promise<void> {
     await this.claudeButton.click()
   }

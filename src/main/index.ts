@@ -11,7 +11,7 @@ import * as quickActions from './quickActions'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
-import type { CommitSplitProposal, SplitGroupProposal } from '../shared/types'
+import type { CommitSplitProposal, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -367,6 +367,30 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:remove-workspace-repo', (_e, repoPath: string) =>
     wrap(() => settings.removeWorkspaceRepo(repoPath))
+  )
+
+  ipcMain.handle('session:get', async (): Promise<SavedSession> => {
+    const { lastRepo, recentRepos, layout } = await settings.getLastSession()
+    const exists = await Promise.all(recentRepos.map((p) => git.isGitRepo(p)))
+    const lastRepoExists = !!lastRepo && (await git.isGitRepo(lastRepo))
+    return {
+      repoPath: lastRepoExists ? lastRepo : null,
+      missingRepo: lastRepo && !lastRepoExists ? lastRepo : null,
+      recentRepos: recentRepos.filter((_, i) => exists[i]),
+      layout
+    }
+  })
+
+  ipcMain.handle('session:repo-opened', (_e, repoPath: string) =>
+    wrap(() => settings.recordOpenedRepo(repoPath))
+  )
+
+  ipcMain.handle('session:forget-repo', (_e, repoPath: string) =>
+    wrap(() => settings.forgetRecentRepo(repoPath))
+  )
+
+  ipcMain.handle('session:save-layout', (_e, layout: Partial<SavedLayout>) =>
+    wrap(() => settings.saveLayout(layout))
   )
 
   ipcMain.handle('settings:has-api-key', () => settings.hasStoredApiKey())

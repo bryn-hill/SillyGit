@@ -19,6 +19,7 @@ import PromptDialog, { type PromptRequest } from './components/PromptDialog'
 import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
 import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
+import { repoDisplayName } from './lib/repoName'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
 import { withPullRequestText } from '../../shared/quickActions'
 
@@ -46,6 +47,36 @@ export default function App(): JSX.Element {
   const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
   const [showClaude, setShowClaude] = useState(false)
   const [claudeWidth, setClaudeWidth] = useState(DEFAULT_CLAUDE_WIDTH)
+  const [recentRepos, setRecentRepos] = useState<string[]>([])
+  // Layout changes are saved only once the previous session has been restored,
+  // so the defaults never overwrite it.
+  const [sessionRestored, setSessionRestored] = useState(false)
+
+  // Reopen whatever was open when the app last quit.
+  useEffect(() => {
+    window.api.getSession().then((session) => {
+      const { layout } = session
+      if (layout.showTerminal !== undefined) setShowTerminal(layout.showTerminal)
+      if (layout.terminalHeight) setTerminalHeight(layout.terminalHeight)
+      if (layout.showClaude !== undefined) setShowClaude(layout.showClaude)
+      if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
+      setRecentRepos(session.recentRepos)
+      if (session.repoPath) setRepoPath(session.repoPath)
+      if (session.missingRepo) {
+        setNotice(`Couldn't reopen ${session.missingRepo}: the folder is gone or is no longer a git repository.`)
+        window.api.forgetRecentRepo(session.missingRepo)
+      }
+      setSessionRestored(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!sessionRestored) return
+    const timer = setTimeout(() => {
+      window.api.saveLayout({ showTerminal, terminalHeight, showClaude, claudeWidth })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [sessionRestored, showTerminal, terminalHeight, showClaude, claudeWidth])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -179,9 +210,28 @@ export default function App(): JSX.Element {
         return
       }
     }
-    setRepoPath(picked)
+    await switchToRepo(picked)
+  }
+
+  const switchToRepo = async (path: string): Promise<void> => {
+    setRepoPath(path)
     setResolvingPath(null)
     setSelection({ type: 'working' })
+    setError(null)
+    setNotice(null)
+    const res = await window.api.recordOpenedRepo(path)
+    if (res.ok) setRecentRepos(res.data)
+  }
+
+  const handleOpenRecentRepo = async (path: string): Promise<void> => {
+    if (path === repoPath) return
+    if (!(await window.api.isGitRepo(path))) {
+      showError(`${path} is gone or is no longer a git repository, so it was removed from recent repositories.`)
+      const res = await window.api.forgetRecentRepo(path)
+      if (res.ok) setRecentRepos(res.data)
+      return
+    }
+    await switchToRepo(path)
   }
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
@@ -528,6 +578,8 @@ export default function App(): JSX.Element {
         branches={branches}
         busy={busy}
         onOpenRepo={handleOpenRepo}
+        recentRepos={recentRepos}
+        onOpenRecentRepo={handleOpenRecentRepo}
         onPush={handlePush}
         onPull={handlePull}
         onStash={handleStash}
@@ -558,6 +610,22 @@ export default function App(): JSX.Element {
               <div className="empty-state">
                 <p>No repository open.</p>
                 <button onClick={handleOpenRepo}>Open Repository</button>
+                {recentRepos.length > 0 && (
+                  <section className="recent-repos" aria-label="Recent repositories">
+                    <span className="recent-repos-label">Recent</span>
+                    {recentRepos.map((path) => (
+                      <button
+                        key={path}
+                        className="recent-repo"
+                        title={path}
+                        onClick={() => handleOpenRecentRepo(path)}
+                      >
+                        <span className="recent-repo-name">{repoDisplayName(path)}</span>
+                        <span className="recent-repo-path">{path}</span>
+                      </button>
+                    ))}
+                  </section>
+                )}
               </div>
             ) : showLaunchpad ? (
               <Launchpad

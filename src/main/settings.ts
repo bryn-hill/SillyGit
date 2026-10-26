@@ -1,11 +1,17 @@
 import { app } from 'electron'
 import { join } from 'path'
 import { promises as fs } from 'fs'
+import type { SavedLayout } from '../shared/types'
 
 interface StoredSettings {
   anthropicApiKey?: string
   workspaceRepos?: string[]
+  lastRepo?: string | null
+  recentRepos?: string[]
+  layout?: Partial<SavedLayout>
 }
+
+const MAX_RECENT_REPOS = 10
 
 function settingsPath(): string {
   return join(app.getPath('userData'), 'sillygit-settings.json')
@@ -73,4 +79,41 @@ export async function removeWorkspaceRepo(repoPath: string): Promise<string[]> {
   current.workspaceRepos = list
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
   return list
+}
+
+export async function getLastSession(): Promise<{
+  lastRepo: string | null
+  recentRepos: string[]
+  layout: Partial<SavedLayout>
+}> {
+  const stored = await readSettings()
+  return {
+    lastRepo: stored.lastRepo ?? null,
+    recentRepos: stored.recentRepos ?? [],
+    layout: stored.layout ?? {}
+  }
+}
+
+/** Remembers `repoPath` as the open repo and moves it to the top of the recent list. */
+export async function recordOpenedRepo(repoPath: string): Promise<string[]> {
+  const current = await readSettings()
+  const recent = [repoPath, ...(current.recentRepos ?? []).filter((p) => p !== repoPath)]
+  current.lastRepo = repoPath
+  current.recentRepos = recent.slice(0, MAX_RECENT_REPOS)
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  return current.recentRepos
+}
+
+export async function forgetRecentRepo(repoPath: string): Promise<string[]> {
+  const current = await readSettings()
+  current.recentRepos = (current.recentRepos ?? []).filter((p) => p !== repoPath)
+  if (current.lastRepo === repoPath) current.lastRepo = null
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  return current.recentRepos
+}
+
+export async function saveLayout(layout: Partial<SavedLayout>): Promise<void> {
+  const current = await readSettings()
+  current.layout = { ...current.layout, ...layout }
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
 }
