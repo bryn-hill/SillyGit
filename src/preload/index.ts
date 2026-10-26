@@ -122,6 +122,21 @@ const api = {
 
   hasApiKey: (): Promise<boolean> => ipcRenderer.invoke('settings:has-api-key'),
   setApiKey: (key: string): Wrapped<void> => ipcRenderer.invoke('settings:set-api-key', key),
+  quickSuggestMessages: (repoPath: string): Wrapped<import('../shared/quickActions').QuickMessage[]> =>
+    ipcRenderer.invoke('quick:suggest-messages', repoPath),
+  quickPackageVersion: (repoPath: string): Wrapped<string | null> =>
+    ipcRenderer.invoke('quick:package-version', repoPath),
+  quickBumpVersion: (
+    repoPath: string,
+    kind: import('../shared/quickActions').BumpKind
+  ): Wrapped<import('../shared/quickActions').VersionBump> => ipcRenderer.invoke('quick:bump-version', repoPath, kind),
+  quickPullRequestText: (
+    repoPath: string,
+    base: string,
+    head: string,
+    headBranch: string
+  ): Wrapped<{ title: string; body: string }> =>
+    ipcRenderer.invoke('quick:pull-request-text', repoPath, base, head, headBranch),
   aiGenerateCommitMessage: (repoPath: string): Wrapped<string> =>
     ipcRenderer.invoke('ai:generate-commit-message', repoPath),
   aiReviewCommit: (repoPath: string, hash: string): Wrapped<import('../shared/types').AiReviewResponse> =>
