@@ -2,6 +2,20 @@ import { useEffect, useState, type JSX } from 'react'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
+const MAX_REF_LENGTH = 36
+
+/**
+ * Shortens a long branch name in the middle, keeping its start (the remote and
+ * folder) and its end (usually the most telling part):
+ * "SillyGit/renovate/major-xterm-monorepo" -> "SillyGit/renovate/…xterm-monorepo".
+ */
+export function shortRef(name: string, max = MAX_REF_LENGTH): string {
+  if (name.length <= max) return name
+  const tail = Math.ceil((max - 1) / 2)
+  const head = max - 1 - tail
+  return `${name.slice(0, head)}…${name.slice(name.length - tail)}`
+}
+
 /** A branch the menu was opened on. */
 export interface RefTarget {
   name: string
@@ -72,13 +86,15 @@ export default function RefContextMenu({
   }, [target?.name, target?.remote])
 
   const into = currentBranch ?? 'HEAD'
+  const name = target ? shortRef(target.name) : ''
+  const shortInto = shortRef(into)
   const isHeadCommit = hash === headHash
   const sections: ContextMenuItem[][] = []
 
   if (target && !target.current) {
     sections.push([
-      { id: 'merge', label: `Merge ${target.name} into ${into}`, onSelect: () => actions.merge(target.name) },
-      { id: 'rebase', label: `Rebase ${into} onto ${target.name}`, onSelect: () => actions.rebase(target.name) }
+      { id: 'merge', label: `Merge ${name} into ${shortInto}`, onSelect: () => actions.merge(target.name) },
+      { id: 'rebase', label: `Rebase ${shortInto} onto ${name}`, onSelect: () => actions.rebase(target.name) }
     ])
   }
 
@@ -86,7 +102,7 @@ export default function RefContextMenu({
     sections.push([
       {
         id: 'checkout',
-        label: `Checkout ${target.name}`,
+        label: `Checkout ${name}`,
         onSelect: () => (target.remote ? actions.checkoutRemote(target.name) : actions.checkout(target.name))
       }
     ])
@@ -98,7 +114,7 @@ export default function RefContextMenu({
     sections.push([
       {
         id: 'worktree',
-        label: `Create worktree from ${target.name}…`,
+        label: `Create worktree from ${name}…`,
         onSelect: () => actions.createWorktree(target.name, target.remote ? 'remote' : 'local')
       }
     ])
@@ -116,7 +132,7 @@ export default function RefContextMenu({
       { id: 'cherry-pick', label: 'Cherry-pick commit', onSelect: () => actions.cherryPick(hash) },
       {
         id: 'reset',
-        label: `Reset ${into} to this commit`,
+        label: `Reset ${shortInto} to this commit`,
         submenu: [
           { id: 'reset-soft', label: 'Soft — keep all changes', onSelect: () => actions.resetTo(hash, 'soft') },
           {
@@ -152,7 +168,7 @@ export default function RefContextMenu({
       const compare = `${info.webUrl}/compare/${encodeURI(currentBranch)}...${encodeURI(info.remoteBranch)}?expand=1`
       prItems.push({
         id: 'pr-start',
-        label: `Start a pull request from ${target.name} into ${currentBranch}`,
+        label: `Start a pull request from ${name} into ${shortRef(currentBranch)}`,
         onSelect: () => actions.openUrl(compare)
       })
     }
@@ -162,17 +178,17 @@ export default function RefContextMenu({
   if (target && !target.current) {
     const branchItems: ContextMenuItem[] = []
     if (!target.remote) {
-      branchItems.push({ id: 'rename', label: `Rename ${target.name}…`, onSelect: () => actions.renameBranch(target.name) })
+      branchItems.push({ id: 'rename', label: `Rename ${name}…`, onSelect: () => actions.renameBranch(target.name) })
     }
     branchItems.push({
       id: 'delete',
-      label: target.remote ? `Delete ${target.name} from remote` : `Delete ${target.name}`,
+      label: target.remote ? `Delete ${name} from remote` : `Delete ${name}`,
       danger: true,
       onSelect: () => actions.deleteBranch(target)
     })
     sections.push(branchItems)
   } else if (target && !target.remote) {
-    sections.push([{ id: 'rename', label: `Rename ${target.name}…`, onSelect: () => actions.renameBranch(target.name) }])
+    sections.push([{ id: 'rename', label: `Rename ${name}…`, onSelect: () => actions.renameBranch(target.name) }])
   }
 
   const copyItems: ContextMenuItem[] = []
@@ -184,7 +200,7 @@ export default function RefContextMenu({
     const url = `${info.webUrl}/tree/${encodeURI(info.remoteBranch)}`
     copyItems.push({
       id: 'copy-branch-link',
-      label: `Copy link to branch: ${info.remote}/${info.remoteBranch}`,
+      label: `Copy link to branch: ${shortRef(`${info.remote}/${info.remoteBranch}`)}`,
       onSelect: () => actions.copyText(url)
     })
   }
@@ -203,6 +219,17 @@ export default function RefContextMenu({
     { id: 'tag', label: 'Create tag here…', onSelect: () => actions.createTag(hash) },
     { id: 'annotated-tag', label: 'Create annotated tag here…', onSelect: () => actions.createAnnotatedTag(hash) }
   ])
+
+  // Shortened labels show the full branch names on hover.
+  const fullNames = [target?.name, into, info?.remoteBranch && `${info.remote}/${info.remoteBranch}`]
+  const shortened = fullNames.filter((n): n is string => !!n && shortRef(n) !== n)
+  if (shortened.length > 0) {
+    for (const item of sections.flat()) {
+      let full = item.label
+      for (const n of shortened) full = full.split(shortRef(n)).join(n)
+      if (full !== item.label) item.title = full
+    }
+  }
 
   return <ContextMenu x={x} y={y} sections={sections} onClose={onClose} />
 }
