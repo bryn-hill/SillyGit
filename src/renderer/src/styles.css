@@ -1701,7 +1701,7 @@ button.ai-ask-button:focus-visible {
   position: fixed;
   z-index: 101;
   min-width: 220px;
-  max-width: 320px;
+  max-width: 420px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1726,6 +1726,12 @@ button.ai-ask-button:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.context-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .context-menu-item:hover {

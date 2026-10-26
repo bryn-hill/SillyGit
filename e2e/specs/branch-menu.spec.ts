@@ -37,6 +37,25 @@ test.describe('branch right-click menu', () => {
     await expect(sillygit.page.getByRole('menuitem', { name: 'Delete claude/thing', exact: true })).toBeVisible()
   })
 
+  test('long branch names are shortened so the menu stays narrow', async ({ sillygit, repo }) => {
+    const long = 'renovate/major-xterm-monorepo-with-a-very-long-suffix'
+    repo.git('branch', long, 'feature')
+    await sillygit.openRepository(repo.path)
+
+    await sillygit.graph.badge(long).click({ button: 'right' })
+    const menu = sillygit.page.getByRole('menu')
+    const merge = menu.getByRole('menuitem', { name: /^Merge renovate\/major-x.*…/ })
+    await expect(merge).toBeVisible()
+    await expect(merge).toHaveAttribute('title', `Merge ${long} into main`)
+
+    const box = await menu.boundingBox()
+    expect(box!.width).toBeLessThanOrEqual(420)
+    const overflowing = await menu
+      .locator('.context-menu-label')
+      .evaluateAll((labels) => labels.filter((l) => l.scrollWidth > l.clientWidth).map((l) => l.textContent))
+    expect(overflowing).toEqual([])
+  })
+
   test('deletes an unmerged branch after confirming', async ({ sillygit, repo }) => {
     await sillygit.openRepository(repo.path)
     sillygit.page.on('dialog', (dialog) => dialog.accept())

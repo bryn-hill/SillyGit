@@ -51,7 +51,7 @@ async function findPullRequest(
     const { stdout } = await execFileAsync(
       'gh',
       ['pr', 'list', '--head', branch, '--state', 'open', '--limit', '1', '--json', 'number,url'],
-      { cwd: repoPath, timeout: 10000 }
+      { cwd: repoPath, timeout: 5000 }
     )
     const prs = JSON.parse(stdout) as { number: number; url: string }[]
     return prs[0] ?? null

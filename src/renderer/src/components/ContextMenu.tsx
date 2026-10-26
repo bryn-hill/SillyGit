@@ -5,6 +5,8 @@ export interface ContextMenuItem {
   label: string
   danger?: boolean
   disabled?: boolean
+  /** Tooltip, e.g. the full branch name when the label shortens it. */
+  title?: string
   onSelect?: () => void
   submenu?: ContextMenuItem[]
 }
@@ -19,8 +21,8 @@ interface Props {
 function MenuItemRow({ item, onClose }: { item: ContextMenuItem; onClose: () => void }): JSX.Element {
   if (item.submenu && item.submenu.length > 0) {
     return (
-      <div className="context-menu-item has-submenu">
-        <span>{item.label}</span>
+      <div className="context-menu-item has-submenu" title={item.title}>
+        <span className="context-menu-label">{item.label}</span>
         <span className="context-menu-arrow">›</span>
         <div className="context-menu-submenu">
           {item.submenu.map((sub) => (
@@ -35,13 +37,14 @@ function MenuItemRow({ item, onClose }: { item: ContextMenuItem; onClose: () => 
       className={`context-menu-item ${item.danger ? 'danger' : ''} ${item.disabled ? 'disabled' : ''}`}
       role="menuitem"
       aria-disabled={item.disabled || undefined}
+      title={item.title}
       onClick={() => {
         if (item.disabled) return
         item.onSelect?.()
         onClose()
       }}
     >
-      {item.label}
+      <span className="context-menu-label">{item.label}</span>
     </div>
   )
 }
