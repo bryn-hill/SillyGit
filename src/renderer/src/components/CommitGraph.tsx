@@ -53,6 +53,8 @@ interface Props {
   onSelectCommit: (hash: string) => void
   onCheckout: (branch: string) => void
   onCherryPick: (hash: string) => void
+  /** Replaces "Uncommitted changes" on the WIP row, e.g. to report conflicts. */
+  wipConflictLabel?: string | null
   onRevertCommit: (hash: string) => void
   onResetTo: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
   onCreateBranchAt: (hash: string) => void
@@ -72,6 +74,7 @@ export default function CommitGraph({
   onSelectCommit,
   onCheckout,
   onCherryPick,
+  wipConflictLabel,
   onRevertCommit,
   onResetTo,
   onCreateBranchAt,
@@ -162,9 +165,16 @@ export default function CommitGraph({
             <WipGraphCell lane={topLane} color={topColor} />
             <div className="graph-row-message">
               <span className="wip-label">// WIP</span>
-              <span className="graph-row-subject" style={{ color: topColor }}>
-                Uncommitted changes
-              </span>
+              {wipConflictLabel ? (
+                <span className="graph-row-subject wip-conflict">
+                  <span aria-hidden="true">⚠ </span>
+                  {wipConflictLabel}
+                </span>
+              ) : (
+                <span className="graph-row-subject" style={{ color: topColor }}>
+                  Uncommitted changes
+                </span>
+              )}
             </div>
           </div>
         )}
