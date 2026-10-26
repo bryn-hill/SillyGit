@@ -189,3 +189,22 @@ export interface ConflictFileContent {
   currentLabel: string
   incomingLabel: string
 }
+
+/** Panel layout saved between launches. */
+export interface SavedLayout {
+  showTerminal: boolean
+  terminalHeight: number
+  showClaude: boolean
+  claudeWidth: number
+}
+
+/** What the window restores on launch. */
+export interface SavedSession {
+  /** The repo that was open at last quit, if it is still a git repo. */
+  repoPath: string | null
+  /** The repo that was open at last quit but whose folder is gone or no longer a git repo. */
+  missingRepo: string | null
+  /** Recently opened repos that still exist, most recent first. */
+  recentRepos: string[]
+  layout: Partial<SavedLayout>
+}

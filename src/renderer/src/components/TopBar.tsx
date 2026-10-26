@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react'
 import type { BranchInfo, RepoStatus } from '../../../shared/types'
 import { SparkIcon } from './claude/ClaudePanel'
+import { repoDisplayName } from '../lib/repoName'
 
 interface Props {
   repoPath: string | null
@@ -8,6 +9,8 @@ interface Props {
   branches: BranchInfo[]
   busy: boolean
   onOpenRepo: () => void
+  recentRepos: string[]
+  onOpenRecentRepo: (path: string) => void
   onPush: () => void
   onPull: () => void
   onStash: () => void
@@ -142,6 +145,8 @@ export default function TopBar({
   branches,
   busy,
   onOpenRepo,
+  recentRepos,
+  onOpenRecentRepo,
   onPush,
   onPull,
   onStash,
@@ -156,20 +161,61 @@ export default function TopBar({
   onToggleLaunchpad
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
-  const repoName = repoPath ? repoPath.split('/').filter(Boolean).pop() : null
+  const [showRepoMenu, setShowRepoMenu] = useState(false)
+  const repoName = repoPath ? repoDisplayName(repoPath) : null
   const localBranches = branches.filter((b) => !b.remote)
 
   return (
     <div className="top-bar">
       <div className="top-bar-left">
         <div className="breadcrumb">
-          <button className="breadcrumb-segment" onClick={onOpenRepo} title={repoPath ?? 'Open a repository'}>
-            <FolderIcon />
-            <span className="breadcrumb-text">
-              <span className="breadcrumb-label">Repository</span>
-              <span className="breadcrumb-value">{repoName ?? 'Open repository…'}</span>
-            </span>
-          </button>
+          <div className="breadcrumb-segment-wrap">
+            <button
+              className="breadcrumb-segment"
+              onClick={() => (recentRepos.length > 0 ? setShowRepoMenu((v) => !v) : onOpenRepo())}
+              title={repoPath ?? 'Open a repository'}
+            >
+              <FolderIcon />
+              <span className="breadcrumb-text">
+                <span className="breadcrumb-label">Repository</span>
+                <span className="breadcrumb-value">{repoName ?? 'Open repository…'}</span>
+              </span>
+              {recentRepos.length > 0 && <span className="caret">▾</span>}
+            </button>
+            {showRepoMenu && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setShowRepoMenu(false)} />
+                <div className="branch-dropdown" role="menu" aria-label="Repositories">
+                  {recentRepos.map((path) => (
+                    <div
+                      key={path}
+                      role="menuitem"
+                      className={`branch-dropdown-item ${path === repoPath ? 'current' : ''}`}
+                      title={path}
+                      onClick={() => {
+                        setShowRepoMenu(false)
+                        onOpenRecentRepo(path)
+                      }}
+                    >
+                      {path === repoPath ? '● ' : ''}
+                      {repoDisplayName(path)}
+                    </div>
+                  ))}
+                  <div className="dropdown-separator" />
+                  <div
+                    role="menuitem"
+                    className="branch-dropdown-item"
+                    onClick={() => {
+                      setShowRepoMenu(false)
+                      onOpenRepo()
+                    }}
+                  >
+                    Open repository…
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           {status?.branch && (
             <>
               <span className="breadcrumb-chevron">
