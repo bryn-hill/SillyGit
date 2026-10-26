@@ -33,6 +33,8 @@ function MenuItemRow({ item, onClose }: { item: ContextMenuItem; onClose: () => 
   return (
     <div
       className={`context-menu-item ${item.danger ? 'danger' : ''} ${item.disabled ? 'disabled' : ''}`}
+      role="menuitem"
+      aria-disabled={item.disabled || undefined}
       onClick={() => {
         if (item.disabled) return
         item.onSelect?.()
@@ -87,6 +89,7 @@ export default function ContextMenu({ x, y, sections, onClose }: Props): JSX.Ele
       <div
         ref={ref}
         className="context-menu"
+        role="menu"
         style={{ left: pos.left, top: pos.top, visibility: pos.visible ? 'visible' : 'hidden' }}
       >
         {sections.map((section, i) => (
