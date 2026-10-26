@@ -93,28 +93,30 @@ export default function App(): JSX.Element {
     if (repoPath) refresh(repoPath)
   }, [repoPath, refresh])
 
-  // Open pull requests come from GitHub via gh, which takes a second or two, so
-  // they load in the background (on open, then at most once a minute when the
-  // window regains focus) and the branch menu reads them from here.
+  // Open pull requests come from GitHub via gh, which takes a second or two.
+  // Stale-while-revalidate: the branch menu shows the cached list straight
+  // away, and opening it (or focusing the window) refetches in the
+  // background, so the menu updates in place if anything changed.
+  const prFetch = useRef<{ repo: string | null; inFlight: boolean }>({ repo: null, inFlight: false })
+  const revalidatePullRequests = useCallback(() => {
+    const state = prFetch.current
+    if (!repoPath || state.inFlight) return
+    state.repo = repoPath
+    state.inFlight = true
+    window.api.openPullRequests(repoPath).then((res) => {
+      state.inFlight = false
+      // Ignore a late answer for a repo that's no longer open.
+      if (res.ok && prFetch.current.repo === repoPath) setPullRequests(res.data)
+    })
+  }, [repoPath])
+
   useEffect(() => {
     setPullRequests([])
-    if (!repoPath) return
-    let cancelled = false
-    let lastFetch = 0
-    const load = (): void => {
-      if (Date.now() - lastFetch < 60_000) return
-      lastFetch = Date.now()
-      window.api.openPullRequests(repoPath).then((res) => {
-        if (!cancelled && res.ok) setPullRequests(res.data)
-      })
-    }
-    load()
-    window.addEventListener('focus', load)
-    return () => {
-      cancelled = true
-      window.removeEventListener('focus', load)
-    }
-  }, [repoPath])
+    prFetch.current = { repo: null, inFlight: false }
+    revalidatePullRequests()
+    window.addEventListener('focus', revalidatePullRequests)
+    return () => window.removeEventListener('focus', revalidatePullRequests)
+  }, [revalidatePullRequests])
 
   // Claude's edits and commands land in bursts; refresh once they settle.
   const claudeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -535,7 +537,8 @@ export default function App(): JSX.Element {
     openUrl: (url) => {
       window.api.openExternal(url).then((res) => !res.ok && showError(res.error))
     },
-    remoteInfo: (target) => resolveBranchRemote(target, branches, remotes, pullRequests)
+    remoteInfo: (target) => resolveBranchRemote(target, branches, remotes, pullRequests),
+    revalidate: revalidatePullRequests
   }
 
   return (

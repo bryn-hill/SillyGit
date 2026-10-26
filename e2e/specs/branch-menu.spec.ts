@@ -136,6 +136,23 @@ test.describe('branch right-click menu', () => {
       ).toBeVisible({ timeout: 500 })
     })
 
+    test('a pull request opened since the last fetch appears while the menu is open', async ({
+      sillygit,
+      electronApp,
+      repo
+    }) => {
+      await stubIpc(electronApp, 'git:open-pull-requests', { ok: true, data: [] })
+      await sillygit.openRepository(repo.path)
+      await stubIpc(electronApp, 'git:open-pull-requests', {
+        ok: true,
+        data: [{ number: 17, url: 'https://github.com/owner/repo/pull/17', headRefName: 'feature' }]
+      })
+
+      await sillygit.graph.badge('origin/feature').click({ button: 'right' })
+
+      await expect(sillygit.page.getByRole('menuitem', { name: 'View pull request #17 on GitHub' })).toBeVisible()
+    })
+
     test('offers the pull request and GitHub links', async ({ sillygit, electronApp, repo }) => {
       await stubIpc(electronApp, 'git:open-pull-requests', {
         ok: true,
