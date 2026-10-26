@@ -102,6 +102,22 @@ const api = {
     ipcRenderer.invoke('git:create-annotated-tag', repoPath, name, message, hash),
   createPatchFile: (repoPath: string, hash: string): Wrapped<void> =>
     ipcRenderer.invoke('git:create-patch-file', repoPath, hash),
+  branchRemoteInfo: (
+    repoPath: string,
+    name: string,
+    isRemote: boolean
+  ): Wrapped<import('../shared/types').BranchRemoteInfo> =>
+    ipcRenderer.invoke('git:branch-remote-info', repoPath, name, isRemote),
+  checkoutRemoteBranch: (repoPath: string, name: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:checkout-remote-branch', repoPath, name),
+  deleteBranch: (repoPath: string, name: string, force: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('git:delete-branch', repoPath, name, force),
+  deleteRemoteBranch: (repoPath: string, name: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:delete-remote-branch', repoPath, name),
+  renameBranch: (repoPath: string, from: string, to: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:rename-branch', repoPath, from, to),
+  addWorktree: (repoPath: string, ref: string, kind: 'local' | 'remote' | 'commit'): Wrapped<string | null> =>
+    ipcRenderer.invoke('git:add-worktree', repoPath, ref, kind),
   copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write-text', text),
 
   hasApiKey: (): Promise<boolean> => ipcRenderer.invoke('settings:has-api-key'),

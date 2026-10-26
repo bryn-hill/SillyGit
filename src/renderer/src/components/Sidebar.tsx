@@ -1,6 +1,6 @@
 import { useMemo, useState, type JSX } from 'react'
 import type { BranchInfo } from '../../../shared/types'
-import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 
 interface TreeNode {
   name: string
@@ -8,6 +8,7 @@ interface TreeNode {
   fullName?: string
   current?: boolean
   remote?: boolean
+  info?: BranchInfo
   children: Map<string, TreeNode>
 }
 
@@ -29,6 +30,7 @@ function buildTree(branches: BranchInfo[]): TreeNode {
         node.fullName = b.name
         node.current = b.current
         node.remote = b.remote
+        node.info = b
       }
     }
   }
@@ -37,13 +39,13 @@ function buildTree(branches: BranchInfo[]): TreeNode {
 
 interface Props {
   branches: BranchInfo[]
+  headHash: string | null
   onCheckout: (branch: string) => void
   onCreateBranch: (branch: string) => void
-  onMerge: (branch: string) => void
-  onRebase: (branch: string) => void
+  actions: RefActions
 }
 
-type BranchMenu = (e: React.MouseEvent, branch: string, current: boolean) => void
+type BranchMenu = (e: React.MouseEvent, branch: BranchInfo) => void
 
 function TreeView({
   node,
@@ -57,7 +59,7 @@ function TreeView({
   depth: number
   collapsed: Set<string>
   onToggle: (path: string) => void
-  onCheckout: (branch: string) => void
+  onCheckout: (branch: BranchInfo) => void
   onContextMenu: BranchMenu
 }): JSX.Element {
   const entries = Array.from(node.children.values()).sort((a, b) => {
@@ -102,8 +104,8 @@ function TreeView({
             key={child.path}
             className={`tree-row branch-row ${child.current ? 'current' : ''}`}
             style={{ paddingLeft: 8 + depth * 14 }}
-            onClick={() => !child.current && child.fullName && onCheckout(child.fullName)}
-            onContextMenu={(e) => child.fullName && onContextMenu(e, child.fullName, !!child.current)}
+            onClick={() => !child.current && child.info && onCheckout(child.info)}
+            onContextMenu={(e) => child.info && onContextMenu(e, child.info)}
           >
             {child.current ? <span className="current-dot">●</span> : <span className="tree-caret-spacer" />}
             <span>{child.name}</span>
@@ -114,8 +116,8 @@ function TreeView({
   )
 }
 
-export default function Sidebar({ branches, onCheckout, onCreateBranch, onMerge, onRebase }: Props): JSX.Element {
-  const [menu, setMenu] = useState<{ x: number; y: number; branch: string; current: boolean } | null>(null)
+export default function Sidebar({ branches, headHash, onCheckout, onCreateBranch, actions }: Props): JSX.Element {
+  const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget } | null>(null)
   const [filter, setFilter] = useState('')
   const [newBranch, setNewBranch] = useState('')
   const [showNewBranch, setShowNewBranch] = useState(false)
@@ -139,21 +141,18 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch, onMerge,
 
   const currentBranch = branches.find((b) => b.current)?.name ?? null
 
-  const openMenu: BranchMenu = (e, branch, current) => {
-    e.preventDefault()
-    setMenu({ x: e.clientX, y: e.clientY, branch, current })
-  }
+  // A remote branch checks out as a local tracking branch rather than a detached HEAD.
+  const checkoutBranch = (branch: BranchInfo): void =>
+    branch.remote ? actions.checkoutRemote(branch.name) : onCheckout(branch.name)
 
-  const menuSections = (branch: string, current: boolean): ContextMenuItem[][] => {
-    if (current) return [[{ id: 'current', label: `${branch} is checked out`, disabled: true }]]
-    const into = currentBranch ?? 'HEAD'
-    return [
-      [{ id: 'checkout', label: `Checkout ${branch}`, onSelect: () => onCheckout(branch) }],
-      [
-        { id: 'merge', label: `Merge ${branch} into ${into}`, onSelect: () => onMerge(branch) },
-        { id: 'rebase', label: `Rebase ${into} onto ${branch}`, onSelect: () => onRebase(branch) }
-      ]
-    ]
+  const openMenu: BranchMenu = (e, branch) => {
+    e.preventDefault()
+    setMenu({
+      x: e.clientX,
+      y: e.clientY,
+      hash: branch.hash ?? branch.name,
+      target: { name: branch.name, remote: branch.remote, current: branch.current }
+    })
   }
 
   const submitNewBranch = (): void => {
@@ -195,7 +194,7 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch, onMerge,
           LOCAL
         </div>
         {!collapsed.has('local-root') && (
-          <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={onCheckout} onContextMenu={openMenu} />
+          <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={checkoutBranch} onContextMenu={openMenu} />
         )}
 
         <div className="tree-group-header" onClick={() => toggle('remote-root')}>
@@ -203,14 +202,18 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch, onMerge,
           REMOTE
         </div>
         {!collapsed.has('remote-root') && (
-          <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={onCheckout} onContextMenu={openMenu} />
+          <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={checkoutBranch} onContextMenu={openMenu} />
         )}
       </div>
       {menu && (
-        <ContextMenu
+        <RefContextMenu
           x={menu.x}
           y={menu.y}
-          sections={menuSections(menu.branch, menu.current)}
+          hash={menu.hash}
+          target={menu.target}
+          currentBranch={currentBranch}
+          headHash={headHash}
+          actions={actions}
           onClose={() => setMenu(null)}
         />
       )}
