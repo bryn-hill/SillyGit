@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
-import type { BranchInfo, FileStatus, GraphCommit, RepoStatus } from '../../shared/types'
+import type {
+  BranchInfo,
+  ConflictableResult,
+  FileStatus,
+  GraphCommit,
+  OperationState,
+  RepoStatus
+} from '../../shared/types'
 import TopBar from './components/TopBar'
 import Sidebar from './components/Sidebar'
 import CommitGraph from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
+import MergeResolver from './components/MergeResolver'
 import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
 import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
@@ -22,6 +30,9 @@ export default function App(): JSX.Element {
   const [selection, setSelection] = useState<Selection>({ type: 'working' })
   const [commitMessage, setCommitMessage] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [operation, setOperation] = useState<OperationState | null>(null)
+  const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
@@ -51,13 +62,15 @@ export default function App(): JSX.Element {
   const showError = (message: string): void => setError(message)
 
   const refresh = useCallback(async (path: string) => {
-    const [statusRes, branchesRes, graphRes] = await Promise.all([
+    const [statusRes, branchesRes, graphRes, operationRes] = await Promise.all([
       window.api.getStatus(path),
       window.api.branches(path),
-      window.api.graphLog(path)
+      window.api.graphLog(path),
+      window.api.operationState(path)
     ])
     if (statusRes.ok) setStatus(statusRes.data)
     else showError(statusRes.error)
+    setOperation(operationRes.ok ? operationRes.data : null)
     if (branchesRes.ok) setBranches(branchesRes.data)
     if (graphRes.ok) setGraphCommits(graphRes.data)
   }, [])
@@ -81,7 +94,27 @@ export default function App(): JSX.Element {
     [graphCommits]
   )
 
-  const hasWorkingChanges = !!status && (status.staged.length > 0 || status.unstaged.length > 0)
+  const conflictCount = status?.conflicted.length ?? 0
+  const hasWorkingChanges =
+    !!status && (status.staged.length > 0 || status.unstaged.length > 0 || conflictCount > 0 || !!operation)
+
+  // Prefill the commit message with git's prepared merge message, once per
+  // operation, without overwriting anything the user typed.
+  const prefilledFor = useRef<string | null>(null)
+  useEffect(() => {
+    const key = operation ? `${operation.kind}:${operation.incomingLabel}` : null
+    if (key === prefilledFor.current) return
+    prefilledFor.current = key
+    if (operation?.message) setCommitMessage((m) => (m.trim() ? m : operation.message!))
+  }, [operation])
+
+  const wipConflictLabel = useMemo(() => {
+    if (!operation || conflictCount === 0) return null
+    const files = conflictCount === 1 ? 'A file conflict was' : `${conflictCount} file conflicts were`
+    return operation.kind === 'rebase'
+      ? `${files} found when attempting to rebase ${operation.rebaseBranch ?? 'HEAD'} onto ${operation.currentLabel}`
+      : `${files} found when attempting to merge into ${operation.currentLabel}`
+  }, [operation, conflictCount])
 
   useEffect(() => {
     if (graphRows.length === 0 || selection.type === 'none') return
@@ -96,7 +129,7 @@ export default function App(): JSX.Element {
 
   // ArrowUp/ArrowDown move the selection through the graph (WIP row first, then commits).
   useEffect(() => {
-    if (fullScreenHash || showLaunchpad || showSettings) return
+    if (fullScreenHash || showLaunchpad || showSettings || resolvingPath) return
     const handler = (e: KeyboardEvent): void => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
@@ -121,7 +154,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [fullScreenHash, showLaunchpad, showSettings, hasWorkingChanges, graphRows, selection])
+  }, [fullScreenHash, showLaunchpad, showSettings, resolvingPath, hasWorkingChanges, graphRows, selection])
 
   const handleOpenRepo = async (): Promise<void> => {
     const picked = await window.api.openRepoDialog()
@@ -139,12 +172,14 @@ export default function App(): JSX.Element {
       }
     }
     setRepoPath(picked)
+    setResolvingPath(null)
     setSelection({ type: 'working' })
   }
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true)
     setError(null)
+    setNotice(null)
     try {
       await fn()
     } finally {
@@ -221,10 +256,78 @@ export default function App(): JSX.Element {
     })
   }
 
-  const handlePull = (): void => {
+  /**
+   * Runs a git command that may stop on conflicts. When it does, the working
+   * changes open so the conflicted files are in view.
+   */
+  const runConflictable = (
+    run: (path: string) => Promise<{ ok: true; data: ConflictableResult } | { ok: false; error: string }>
+  ): void => {
     if (!repoPath) return
     withBusy(async () => {
-      const res = await window.api.pull(repoPath)
+      const res = await run(repoPath)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+      // After the refresh, so the WIP row exists to select.
+      if (res.ok && res.data.conflicts) {
+        setFullScreenHash(null)
+        setSelection({ type: 'working' })
+      }
+    })
+  }
+
+  const handlePull = (): void => runConflictable((path) => window.api.pull(path))
+
+  const handleMerge = (branch: string): void => runConflictable((path) => window.api.mergeBranch(path, branch))
+
+  const handleRebase = (branch: string): void => runConflictable((path) => window.api.rebaseOnto(path, branch))
+
+  const handleContinue = (): void => {
+    const message = operation?.kind === 'rebase' ? undefined : commitMessage.trim()
+    runConflictable(async (path) => {
+      const res = await window.api.continueOperation(path, message)
+      if (res.ok && !res.data.conflicts) setCommitMessage('')
+      return res
+    })
+  }
+
+  const handleSkip = (): void => runConflictable((path) => window.api.skipOperation(path))
+
+  const handleAbort = (): void => {
+    if (!repoPath || !operation) return
+    const ok = window.confirm(
+      `Abort the ${operation.kind}? Your conflict resolutions will be lost and the branch goes back to how it was before.`
+    )
+    if (!ok) return
+    withBusy(async () => {
+      const res = await window.api.abortOperation(repoPath)
+      if (!res.ok) showError(res.error)
+      else {
+        setCommitMessage('')
+        setResolvingPath(null)
+      }
+      await refresh(repoPath)
+    })
+  }
+
+  const handleTakeSide = (paths: string[], side: 'current' | 'incoming'): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      for (const path of paths) {
+        const res = await window.api.takeSide(repoPath, path, side)
+        if (!res.ok) {
+          showError(res.error)
+          break
+        }
+      }
+      await refresh(repoPath)
+    })
+  }
+
+  const handleMarkResolved = (paths: string[]): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.markResolved(repoPath, paths)
       if (!res.ok) showError(res.error)
       await refresh(repoPath)
     })
@@ -248,23 +351,10 @@ export default function App(): JSX.Element {
     })
   }
 
-  const handleCherryPick = (hash: string): void => {
-    if (!repoPath) return
-    withBusy(async () => {
-      const res = await window.api.cherryPick(repoPath, hash)
-      if (!res.ok) showError(res.error)
-      await refresh(repoPath)
-    })
-  }
+  const handleCherryPick = (hash: string): void => runConflictable((path) => window.api.cherryPick(path, hash))
 
-  const handleRevertCommit = (hash: string): void => {
-    if (!repoPath) return
-    withBusy(async () => {
-      const res = await window.api.revertCommit(repoPath, hash)
-      if (!res.ok) showError(res.error)
-      await refresh(repoPath)
-    })
-  }
+  const handleRevertCommit = (hash: string): void =>
+    runConflictable((path) => window.api.revertCommit(path, hash))
 
   const handleResetTo = (hash: string, mode: 'soft' | 'mixed' | 'hard'): void => {
     if (!repoPath) return
@@ -353,6 +443,11 @@ export default function App(): JSX.Element {
           {error}
         </div>
       )}
+      {notice && (
+        <div className="notice-banner" role="status" onClick={() => setNotice(null)}>
+          {notice}
+        </div>
+      )}
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
@@ -366,6 +461,19 @@ export default function App(): JSX.Element {
                 repoPath={repoPath}
                 onClose={() => setShowLaunchpad(false)}
                 onOpenTerminal={() => setShowTerminal(true)}
+              />
+            ) : resolvingPath ? (
+              <MergeResolver
+                key={resolvingPath}
+                repoPath={repoPath}
+                path={resolvingPath}
+                onClose={() => setResolvingPath(null)}
+                onResolved={(message) => {
+                  setResolvingPath(null)
+                  setNotice(message ?? null)
+                  refresh(repoPath)
+                }}
+                onError={showError}
               />
             ) : fullScreenHash ? (
               <CommitFullView
@@ -386,11 +494,18 @@ export default function App(): JSX.Element {
               />
             ) : (
               <div className="main-layout">
-                <Sidebar branches={branches} onCheckout={handleCheckout} onCreateBranch={handleCreateBranch} />
+                <Sidebar
+                  branches={branches}
+                  onCheckout={handleCheckout}
+                  onCreateBranch={handleCreateBranch}
+                  onMerge={handleMerge}
+                  onRebase={handleRebase}
+                />
                 <CommitGraph
                   rows={graphRows}
                   selection={selection}
                   hasWorkingChanges={hasWorkingChanges}
+                  wipConflictLabel={wipConflictLabel}
                   headHash={headHash}
                   currentBranch={status?.branch ?? null}
                   onSelectWorking={() =>
@@ -431,6 +546,15 @@ export default function App(): JSX.Element {
                       onOpenCommitFileDiff={(hash, path) => {
                         setFullScreenHash(hash)
                         setFullScreenPath(path)
+                      }}
+                      operation={operation}
+                      conflictActions={{
+                        onOpenConflict: setResolvingPath,
+                        onTakeSide: handleTakeSide,
+                        onMarkResolved: handleMarkResolved,
+                        onContinue: handleContinue,
+                        onAbort: handleAbort,
+                        onSkip: handleSkip
                       }}
                     />
                   </div>

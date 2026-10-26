@@ -1,5 +1,6 @@
 import { useMemo, useState, type JSX } from 'react'
 import type { BranchInfo } from '../../../shared/types'
+import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 interface TreeNode {
   name: string
@@ -38,20 +39,26 @@ interface Props {
   branches: BranchInfo[]
   onCheckout: (branch: string) => void
   onCreateBranch: (branch: string) => void
+  onMerge: (branch: string) => void
+  onRebase: (branch: string) => void
 }
+
+type BranchMenu = (e: React.MouseEvent, branch: string, current: boolean) => void
 
 function TreeView({
   node,
   depth,
   collapsed,
   onToggle,
-  onCheckout
+  onCheckout,
+  onContextMenu
 }: {
   node: TreeNode
   depth: number
   collapsed: Set<string>
   onToggle: (path: string) => void
   onCheckout: (branch: string) => void
+  onContextMenu: BranchMenu
 }): JSX.Element {
   const entries = Array.from(node.children.values()).sort((a, b) => {
     const aFolder = a.children.size > 0 && !a.fullName
@@ -84,6 +91,7 @@ function TreeView({
                   collapsed={collapsed}
                   onToggle={onToggle}
                   onCheckout={onCheckout}
+                  onContextMenu={onContextMenu}
                 />
               )}
             </div>
@@ -95,6 +103,7 @@ function TreeView({
             className={`tree-row branch-row ${child.current ? 'current' : ''}`}
             style={{ paddingLeft: 8 + depth * 14 }}
             onClick={() => !child.current && child.fullName && onCheckout(child.fullName)}
+            onContextMenu={(e) => child.fullName && onContextMenu(e, child.fullName, !!child.current)}
           >
             {child.current ? <span className="current-dot">●</span> : <span className="tree-caret-spacer" />}
             <span>{child.name}</span>
@@ -105,7 +114,8 @@ function TreeView({
   )
 }
 
-export default function Sidebar({ branches, onCheckout, onCreateBranch }: Props): JSX.Element {
+export default function Sidebar({ branches, onCheckout, onCreateBranch, onMerge, onRebase }: Props): JSX.Element {
+  const [menu, setMenu] = useState<{ x: number; y: number; branch: string; current: boolean } | null>(null)
   const [filter, setFilter] = useState('')
   const [newBranch, setNewBranch] = useState('')
   const [showNewBranch, setShowNewBranch] = useState(false)
@@ -127,6 +137,25 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch }: Props)
     })
   }
 
+  const currentBranch = branches.find((b) => b.current)?.name ?? null
+
+  const openMenu: BranchMenu = (e, branch, current) => {
+    e.preventDefault()
+    setMenu({ x: e.clientX, y: e.clientY, branch, current })
+  }
+
+  const menuSections = (branch: string, current: boolean): ContextMenuItem[][] => {
+    if (current) return [[{ id: 'current', label: `${branch} is checked out`, disabled: true }]]
+    const into = currentBranch ?? 'HEAD'
+    return [
+      [{ id: 'checkout', label: `Checkout ${branch}`, onSelect: () => onCheckout(branch) }],
+      [
+        { id: 'merge', label: `Merge ${branch} into ${into}`, onSelect: () => onMerge(branch) },
+        { id: 'rebase', label: `Rebase ${into} onto ${branch}`, onSelect: () => onRebase(branch) }
+      ]
+    ]
+  }
+
   const submitNewBranch = (): void => {
     const name = newBranch.trim()
     if (!name) return
@@ -136,7 +165,7 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch }: Props)
   }
 
   return (
-    <div className="sidebar">
+    <nav className="sidebar" aria-label="Branches">
       <div className="sidebar-filter-row">
         <input
           className="filter-input"
@@ -166,7 +195,7 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch }: Props)
           LOCAL
         </div>
         {!collapsed.has('local-root') && (
-          <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={onCheckout} />
+          <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={onCheckout} onContextMenu={openMenu} />
         )}
 
         <div className="tree-group-header" onClick={() => toggle('remote-root')}>
@@ -174,9 +203,17 @@ export default function Sidebar({ branches, onCheckout, onCreateBranch }: Props)
           REMOTE
         </div>
         {!collapsed.has('remote-root') && (
-          <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={onCheckout} />
+          <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={onCheckout} onContextMenu={openMenu} />
         )}
       </div>
-    </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          sections={menuSections(menu.branch, menu.current)}
+          onClose={() => setMenu(null)}
+        />
+      )}
+    </nav>
   )
 }

@@ -2,7 +2,10 @@ import { expect, type ElectronApplication, type Locator, type Page } from '@play
 import { ClaudePanel } from './ClaudePanel'
 import { CommitGraph } from './CommitGraph'
 import { CommitView } from './CommitView'
+import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
+import { MergeTool } from './MergeTool'
+import { Sidebar } from './Sidebar'
 import { TerminalPanel } from './TerminalPanel'
 
 /** The main window. Entry point for the page objects of each area. */
@@ -12,11 +15,15 @@ export class SillyGitApp {
   readonly commitView: CommitView
   readonly claude: ClaudePanel
   readonly terminal: TerminalPanel
+  readonly sidebar: Sidebar
+  readonly conflicts: ConflictPanel
+  readonly mergeTool: MergeTool
 
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
   readonly repositoryCrumb: Locator
   readonly branchCrumb: Locator
+  readonly notice: Locator
   readonly claudeButton: Locator
   readonly terminalButton: Locator
 
@@ -29,11 +36,15 @@ export class SillyGitApp {
     this.commitView = new CommitView(page)
     this.claude = new ClaudePanel(page)
     this.terminal = new TerminalPanel(page)
+    this.sidebar = new Sidebar(page)
+    this.conflicts = new ConflictPanel(page)
+    this.mergeTool = new MergeTool(page)
 
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })
     this.repositoryCrumb = page.getByRole('button', { name: /^Repository/ })
     this.branchCrumb = page.getByRole('button', { name: /^Branch/ })
+    this.notice = page.locator('.notice-banner')
     this.claudeButton = page.getByTitle('Claude Code (Ctrl+Esc)')
     this.terminalButton = page.getByTitle('Toggle terminal (Ctrl+`)')
   }

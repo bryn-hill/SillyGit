@@ -139,3 +139,37 @@ export interface LaunchpadData {
   pullRequests: LaunchpadPullRequest[]
   skippedRepos?: LaunchpadSkippedRepo[]
 }
+
+/** A merge, rebase, cherry-pick or revert that stopped part way, usually on conflicts. */
+export interface OperationState {
+  kind: 'merge' | 'rebase' | 'cherry-pick' | 'revert'
+  /** Display name of the "ours" side (A in the resolver). */
+  currentLabel: string
+  /** Display name of the "theirs" side (B in the resolver). */
+  incomingLabel: string
+  /** The prepared commit message (MERGE_MSG), with git's comment lines removed. */
+  message?: string
+  /** Rebase only: the branch being rebased. */
+  rebaseBranch?: string
+  /** Rebase progress: the commit being applied, counting from 1. */
+  step?: number
+  total?: number
+}
+
+/** Result of a git command that can stop on conflicts instead of failing. */
+export interface ConflictableResult {
+  conflicts: boolean
+}
+
+export interface ConflictFileContent {
+  path: string
+  /**
+   * 'text': both sides exist and are text, so `marked` holds diff3 markers.
+   * 'deleted-current' / 'deleted-incoming': one side deleted the file.
+   * 'binary': at least one side is binary; only whole-file picks are possible.
+   */
+  kind: 'text' | 'deleted-current' | 'deleted-incoming' | 'binary'
+  marked: string
+  currentLabel: string
+  incomingLabel: string
+}

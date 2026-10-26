@@ -1,5 +1,3 @@
-import { execFile } from 'child_process'
-import { promisify } from 'util'
 import { promises as fsp } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -10,29 +8,14 @@ import type {
   CommitDetail,
   CommitFileChange,
   CommitInfo,
+  ConflictableResult,
   FileStatus,
   GraphCommit,
   RepoStatus
 } from '../shared/types'
 import * as diffSplit from '../shared/diffSplit'
-
-const execFileAsync = promisify(execFile)
-
-class GitError extends Error {}
-
-async function runGit(repoPath: string, args: string[]): Promise<string> {
-  try {
-    const { stdout } = await execFileAsync('git', args, {
-      cwd: repoPath,
-      maxBuffer: 1024 * 1024 * 64
-    })
-    return stdout
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    const stderr = (err as { stderr?: string }).stderr
-    throw new GitError(stderr?.trim() || message)
-  }
-}
+import { runMayConflict } from './conflicts'
+import { GitError, runGit } from './gitExec'
 
 export async function isGitRepo(repoPath: string): Promise<boolean> {
   try {
@@ -202,8 +185,8 @@ export async function push(repoPath: string): Promise<void> {
   await runGit(repoPath, ['push'])
 }
 
-export async function pull(repoPath: string): Promise<void> {
-  await runGit(repoPath, ['pull'])
+export async function pull(repoPath: string): Promise<ConflictableResult> {
+  return runMayConflict(repoPath, ['pull'])
 }
 
 export async function getLog(repoPath: string, limit = 50): Promise<CommitInfo[]> {
@@ -505,12 +488,12 @@ export async function revertHunk(repoPath: string, diffText: string, unitId: str
   }
 }
 
-export async function cherryPick(repoPath: string, hash: string): Promise<void> {
-  await runGit(repoPath, ['cherry-pick', hash])
+export async function cherryPick(repoPath: string, hash: string): Promise<ConflictableResult> {
+  return runMayConflict(repoPath, ['cherry-pick', hash])
 }
 
-export async function revertCommit(repoPath: string, hash: string): Promise<void> {
-  await runGit(repoPath, ['revert', '--no-edit', hash])
+export async function revertCommit(repoPath: string, hash: string): Promise<ConflictableResult> {
+  return runMayConflict(repoPath, ['revert', '--no-edit', hash])
 }
 
 export async function resetTo(
