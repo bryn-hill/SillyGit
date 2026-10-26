@@ -10,6 +10,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Every new commit on a pull request, or every pushed commit on main.
+      - name: Check commit messages
+        env:
+          RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}
+        run: |
+          case "$RANGE" in 0000000000000000000000000000000000000000..*) RANGE="${RANGE#*..}" ;; esac
+          git cat-file -e "${RANGE%%..*}" 2>/dev/null || RANGE="${RANGE#*..}~1..${RANGE#*..}"
+          node scripts/commit-msg.mjs --range "$RANGE"
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
