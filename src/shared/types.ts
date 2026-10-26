@@ -20,6 +20,22 @@ export interface BranchInfo {
   name: string
   current: boolean
   remote: boolean
+  /** The commit the branch points at. */
+  hash?: string
+  /** Local branches only: the remote branch it tracks, e.g. "origin/main". */
+  upstream?: string
+}
+
+/** Where a branch lives on its hosting site, for the branch right-click menu. */
+export interface BranchRemoteInfo {
+  /** e.g. "origin"; null when the repo has no remote to link to. */
+  remote: string | null
+  /** e.g. "https://github.com/owner/repo"; null when the remote isn't a web host we know. */
+  webUrl: string | null
+  /** The branch's name on the remote, or null when it hasn't been pushed. */
+  remoteBranch: string | null
+  /** The open pull request whose head is this branch, when gh can find one. */
+  pullRequest: { number: number; url: string } | null
 }
 
 export interface CommitInfo {

@@ -1,8 +1,9 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, clipboard } from 'electron'
-import { join } from 'path'
+import { basename, dirname, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
 import * as conflicts from './conflicts'
+import * as branches from './branches'
 import * as ai from './ai'
 import * as settings from './settings'
 import * as launchpad from './launchpad'
@@ -285,6 +286,45 @@ function registerIpcHandlers(): void {
       if (result.canceled || !result.filePath) return
       await fsp.writeFile(result.filePath, patch, 'utf-8')
     })
+  )
+
+  ipcMain.handle('git:branch-remote-info', (_e, repoPath: string, name: string, isRemote: boolean) =>
+    wrap(() => branches.getBranchRemoteInfo(repoPath, name, isRemote))
+  )
+
+  ipcMain.handle('git:checkout-remote-branch', (_e, repoPath: string, name: string) =>
+    wrap(() => branches.checkoutRemoteBranch(repoPath, name))
+  )
+
+  ipcMain.handle('git:delete-branch', (_e, repoPath: string, name: string, force: boolean) =>
+    wrap(() => branches.deleteBranch(repoPath, name, force))
+  )
+
+  ipcMain.handle('git:delete-remote-branch', (_e, repoPath: string, name: string) =>
+    wrap(() => branches.deleteRemoteBranch(repoPath, name))
+  )
+
+  ipcMain.handle('git:rename-branch', (_e, repoPath: string, from: string, to: string) =>
+    wrap(() => branches.renameBranch(repoPath, from, to))
+  )
+
+  // Asks where to put the worktree (next to the repo by default), then adds it.
+  // Resolves to the new worktree's path, or null when the dialog is cancelled.
+  ipcMain.handle(
+    'git:add-worktree',
+    (_e, repoPath: string, ref: string, kind: 'local' | 'remote' | 'commit') =>
+      wrap(async () => {
+        const suffix = (kind === 'commit' ? ref.slice(0, 7) : ref).replace(/[^\w.-]+/g, '-')
+        const result = await dialog.showSaveDialog({
+          title: 'Create worktree',
+          buttonLabel: 'Create worktree',
+          defaultPath: join(dirname(repoPath), `${basename(repoPath)}-${suffix}`),
+          properties: ['createDirectory', 'showOverwriteConfirmation']
+        })
+        if (result.canceled || !result.filePath) return null
+        await branches.addWorktree(repoPath, result.filePath, ref, kind)
+        return result.filePath
+      })
   )
 
   ipcMain.handle('clipboard:write-text', (_e, text: string) => {

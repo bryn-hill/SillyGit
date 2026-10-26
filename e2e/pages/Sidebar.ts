@@ -12,6 +12,11 @@ export class Sidebar {
     return this.root.locator('.branch-row').filter({ hasText: new RegExp(`^.?${name}$`) })
   }
 
+  /** Opens the REMOTE section, which starts collapsed. */
+  async expandRemotes(): Promise<void> {
+    await this.root.locator('.tree-group-header', { hasText: 'REMOTE' }).click()
+  }
+
   /** Right-clicks a branch and picks `item` from its menu. */
   async branchMenu(name: string, item: string | RegExp): Promise<void> {
     await this.branch(name).click({ button: 'right' })

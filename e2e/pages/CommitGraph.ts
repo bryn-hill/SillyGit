@@ -15,6 +15,11 @@ export class CommitGraph {
     return this.rows.filter({ hasText: subject })
   }
 
+  /** A branch or tag label on a commit row. */
+  badge(label: string): Locator {
+    return this.root.locator('.ref-badge').filter({ hasText: new RegExp(`^${label}$`) })
+  }
+
   workingChangesRow(): Locator {
     return this.row('Uncommitted changes')
   }

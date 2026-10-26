@@ -48,6 +48,8 @@ function MenuItemRow({ item, onClose }: { item: ContextMenuItem; onClose: () => 
 
 export default function ContextMenu({ x, y, sections, onClose }: Props): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
+  // Items can arrive after the menu opens (e.g. a pull request lookup), so re-measure when they change.
+  const itemCount = sections.reduce((n, s) => n + s.length, 0)
   const [pos, setPos] = useState({ left: x, top: y, visible: false })
 
   // Measure the rendered menu and nudge it back on-screen if it would
@@ -66,7 +68,7 @@ export default function ContextMenu({ x, y, sections, onClose }: Props): JSX.Ele
       top = Math.max(margin, window.innerHeight - rect.height - margin)
     }
     setPos({ left, top, visible: true })
-  }, [x, y])
+  }, [x, y, itemCount])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent): void => {

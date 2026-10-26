@@ -149,26 +149,29 @@ export async function listBranches(repoPath: string): Promise<BranchInfo[]> {
   const out = await runGit(repoPath, [
     'branch',
     '--list',
-    '--format=%(HEAD)%09%(refname:short)'
+    '--format=%(HEAD)%09%(refname:short)%09%(objectname)%09%(upstream:short)'
   ])
   const local = out
     .split('\n')
     .filter((l) => l.trim().length > 0)
     .map((line) => {
-      const [head, name] = line.split('\t')
-      return { name, current: head === '*', remote: false }
+      const [head, name, hash, upstream] = line.split('\t')
+      return { name, current: head === '*', remote: false, hash, upstream: upstream || undefined }
     })
 
   const remoteOut = await runGit(repoPath, [
     'branch',
     '--list',
     '--remotes',
-    '--format=%(refname:short)'
+    '--format=%(refname:short)%09%(objectname)%09%(symref)'
   ])
   const remote = remoteOut
     .split('\n')
-    .filter((l) => l.trim().length > 0 && !l.includes('HEAD ->'))
-    .map((name) => ({ name, current: false, remote: true }))
+    .filter((l) => l.trim().length > 0)
+    .map((line) => line.split('\t'))
+    // Skip symbolic refs such as origin/HEAD.
+    .filter(([name, , symref]) => !symref && name.includes('/'))
+    .map(([name, hash]) => ({ name, current: false, remote: true, hash }))
 
   return [...local, ...remote]
 }

@@ -15,9 +15,11 @@ import CommitFullView from './components/CommitFullView'
 import MergeResolver from './components/MergeResolver'
 import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
+import PromptDialog, { type PromptRequest } from './components/PromptDialog'
 import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
 import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
+import type { RefActions, RefTarget } from './components/RefContextMenu'
 
 // 'none' means nothing is selected and the side bar is closed.
 export type Selection = { type: 'none' } | { type: 'working' } | { type: 'commit'; hash: string }
@@ -37,6 +39,7 @@ export default function App(): JSX.Element {
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [prompt, setPrompt] = useState<(PromptRequest & { resolve: (value: string | null) => void }) | null>(null)
   const [showLaunchpad, setShowLaunchpad] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
@@ -60,6 +63,10 @@ export default function App(): JSX.Element {
   }, [])
 
   const showError = (message: string): void => setError(message)
+
+  /** Asks for one line of text in a dialog; resolves to null when cancelled. */
+  const askText = (request: PromptRequest): Promise<string | null> =>
+    new Promise((resolve) => setPrompt({ ...request, resolve }))
 
   const refresh = useCallback(async (path: string) => {
     const [statusRes, branchesRes, graphRes, operationRes] = await Promise.all([
@@ -371,35 +378,41 @@ export default function App(): JSX.Element {
     })
   }
 
-  const handleCreateBranchAt = (hash: string): void => {
+  const handleCreateBranchAt = async (hash: string): Promise<void> => {
     if (!repoPath) return
-    const name = window.prompt('New branch name:')
-    if (!name || !name.trim()) return
+    const name = await askText({ title: 'Create branch here', label: 'Branch name', submitLabel: 'Create branch' })
+    if (!name) return
     withBusy(async () => {
-      const res = await window.api.createBranchAt(repoPath, name.trim(), hash)
+      const res = await window.api.createBranchAt(repoPath, name, hash)
       if (!res.ok) showError(res.error)
       await refresh(repoPath)
     })
   }
 
-  const handleCreateTag = (hash: string): void => {
+  const handleCreateTag = async (hash: string): Promise<void> => {
     if (!repoPath) return
-    const name = window.prompt('Tag name:')
-    if (!name || !name.trim()) return
+    const name = await askText({ title: 'Create tag here', label: 'Tag name', submitLabel: 'Create tag' })
+    if (!name) return
     withBusy(async () => {
-      const res = await window.api.createTag(repoPath, name.trim(), hash)
+      const res = await window.api.createTag(repoPath, name, hash)
       if (!res.ok) showError(res.error)
       await refresh(repoPath)
     })
   }
 
-  const handleCreateAnnotatedTag = (hash: string): void => {
+  const handleCreateAnnotatedTag = async (hash: string): Promise<void> => {
     if (!repoPath) return
-    const name = window.prompt('Annotated tag name:')
-    if (!name || !name.trim()) return
-    const message = window.prompt('Tag message:', name.trim()) ?? ''
+    const name = await askText({ title: 'Create annotated tag here', label: 'Tag name', submitLabel: 'Next' })
+    if (!name) return
+    const message = await askText({
+      title: `Annotate ${name}`,
+      label: 'Tag message',
+      defaultValue: name,
+      submitLabel: 'Create tag'
+    })
+    if (message === null) return
     withBusy(async () => {
-      const res = await window.api.createAnnotatedTag(repoPath, name.trim(), message, hash)
+      const res = await window.api.createAnnotatedTag(repoPath, name, message, hash)
       if (!res.ok) showError(res.error)
       await refresh(repoPath)
     })
@@ -413,8 +426,90 @@ export default function App(): JSX.Element {
     })
   }
 
-  const handleCopySha = (hash: string): void => {
-    window.api.copyToClipboard(hash)
+  const handleCopyText = (text: string): void => {
+    window.api.copyToClipboard(text)
+  }
+
+  const handleCheckoutRemote = (name: string): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.checkoutRemoteBranch(repoPath, name)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleCreateWorktree = (ref: string, kind: 'local' | 'remote' | 'commit'): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.addWorktree(repoPath, ref, kind)
+      if (!res.ok) showError(res.error)
+      else if (res.data) setNotice(`Created a worktree at ${res.data}`)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleDeleteBranch = (target: RefTarget): void => {
+    if (!repoPath) return
+    if (target.remote) {
+      const ok = window.confirm(`Delete ${target.name} from the remote? Anyone else using it will lose it too.`)
+      if (!ok) return
+      withBusy(async () => {
+        const res = await window.api.deleteRemoteBranch(repoPath, target.name)
+        if (!res.ok) showError(res.error)
+        await refresh(repoPath)
+      })
+      return
+    }
+    withBusy(async () => {
+      let res = await window.api.deleteBranch(repoPath, target.name, false)
+      if (!res.ok && /not fully merged/i.test(res.error)) {
+        const force = window.confirm(
+          `${target.name} has commits that aren't merged anywhere else. Delete it anyway? Those commits will be lost.`
+        )
+        if (force) res = await window.api.deleteBranch(repoPath, target.name, true)
+        else res = { ok: true, data: undefined }
+      }
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const handleRenameBranch = async (name: string): Promise<void> => {
+    if (!repoPath) return
+    const next = await askText({ title: `Rename ${name}`, label: 'New branch name', defaultValue: name, submitLabel: 'Rename' })
+    if (!next || next === name) return
+    withBusy(async () => {
+      const res = await window.api.renameBranch(repoPath, name, next)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const refActions: RefActions = {
+    checkout: handleCheckout,
+    checkoutRemote: handleCheckoutRemote,
+    merge: handleMerge,
+    rebase: handleRebase,
+    createWorktree: handleCreateWorktree,
+    createBranchAt: handleCreateBranchAt,
+    cherryPick: handleCherryPick,
+    resetTo: handleResetTo,
+    revertCommit: handleRevertCommit,
+    deleteBranch: handleDeleteBranch,
+    renameBranch: handleRenameBranch,
+    createTag: handleCreateTag,
+    createAnnotatedTag: handleCreateAnnotatedTag,
+    createPatch: handleCreatePatch,
+    copyText: handleCopyText,
+    openUrl: (url) => {
+      window.api.openExternal(url).then((res) => !res.ok && showError(res.error))
+    },
+    remoteInfo: async (target) => {
+      if (!repoPath) return null
+      const res = await window.api.branchRemoteInfo(repoPath, target.name, target.remote)
+      return res.ok ? res.data : null
+    }
   }
 
   return (
@@ -496,10 +591,10 @@ export default function App(): JSX.Element {
               <div className="main-layout">
                 <Sidebar
                   branches={branches}
+                  headHash={headHash}
                   onCheckout={handleCheckout}
                   onCreateBranch={handleCreateBranch}
-                  onMerge={handleMerge}
-                  onRebase={handleRebase}
+                  actions={refActions}
                 />
                 <CommitGraph
                   rows={graphRows}
@@ -508,6 +603,7 @@ export default function App(): JSX.Element {
                   wipConflictLabel={wipConflictLabel}
                   headHash={headHash}
                   currentBranch={status?.branch ?? null}
+                  branches={branches}
                   onSelectWorking={() =>
                     // Clicking the selected row again deselects it and closes the side bar.
                     setSelection(
@@ -522,14 +618,7 @@ export default function App(): JSX.Element {
                     )
                   }
                   onCheckout={handleCheckout}
-                  onCherryPick={handleCherryPick}
-                  onRevertCommit={handleRevertCommit}
-                  onResetTo={handleResetTo}
-                  onCreateBranchAt={handleCreateBranchAt}
-                  onCreateTag={handleCreateTag}
-                  onCreateAnnotatedTag={handleCreateAnnotatedTag}
-                  onCreatePatch={handleCreatePatch}
-                  onCopySha={handleCopySha}
+                  actions={refActions}
                 />
                 {selection.type !== 'none' && (
                   <div className="detail-panel" role="complementary" aria-label="Details">
@@ -583,6 +672,20 @@ export default function App(): JSX.Element {
         )}
       </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {prompt && (
+        <PromptDialog
+          key={prompt.title}
+          {...prompt}
+          onSubmit={(value) => {
+            setPrompt(null)
+            prompt.resolve(value)
+          }}
+          onCancel={() => {
+            setPrompt(null)
+            prompt.resolve(null)
+          }}
+        />
+      )}
     </div>
   )
 }

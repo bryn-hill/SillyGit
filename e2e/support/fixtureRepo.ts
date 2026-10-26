@@ -63,6 +63,25 @@ export class FixtureRepo {
     this.commitFile('doomed.txt', 'keep me, edited\n', 'Edit doomed')
   }
 
+  /** Adds a `name` branch with one new file, and a new main commit so the two have diverged. Leaves main checked out. */
+  addFeatureBranch(name = 'feature'): void {
+    this.git('checkout', '-q', '-b', name)
+    this.commitFile('feature.txt', 'feature\n', `Add feature.txt on ${name}`)
+    this.git('checkout', '-q', 'main')
+    this.commitFile('main.txt', 'main\n', 'Add main.txt')
+  }
+
+  /**
+   * Adds a remote called `origin` whose remote-tracking branches point at the
+   * given local branches, without anything to fetch from or push to.
+   */
+  addFakeRemote(url: string, branches: string[]): void {
+    this.git('remote', 'add', 'origin', url)
+    for (const branch of branches) {
+      this.git('update-ref', `refs/remotes/origin/${branch}`, branch)
+    }
+  }
+
   readFile(relativePath: string): string {
     return readFileSync(join(this.path, relativePath), 'utf8')
   }

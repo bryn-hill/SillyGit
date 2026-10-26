@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { WipGraphCell } from './GraphCell'
 import type { Selection } from '../App'
-import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+import type { BranchInfo } from '../../../shared/types'
+import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 
 interface RefBadge {
   label: string
   kind: 'head' | 'local' | 'remote' | 'tag'
 }
 
-function parseRefs(refs: string[]): RefBadge[] {
+/**
+ * Turns `git log --decorate` refs into badges. Branch names can contain "/",
+ * so local and remote branches are told apart with the real branch list.
+ */
+function parseRefs(refs: string[], localBranches: Set<string>, remoteBranches: Set<string>): RefBadge[] {
   const badges: RefBadge[] = []
   for (const raw of refs) {
     let label = raw.trim()
@@ -20,13 +25,30 @@ function parseRefs(refs: string[]): RefBadge[] {
     } else if (label.startsWith('tag: ')) {
       label = label.slice('tag: '.length)
       kind = 'tag'
-    } else if (label.startsWith('origin/') || label.includes('/')) {
+    } else if (localBranches.has(label)) {
+      kind = 'local'
+    } else if (remoteBranches.has(label) || label.includes('/')) {
       kind = 'remote'
     }
-    if (label === 'HEAD') continue
+    // HEAD on its own (detached) and symbolic remote refs like origin/HEAD.
+    if (label === 'HEAD' || label.endsWith('/HEAD')) continue
     badges.push({ label, kind })
   }
   return badges
+}
+
+function badgeTarget(badge: RefBadge): RefTarget | null {
+  if (badge.kind === 'tag') return null
+  return { name: badge.label, remote: badge.kind === 'remote', current: badge.kind === 'head' }
+}
+
+/** The branch a right-click on a whole row acts on: prefer one that isn't checked out, local before remote. */
+function rowTarget(badges: RefBadge[]): RefTarget | null {
+  const pick =
+    badges.find((b) => b.kind === 'local') ??
+    badges.find((b) => b.kind === 'remote') ??
+    badges.find((b) => b.kind === 'head')
+  return pick ? badgeTarget(pick) : null
 }
 
 function timeAgo(iso: string): string {
@@ -49,19 +71,13 @@ interface Props {
   hasWorkingChanges: boolean
   headHash: string | null
   currentBranch: string | null
+  branches: BranchInfo[]
   onSelectWorking: () => void
   onSelectCommit: (hash: string) => void
   onCheckout: (branch: string) => void
-  onCherryPick: (hash: string) => void
   /** Replaces "Uncommitted changes" on the WIP row, e.g. to report conflicts. */
   wipConflictLabel?: string | null
-  onRevertCommit: (hash: string) => void
-  onResetTo: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
-  onCreateBranchAt: (hash: string) => void
-  onCreateTag: (hash: string) => void
-  onCreateAnnotatedTag: (hash: string) => void
-  onCreatePatch: (hash: string) => void
-  onCopySha: (hash: string) => void
+  actions: RefActions
 }
 
 export default function CommitGraph({
@@ -70,83 +86,30 @@ export default function CommitGraph({
   hasWorkingChanges,
   headHash,
   currentBranch,
+  branches,
   onSelectWorking,
   onSelectCommit,
   onCheckout,
-  onCherryPick,
   wipConflictLabel,
-  onRevertCommit,
-  onResetTo,
-  onCreateBranchAt,
-  onCreateTag,
-  onCreateAnnotatedTag,
-  onCreatePatch,
-  onCopySha
+  actions
 }: Props): JSX.Element {
   const topLane = rows[0]?.lane ?? 0
   const topColor = rows[0]?.color ?? '#bd93f9'
-  const [menu, setMenu] = useState<{ x: number; y: number; hash: string } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget | null } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  const [localBranches, remoteBranches] = useMemo(
+    () => [
+      new Set(branches.filter((b) => !b.remote).map((b) => b.name)),
+      new Set(branches.filter((b) => b.remote).map((b) => b.name))
+    ],
+    [branches]
+  )
 
   // Keep the selected row visible when the selection moves with the arrow keys.
   useEffect(() => {
     bodyRef.current?.querySelector('.graph-row.selected')?.scrollIntoView({ block: 'nearest' })
   }, [selection])
-
-  function buildSections(hash: string): ContextMenuItem[][] {
-    const branchLabel = currentBranch ?? 'HEAD'
-    const sections: ContextMenuItem[][] = []
-
-    if (hash !== headHash) {
-      sections.push([
-        { id: 'checkout', label: 'Checkout this commit', onSelect: () => onCheckout(hash) }
-      ])
-    }
-
-    sections.push([
-      { id: 'branch', label: 'Create branch here…', onSelect: () => onCreateBranchAt(hash) },
-      { id: 'cherry-pick', label: 'Cherry-pick commit', onSelect: () => onCherryPick(hash) },
-      {
-        id: 'reset',
-        label: `Reset ${branchLabel} to this commit`,
-        submenu: [
-          {
-            id: 'reset-soft',
-            label: 'Soft — keep all changes',
-            onSelect: () => onResetTo(hash, 'soft')
-          },
-          {
-            id: 'reset-mixed',
-            label: 'Mixed — keep working copy, reset index',
-            onSelect: () => onResetTo(hash, 'mixed')
-          },
-          {
-            id: 'reset-hard',
-            label: 'Hard — discard all changes',
-            danger: true,
-            onSelect: () => onResetTo(hash, 'hard')
-          }
-        ]
-      },
-      { id: 'revert', label: 'Revert commit', onSelect: () => onRevertCommit(hash) }
-    ])
-
-    sections.push([
-      { id: 'copy-sha', label: 'Copy commit SHA', onSelect: () => onCopySha(hash) },
-      { id: 'patch', label: 'Create patch from commit…', onSelect: () => onCreatePatch(hash) }
-    ])
-
-    sections.push([
-      { id: 'tag', label: 'Create tag here…', onSelect: () => onCreateTag(hash) },
-      {
-        id: 'annotated-tag',
-        label: 'Create annotated tag here…',
-        onSelect: () => onCreateAnnotatedTag(hash)
-      }
-    ])
-
-    return sections
-  }
 
   return (
     <div className="commit-graph">
@@ -179,7 +142,7 @@ export default function CommitGraph({
           </div>
         )}
         {rows.map((row) => {
-          const badges = parseRefs(row.commit.refs)
+          const badges = parseRefs(row.commit.refs, localBranches, remoteBranches)
           const isSelected = selection.type === 'commit' && selection.hash === row.commit.hash
           const isContextTarget = menu?.hash === row.commit.hash
           return (
@@ -191,7 +154,7 @@ export default function CommitGraph({
               onClick={() => onSelectCommit(row.commit.hash)}
               onContextMenu={(e) => {
                 e.preventDefault()
-                setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash })
+                setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash, target: rowTarget(badges) })
               }}
             >
               <GraphCell row={row} />
@@ -205,6 +168,11 @@ export default function CommitGraph({
                         e.stopPropagation()
                         onCheckout(b.label)
                       }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash, target: badgeTarget(b) })
                     }}
                   >
                     {b.label}
@@ -222,10 +190,14 @@ export default function CommitGraph({
         })}
       </div>
       {menu && (
-        <ContextMenu
+        <RefContextMenu
           x={menu.x}
           y={menu.y}
-          sections={buildSections(menu.hash)}
+          hash={menu.hash}
+          target={menu.target}
+          currentBranch={currentBranch}
+          headHash={headHash}
+          actions={actions}
           onClose={() => setMenu(null)}
         />
       )}
