@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
@@ -36,6 +36,35 @@ export class FixtureRepo {
     this.writeFile(relativePath, content)
     this.git('add', relativePath)
     this.git('commit', '-q', '-m', message)
+  }
+
+  /**
+   * Adds `notes.txt` on main, then a `feature` branch and a new main commit
+   * that both change its 2nd and 8th lines differently: two conflict hunks
+   * when merged. Leaves main checked out.
+   */
+  addConflictingBranch(): void {
+    const lines = (second: string, eighth: string): string =>
+      ['one', second, 'three', 'four', 'five', 'six', 'seven', eighth, 'nine', 'ten'].join('\n') + '\n'
+    this.commitFile('notes.txt', lines('two', 'eight'), 'Add notes')
+    this.git('checkout', '-q', '-b', 'feature')
+    this.commitFile('notes.txt', lines('two (feature)', 'eight (feature)'), 'Edit notes on feature')
+    this.git('checkout', '-q', 'main')
+    this.commitFile('notes.txt', lines('two (main)', 'eight (main)'), 'Edit notes on main')
+  }
+
+  /** Adds `doomed.txt`, then a `feature` branch that deletes it while main edits it. */
+  addModifyDeleteBranch(): void {
+    this.commitFile('doomed.txt', 'keep me\n', 'Add doomed')
+    this.git('checkout', '-q', '-b', 'feature')
+    this.git('rm', '-q', 'doomed.txt')
+    this.git('commit', '-q', '-m', 'Delete doomed')
+    this.git('checkout', '-q', 'main')
+    this.commitFile('doomed.txt', 'keep me, edited\n', 'Edit doomed')
+  }
+
+  readFile(relativePath: string): string {
+    return readFileSync(join(this.path, relativePath), 'utf8')
   }
 
   git(...args: string[]): string {

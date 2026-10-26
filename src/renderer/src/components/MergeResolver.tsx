@@ -1,0 +1,495 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import type { ConflictFileContent } from '../../../shared/types'
+import {
+  buildOutput,
+  buildOutputLines,
+  conflictHunks,
+  isHunkSideTaken,
+  isLinePicked,
+  isSideTaken,
+  parseConflictMarkers,
+  setSideTaken,
+  toggleHunkSide,
+  toggleLine,
+  unresolvedCount,
+  type ConflictHunk,
+  type ConflictPicks,
+  type ConflictSegment,
+  type ConflictSide
+} from '../../../shared/conflicts'
+
+interface Props {
+  repoPath: string
+  path: string
+  onClose: () => void
+  /** Called once the file is resolved and staged; `notice` is shown to the user. */
+  onResolved: (notice?: string) => void
+  onError: (message: string) => void
+}
+
+const SIDE_LETTER: Record<ConflictSide, string> = { ours: 'A', theirs: 'B' }
+
+function stripEol(line: string): string {
+  return line.replace(/\r?\n$/, '')
+}
+
+/**
+ * One row of the A or B pane. Both panes get the same rows (a conflict hunk is
+ * padded to the longer side), so they line up and can scroll together.
+ */
+type PaneRow =
+  | { kind: 'common'; text: string; lineNo: number }
+  | { kind: 'hunk-header'; hunk: ConflictHunk; number: number }
+  | { kind: 'conflict'; hunk: ConflictHunk; index: number; text: string; lineNo: number }
+  | { kind: 'pad'; hunkId: number }
+
+function paneRows(segments: ConflictSegment[], side: ConflictSide): PaneRow[] {
+  const rows: PaneRow[] = []
+  let lineNo = 1
+  let hunkNumber = 0
+  for (const s of segments) {
+    if (s.kind === 'common') {
+      for (const text of s.lines) rows.push({ kind: 'common', text, lineNo: lineNo++ })
+      continue
+    }
+    rows.push({ kind: 'hunk-header', hunk: s, number: ++hunkNumber })
+    const lines = s[side]
+    const height = Math.max(s.ours.length, s.theirs.length, 1)
+    for (let i = 0; i < height; i++) {
+      if (i < lines.length) rows.push({ kind: 'conflict', hunk: s, index: i, text: lines[i], lineNo: lineNo++ })
+      else rows.push({ kind: 'pad', hunkId: s.id })
+    }
+  }
+  return rows
+}
+
+function SidePane({
+  side,
+  label,
+  segments,
+  picks,
+  locked,
+  onPicksChange,
+  paneRef,
+  onScroll
+}: {
+  side: ConflictSide
+  label: string
+  segments: ConflictSegment[]
+  picks: ConflictPicks
+  locked: boolean
+  onPicksChange: (picks: ConflictPicks) => void
+  paneRef: React.RefObject<HTMLDivElement | null>
+  onScroll: () => void
+}): JSX.Element {
+  const rows = useMemo(() => paneRows(segments, side), [segments, side])
+  const allTaken = isSideTaken(segments, picks, side)
+  const letter = SIDE_LETTER[side]
+  const sideName = side === 'ours' ? 'current' : 'incoming'
+  return (
+    <section className={`merge-pane merge-pane-${side}`} aria-label={`${letter} (${sideName}): ${label}`}>
+      <header className="merge-pane-header">
+        <label className="merge-take-all">
+          <input
+            type="checkbox"
+            checked={allTaken}
+            disabled={locked}
+            aria-label={`Take all from ${letter}`}
+            title={allTaken ? 'Untake all' : 'Take all'}
+            onChange={() => onPicksChange(setSideTaken(segments, picks, side, !allTaken))}
+          />
+          <span className={`merge-badge merge-badge-${side}`}>{letter}</span>
+          <span className="merge-pane-label">{label}</span>
+        </label>
+      </header>
+      <div className="merge-pane-body" ref={paneRef} onScroll={onScroll}>
+        {rows.map((row, i) => {
+          if (row.kind === 'common') {
+            return (
+              <div key={i} className="merge-line">
+                <span className="merge-gutter" />
+                <span className="merge-lineno">{row.lineNo}</span>
+                <span className="merge-text">{stripEol(row.text)}</span>
+              </div>
+            )
+          }
+          if (row.kind === 'hunk-header') {
+            const taken = isHunkSideTaken(row.hunk, picks, side)
+            return (
+              <div key={i} className="merge-hunk-header" data-hunk={row.hunk.id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={taken}
+                    disabled={locked || row.hunk[side].length === 0}
+                    aria-label={`Take ${letter} conflict ${row.number}`}
+                    onChange={() => onPicksChange(toggleHunkSide(row.hunk, picks, side))}
+                  />
+                  Conflict {row.number}
+                  {row.hunk[side].length === 0 && <span className="merge-dim"> (no lines on this side)</span>}
+                </label>
+              </div>
+            )
+          }
+          if (row.kind === 'pad') return <div key={i} className="merge-line merge-pad" />
+          const picked = isLinePicked(picks, row.hunk.id, side, row.index)
+          return (
+            <div key={i} className={`merge-line merge-conflict-line ${picked ? 'picked' : ''}`}>
+              <button
+                className="merge-line-button"
+                disabled={locked}
+                title={picked ? "Don't take this line" : 'Take this line'}
+                aria-label={`${picked ? "Don't take" : 'Take'} ${letter} line ${row.lineNo}`}
+                aria-pressed={picked}
+                onClick={() => onPicksChange(toggleLine(picks, row.hunk.id, side, row.index))}
+              >
+                {picked ? '✓' : '⊕'}
+              </button>
+              <span className="merge-lineno">{row.lineNo}</span>
+              <span className="merge-text">{stripEol(row.text)}</span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+/** Choices for a file deleted on one side, or a binary file: no line picking possible. */
+function WholeFileChoice({
+  file,
+  onTake,
+  onDelete,
+  onClose
+}: {
+  file: ConflictFileContent
+  onTake: (side: 'current' | 'incoming' | 'base') => void
+  onDelete: () => void
+  onClose: () => void
+}): JSX.Element {
+  if (file.kind === 'binary') {
+    return (
+      <div className="merge-choice" role="alertdialog" aria-label="Binary file conflict">
+        <p>
+          <strong>{file.path}</strong> is a binary file, so it can't be merged line by line. Pick the version to keep.
+        </p>
+        <div className="merge-choice-buttons">
+          <button onClick={() => onTake('current')}>Take current ({file.currentLabel})</button>
+          <button onClick={() => onTake('incoming')}>Take incoming ({file.incomingLabel})</button>
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    )
+  }
+  const [modifiedOn, deletedOn, keep] =
+    file.kind === 'deleted-current'
+      ? [file.incomingLabel, file.currentLabel, 'incoming' as const]
+      : [file.currentLabel, file.incomingLabel, 'current' as const]
+  return (
+    <div className="merge-choice" role="alertdialog" aria-label="Modify/delete conflict">
+      <p>
+        <strong>{file.path}</strong> has been modified on {modifiedOn}, but deleted on {deletedOn}.
+      </p>
+      <div className="merge-choice-buttons">
+        <button onClick={() => onTake('base')}>Keep Base Version</button>
+        <button onClick={() => onTake(keep)}>Keep Modified Version</button>
+        <button className="danger-button" onClick={onDelete}>
+          Delete The File
+        </button>
+        <button onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+export default function MergeResolver({ repoPath, path, onClose, onResolved, onError }: Props): JSX.Element {
+  const [file, setFile] = useState<ConflictFileContent | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [picks, setPicks] = useState<ConflictPicks>({})
+  // Manual edits to the output; while set, picks are frozen until Reset.
+  const [editedOutput, setEditedOutput] = useState<string | null>(null)
+  const [current, setCurrent] = useState(0)
+  const [askUnresolved, setAskUnresolved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const paneA = useRef<HTMLDivElement>(null)
+  const paneB = useRef<HTMLDivElement>(null)
+  const output = useRef<HTMLDivElement>(null)
+  const syncing = useRef(false)
+
+  const segments = useMemo(() => (file?.kind === 'text' ? parseConflictMarkers(file.marked) : []), [file])
+  const hunks = useMemo(() => conflictHunks(segments), [segments])
+  const unresolved = unresolvedCount(segments, picks)
+  const outputLines = useMemo(() => buildOutputLines(segments, picks), [segments, picks])
+  const changed = editedOutput !== null || Object.values(picks).some((p) => p.length > 0)
+
+  const save = useCallback(
+    async (content: string, notice?: string, stage = true) => {
+      setSaving(true)
+      const res = await window.api.saveResolution(repoPath, path, content, stage)
+      setSaving(false)
+      if (res.ok) onResolved(notice)
+      else onError(res.error)
+    },
+    [repoPath, path, onResolved, onError]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    setFile(null)
+    setLoadError(null)
+    setPicks({})
+    setEditedOutput(null)
+    setCurrent(0)
+    window.api.conflictFile(repoPath, path).then((res) => {
+      if (cancelled) return
+      if (!res.ok) {
+        setLoadError(res.error)
+        return
+      }
+      // When the 3-way merge comes out clean, there is nothing to pick.
+      if (res.data.kind === 'text' && conflictHunks(parseConflictMarkers(res.data.marked)).length === 0) {
+        save(res.data.marked, 'Merge tool automatically resolved your conflict')
+        return
+      }
+      setFile(res.data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [repoPath, path])
+
+  const scrollToHunk = (index: number): void => {
+    const hunk = hunks[index]
+    if (!hunk) return
+    setCurrent(index)
+    for (const pane of [paneA.current, paneB.current, output.current]) {
+      const target = pane?.querySelector<HTMLElement>(`[data-hunk="${hunk.id}"]`)
+      if (pane && target) pane.scrollTop = target.offsetTop - pane.offsetTop - 24
+    }
+  }
+
+  // A and B have the same rows, so they scroll together.
+  const syncScroll = (from: React.RefObject<HTMLDivElement | null>): void => {
+    if (syncing.current) return
+    const to = from === paneA ? paneB : paneA
+    if (!from.current || !to.current) return
+    syncing.current = true
+    to.current.scrollTop = from.current.scrollTop
+    to.current.scrollLeft = from.current.scrollLeft
+    requestAnimationFrame(() => {
+      syncing.current = false
+    })
+  }
+
+  const requestSave = (): void => {
+    if (!file || file.kind !== 'text' || saving) return
+    if (editedOutput !== null) save(editedOutput)
+    else if (unresolved > 0) setAskUnresolved(true)
+    else save(buildOutput(segments, picks))
+  }
+
+  const reset = (): void => {
+    setPicks({})
+    setEditedOutput(null)
+  }
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        requestSave()
+      } else if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        if (askUnresolved) setAskUnresolved(false)
+        else onClose()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
+
+  const takeWhole = async (side: 'current' | 'incoming' | 'base'): Promise<void> => {
+    const res = await window.api.takeSide(repoPath, path, side)
+    if (res.ok) onResolved()
+    else onError(res.error)
+  }
+
+  const deleteFile = async (): Promise<void> => {
+    const res = await window.api.deleteConflictedFile(repoPath, path)
+    if (res.ok) onResolved()
+    else onError(res.error)
+  }
+
+  const header = (
+    <div className="merge-toolbar">
+      <span className="operation-warning" aria-hidden="true">
+        ⚠
+      </span>
+      <span className="merge-title">{path}</span>
+      {file?.kind === 'text' && (
+        <span className="merge-dim">
+          ({hunks.length} conflict{hunks.length === 1 ? '' : 's'})
+        </span>
+      )}
+      <span className="merge-toolbar-spacer" />
+      {file?.kind === 'text' && (
+        <button className="merge-save-button" disabled={saving} onClick={requestSave} title="Save and mark resolved (Ctrl+S)">
+          Save
+        </button>
+      )}
+      <button className="icon-button" title="Close merge tool (Esc)" onClick={onClose}>
+        ✕
+      </button>
+    </div>
+  )
+
+  return (
+    <div className="merge-resolver" role="region" aria-label="Merge tool">
+      {header}
+      {loadError && <div className="commit-fullview-empty">{loadError}</div>}
+      {!file && !loadError && <div className="commit-fullview-empty">Loading diff…</div>}
+      {file && file.kind !== 'text' && (
+        <WholeFileChoice file={file} onTake={takeWhole} onDelete={deleteFile} onClose={onClose} />
+      )}
+      {file?.kind === 'text' && (
+        <>
+          <div className="merge-sides">
+            <SidePane
+              side="ours"
+              label={file.currentLabel}
+              segments={segments}
+              picks={picks}
+              locked={editedOutput !== null}
+              onPicksChange={setPicks}
+              paneRef={paneA}
+              onScroll={() => syncScroll(paneA)}
+            />
+            <SidePane
+              side="theirs"
+              label={file.incomingLabel}
+              segments={segments}
+              picks={picks}
+              locked={editedOutput !== null}
+              onPicksChange={setPicks}
+              paneRef={paneB}
+              onScroll={() => syncScroll(paneB)}
+            />
+          </div>
+          <section className="merge-output" aria-label="Output">
+            <header className="merge-pane-header">
+              <span className="merge-output-title">Output</span>
+              <span className="merge-dim" data-testid="conflict-position">
+                conflict {Math.min(current + 1, hunks.length)} of {hunks.length}
+              </span>
+              <button
+                className="icon-button"
+                title="Previous conflict"
+                disabled={current <= 0}
+                onClick={() => scrollToHunk(current - 1)}
+              >
+                ▲
+              </button>
+              <button
+                className="icon-button"
+                title="Next conflict"
+                disabled={current >= hunks.length - 1}
+                onClick={() => scrollToHunk(current + 1)}
+              >
+                ▼
+              </button>
+              {unresolved > 0 && editedOutput === null && (
+                <span className="merge-unresolved">{unresolved} unresolved</span>
+              )}
+              <span className="merge-toolbar-spacer" />
+              {editedOutput === null && (
+                <button className="link-button" onClick={() => setEditedOutput(buildOutput(segments, picks))}>
+                  Edit output
+                </button>
+              )}
+              {changed && (
+                <button className="link-button" onClick={reset}>
+                  Reset
+                </button>
+              )}
+            </header>
+            {editedOutput !== null ? (
+              <textarea
+                className="merge-output-editor"
+                aria-label="Output text"
+                spellCheck={false}
+                value={editedOutput}
+                onChange={(e) => setEditedOutput(e.target.value)}
+              />
+            ) : (
+              <div className="merge-pane-body" ref={output} data-testid="merge-output">
+                {outputLines.map((line, i) => {
+                  const firstOfHunk =
+                    line.hunkId !== undefined && (i === 0 || outputLines[i - 1].hunkId !== line.hunkId)
+                  const fromSide = line.origin === 'ours' || line.origin === 'theirs'
+                  return (
+                    <div
+                      key={i}
+                      className={`merge-line output-${line.origin}`}
+                      data-hunk={firstOfHunk ? line.hunkId : undefined}
+                    >
+                      {fromSide ? (
+                        <button
+                          className="merge-line-button"
+                          title="Remove this line"
+                          aria-label={`Remove line ${i + 1} from output`}
+                          onClick={() => setPicks(toggleLine(picks, line.hunkId!, line.origin as ConflictSide, line.index!))}
+                        >
+                          ⊖
+                        </button>
+                      ) : (
+                        <span className="merge-gutter" />
+                      )}
+                      <span className="merge-lineno">{i + 1}</span>
+                      <span className="merge-text">{stripEol(line.text)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+      {askUnresolved && file?.kind === 'text' && (
+        <div className="modal-backdrop">
+          <div className="merge-choice" role="alertdialog" aria-label="Unresolved conflicts">
+            <p>You have unresolved conflicts. How would you like to proceed?</p>
+            <div className="merge-choice-buttons">
+              <button
+                className="merge-save-button"
+                onClick={() => {
+                  setAskUnresolved(false)
+                  save(buildOutput(segments, picks))
+                }}
+              >
+                Save Output
+              </button>
+              <button
+                className="danger-button"
+                onClick={() => {
+                  setAskUnresolved(false)
+                  save(
+                    buildOutput(segments, picks, {
+                      unresolved: 'markers',
+                      currentLabel: file.currentLabel,
+                      incomingLabel: file.incomingLabel
+                    }),
+                    'Saved with conflict markers; the file is still listed as conflicted',
+                    false
+                  )
+                }}
+              >
+                Create Conflict Chunks
+              </button>
+              <button onClick={() => setAskUnresolved(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

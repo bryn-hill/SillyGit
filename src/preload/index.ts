@@ -28,7 +28,7 @@ const api = {
   createBranch: (repoPath: string, branch: string): Wrapped<void> =>
     ipcRenderer.invoke('git:create-branch', repoPath, branch),
   push: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:push', repoPath),
-  pull: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:pull', repoPath),
+  pull: (repoPath: string): Wrapped<import('../shared/types').ConflictableResult> => ipcRenderer.invoke('git:pull', repoPath),
   log: (repoPath: string): Wrapped<import('../shared/types').CommitInfo[]> =>
     ipcRenderer.invoke('git:log', repoPath),
   graphLog: (repoPath: string): Wrapped<import('../shared/types').GraphCommit[]> =>
@@ -62,10 +62,32 @@ const api = {
   openPath: (absolutePath: string): Wrapped<void> => ipcRenderer.invoke('shell:open-path', absolutePath),
   openExternal: (url: string): Wrapped<void> => ipcRenderer.invoke('shell:open-external', url),
 
-  cherryPick: (repoPath: string, hash: string): Wrapped<void> =>
+  cherryPick: (repoPath: string, hash: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:cherry-pick', repoPath, hash),
-  revertCommit: (repoPath: string, hash: string): Wrapped<void> =>
+  revertCommit: (repoPath: string, hash: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:revert-commit', repoPath, hash),
+
+  operationState: (repoPath: string): Wrapped<import('../shared/types').OperationState | null> =>
+    ipcRenderer.invoke('git:operation-state', repoPath),
+  mergeBranch: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:merge-branch', repoPath, branch),
+  rebaseOnto: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:rebase-onto', repoPath, branch),
+  continueOperation: (repoPath: string, message?: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:continue-operation', repoPath, message),
+  abortOperation: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:abort-operation', repoPath),
+  skipOperation: (repoPath: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:skip-operation', repoPath),
+  conflictFile: (repoPath: string, path: string): Wrapped<import('../shared/types').ConflictFileContent> =>
+    ipcRenderer.invoke('git:conflict-file', repoPath, path),
+  saveResolution: (repoPath: string, path: string, content: string, stage?: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('git:save-resolution', repoPath, path, content, stage),
+  takeSide: (repoPath: string, path: string, side: 'current' | 'incoming' | 'base'): Wrapped<void> =>
+    ipcRenderer.invoke('git:take-side', repoPath, path, side),
+  deleteConflictedFile: (repoPath: string, path: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:delete-conflicted-file', repoPath, path),
+  markResolved: (repoPath: string, paths: string[]): Wrapped<void> =>
+    ipcRenderer.invoke('git:mark-resolved', repoPath, paths),
   resetTo: (repoPath: string, hash: string, mode: 'soft' | 'mixed' | 'hard'): Wrapped<void> =>
     ipcRenderer.invoke('git:reset-to', repoPath, hash, mode),
   createBranchAt: (

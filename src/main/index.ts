@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, dialog, clipboard } from 'electron'
 import { join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
+import * as conflicts from './conflicts'
 import * as ai from './ai'
 import * as settings from './settings'
 import * as launchpad from './launchpad'
@@ -207,6 +208,50 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:revert-commit', (_e, repoPath: string, hash: string) =>
     wrap(() => git.revertCommit(repoPath, hash))
+  )
+
+  ipcMain.handle('git:operation-state', (_e, repoPath: string) =>
+    wrap(() => conflicts.getOperationState(repoPath))
+  )
+
+  ipcMain.handle('git:merge-branch', (_e, repoPath: string, branch: string) =>
+    wrap(() => conflicts.mergeBranch(repoPath, branch))
+  )
+
+  ipcMain.handle('git:rebase-onto', (_e, repoPath: string, branch: string) =>
+    wrap(() => conflicts.rebaseOnto(repoPath, branch))
+  )
+
+  ipcMain.handle('git:continue-operation', (_e, repoPath: string, message?: string) =>
+    wrap(() => conflicts.continueOperation(repoPath, message))
+  )
+
+  ipcMain.handle('git:abort-operation', (_e, repoPath: string) =>
+    wrap(() => conflicts.abortOperation(repoPath))
+  )
+
+  ipcMain.handle('git:skip-operation', (_e, repoPath: string) =>
+    wrap(() => conflicts.skipOperation(repoPath))
+  )
+
+  ipcMain.handle('git:conflict-file', (_e, repoPath: string, path: string) =>
+    wrap(() => conflicts.getConflictFile(repoPath, path))
+  )
+
+  ipcMain.handle('git:save-resolution', (_e, repoPath: string, path: string, content: string, stage?: boolean) =>
+    wrap(() => conflicts.saveResolution(repoPath, path, content, stage))
+  )
+
+  ipcMain.handle('git:take-side', (_e, repoPath: string, path: string, side: 'current' | 'incoming' | 'base') =>
+    wrap(() => conflicts.takeSide(repoPath, path, side))
+  )
+
+  ipcMain.handle('git:delete-conflicted-file', (_e, repoPath: string, path: string) =>
+    wrap(() => conflicts.deleteConflictedFile(repoPath, path))
+  )
+
+  ipcMain.handle('git:mark-resolved', (_e, repoPath: string, paths: string[]) =>
+    wrap(() => conflicts.markResolved(repoPath, paths))
   )
 
   ipcMain.handle(

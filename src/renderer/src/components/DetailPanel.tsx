@@ -1,7 +1,40 @@
 import { useEffect, useState, type JSX } from 'react'
-import type { CommitDetail, FileStatus, RepoStatus } from '../../../shared/types'
+import type { CommitDetail, FileStatus, OperationState, RepoStatus } from '../../../shared/types'
 import type { Selection } from '../App'
 import DiffBlock from './DiffBlock'
+import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+
+const OPERATION_NAMES: Record<OperationState['kind'], string> = {
+  merge: 'Merge',
+  rebase: 'Rebase',
+  'cherry-pick': 'Cherry-pick',
+  revert: 'Revert'
+}
+
+/** "Merging feature into main", "Rebasing feature onto main (commit 2 of 3)" etc. */
+function operationSummary(op: OperationState): string {
+  switch (op.kind) {
+    case 'merge':
+      return `Merging ${op.incomingLabel} into ${op.currentLabel}`
+    case 'rebase': {
+      const progress = op.step && op.total ? ` (commit ${op.step} of ${op.total})` : ''
+      return `Rebasing ${op.rebaseBranch ?? 'HEAD'} onto ${op.currentLabel}${progress}`
+    }
+    case 'cherry-pick':
+      return `Cherry-picking ${op.incomingLabel} onto ${op.currentLabel}`
+    case 'revert':
+      return `Reverting ${op.incomingLabel.replace(/^revert of /, '')} on ${op.currentLabel}`
+  }
+}
+
+export interface ConflictActions {
+  onOpenConflict: (path: string) => void
+  onTakeSide: (paths: string[], side: 'current' | 'incoming') => void
+  onMarkResolved: (paths: string[]) => void
+  onContinue: () => void
+  onAbort: () => void
+  onSkip: () => void
+}
 
 function statusLabel(code: string): string {
   return code === '?' ? 'U' : code
@@ -16,6 +49,8 @@ interface WorkingProps {
   onUnstage: (paths: string[]) => void
   onDiscard: (file: FileStatus) => void
   onCommit: () => void
+  operation: OperationState | null
+  conflictActions: ConflictActions
 }
 
 function WorkingDirectoryView({
@@ -26,8 +61,11 @@ function WorkingDirectoryView({
   onStage,
   onUnstage,
   onDiscard,
-  onCommit
+  onCommit,
+  operation,
+  conflictActions
 }: WorkingProps): JSX.Element {
+  const [conflictMenu, setConflictMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [diffText, setDiffText] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -35,7 +73,8 @@ function WorkingDirectoryView({
 
   const staged = status?.staged ?? []
   const unstaged = status?.unstaged ?? []
-  const totalChanges = staged.length + unstaged.length
+  const conflicted = status?.conflicted ?? []
+  const totalChanges = staged.length + unstaged.length + conflicted.length
 
   const handleGenerateMessage = async (): Promise<void> => {
     setGenerating(true)
@@ -100,11 +139,89 @@ function WorkingDirectoryView({
     )
   }
 
+  const conflictMenuSections = (path: string): ContextMenuItem[][] => [
+    [{ id: 'open', label: 'Open in merge tool', onSelect: () => conflictActions.onOpenConflict(path) }],
+    [
+      {
+        id: 'take-current',
+        label: `Take current (${operation?.currentLabel ?? 'current'})`,
+        onSelect: () => conflictActions.onTakeSide([path], 'current')
+      },
+      {
+        id: 'take-incoming',
+        label: `Take incoming (${operation?.incomingLabel ?? 'incoming'})`,
+        onSelect: () => conflictActions.onTakeSide([path], 'incoming')
+      }
+    ],
+    [{ id: 'resolve', label: 'Mark resolved', onSelect: () => conflictActions.onMarkResolved([path]) }]
+  ]
+
+  const operationName = operation ? OPERATION_NAMES[operation.kind] : null
+
   return (
     <div className="detail-panel-content">
-      <div className="detail-header-row">
-        <span>{totalChanges} file change{totalChanges === 1 ? '' : 's'} in working directory</span>
-      </div>
+      {operation ? (
+        <div className="operation-header" role="status" aria-label="Operation in progress">
+          <div className="operation-header-title">
+            <span className="operation-warning" aria-hidden="true">
+              ⚠
+            </span>
+            {conflicted.length > 0
+              ? `${operationName} conflicts detected`
+              : `${operationName} in progress`}
+          </div>
+          <div className="operation-strip">{operationSummary(operation)}</div>
+        </div>
+      ) : (
+        <div className="detail-header-row">
+          <span>{totalChanges} file change{totalChanges === 1 ? '' : 's'} in working directory</span>
+        </div>
+      )}
+
+      {conflicted.length > 0 && (
+        <div className="detail-section" role="region" aria-label="Conflicted files">
+          <div className="detail-section-header">
+            <span>Conflicted Files ({conflicted.length})</span>
+            <button
+              className="mark-resolved-button"
+              onClick={() => conflictActions.onMarkResolved(conflicted.map((f) => f.path))}
+            >
+              Mark All Resolved
+            </button>
+          </div>
+          <ul className="file-list">
+            {conflicted.map((f) => (
+              <li key={`c:${f.path}`}>
+                <div
+                  className={`file-row conflict-row ${conflictMenu?.path === f.path ? 'context-target' : ''}`}
+                  onClick={() => conflictActions.onOpenConflict(f.path)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setConflictMenu({ x: e.clientX, y: e.clientY, path: f.path })
+                  }}
+                >
+                  <span className="status-code code-conflict" title={`Conflict (${f.index}${f.worktree})`}>
+                    !
+                  </span>
+                  <span className="file-path">{f.path}</span>
+                  <span className="file-actions">
+                    <button
+                      className="icon-button"
+                      title="Mark resolved"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        conflictActions.onMarkResolved([f.path])
+                      }}
+                    >
+                      ✓
+                    </button>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="detail-section">
         <div className="detail-section-header">
@@ -130,30 +247,106 @@ function WorkingDirectoryView({
         <ul className="file-list">{staged.map((f) => renderRow(f, true))}</ul>
       </div>
 
-      <div className="commit-box">
-        <div className="commit-box-toolbar">
+      {operation ? (
+        <OperationCommitBox
+          operation={operation}
+          conflictCount={conflicted.length}
+          stagedCount={staged.length}
+          commitMessage={commitMessage}
+          onCommitMessageChange={onCommitMessageChange}
+          actions={conflictActions}
+        />
+      ) : (
+        <div className="commit-box">
+          <div className="commit-box-toolbar">
+            <button
+              className="link-button"
+              disabled={staged.length === 0 || generating}
+              onClick={handleGenerateMessage}
+            >
+              {generating ? 'Generating…' : 'Generate message'}
+            </button>
+          </div>
+          {generateError && <div className="ai-error">{generateError}</div>}
+          <textarea
+            placeholder="Commit message"
+            value={commitMessage}
+            onChange={(e) => onCommitMessageChange(e.target.value)}
+          />
           <button
-            className="link-button"
-            disabled={staged.length === 0 || generating}
-            onClick={handleGenerateMessage}
+            className="commit-button"
+            disabled={!commitMessage.trim() || staged.length === 0}
+            onClick={onCommit}
           >
-            {generating ? 'Generating…' : 'Generate message'}
+            Commit {staged.length > 0 ? `(${staged.length})` : ''}
           </button>
         </div>
-        {generateError && <div className="ai-error">{generateError}</div>}
+      )}
+      {conflictMenu && (
+        <ContextMenu
+          x={conflictMenu.x}
+          y={conflictMenu.y}
+          sections={conflictMenuSections(conflictMenu.path)}
+          onClose={() => setConflictMenu(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+/** The commit area while a merge, rebase, cherry-pick or revert is stopped. */
+function OperationCommitBox({
+  operation,
+  conflictCount,
+  stagedCount,
+  commitMessage,
+  onCommitMessageChange,
+  actions
+}: {
+  operation: OperationState
+  conflictCount: number
+  stagedCount: number
+  commitMessage: string
+  onCommitMessageChange: (value: string) => void
+  actions: ConflictActions
+}): JSX.Element {
+  const name = OPERATION_NAMES[operation.kind]
+  const isRebase = operation.kind === 'rebase'
+  // With nothing left to commit, a rebase or pick can only skip this commit.
+  const canSkip = operation.kind !== 'merge' && stagedCount === 0 && conflictCount === 0
+  const mainLabel = canSkip
+    ? 'Skip Commit'
+    : operation.kind === 'merge'
+      ? 'Commit and Merge'
+      : isRebase
+        ? 'Continue Rebase'
+        : `Commit ${name}`
+  const blocked = conflictCount > 0
+  return (
+    <div className="commit-box">
+      {!isRebase && (
         <textarea
           placeholder="Commit message"
           value={commitMessage}
           onChange={(e) => onCommitMessageChange(e.target.value)}
         />
-        <button
-          className="commit-button"
-          disabled={!commitMessage.trim() || staged.length === 0}
-          onClick={onCommit}
-        >
-          Commit {staged.length > 0 ? `(${staged.length})` : ''}
-        </button>
-      </div>
+      )}
+      {blocked && (
+        <div className="operation-hint">
+          Resolve {conflictCount === 1 ? 'the conflicted file' : `all ${conflictCount} conflicted files`} to
+          continue.
+        </div>
+      )}
+      <button
+        className="commit-button"
+        disabled={blocked || (!canSkip && !isRebase && !commitMessage.trim())}
+        onClick={canSkip ? actions.onSkip : actions.onContinue}
+      >
+        {mainLabel}
+      </button>
+      <button className="abort-button" onClick={actions.onAbort}>
+        Abort {name}
+      </button>
     </div>
   )
 }
@@ -246,6 +439,8 @@ interface Props {
   onDiscard: (file: FileStatus) => void
   onCommit: () => void
   onOpenCommitFileDiff: (hash: string, path: string) => void
+  operation: OperationState | null
+  conflictActions: ConflictActions
 }
 
 export default function DetailPanel(props: Props): JSX.Element {
@@ -269,6 +464,8 @@ export default function DetailPanel(props: Props): JSX.Element {
       onUnstage={props.onUnstage}
       onDiscard={props.onDiscard}
       onCommit={props.onCommit}
+      operation={props.operation}
+      conflictActions={props.conflictActions}
     />
   )
 }
