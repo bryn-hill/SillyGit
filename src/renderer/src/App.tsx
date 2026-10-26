@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type {
   BranchInfo,
+  OpenPullRequest,
+  RepoRemote,
   ConflictableResult,
   FileStatus,
   GraphCommit,
@@ -20,6 +22,7 @@ import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './comp
 import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
 import { repoDisplayName } from './lib/repoName'
+import { resolveBranchRemote } from '../../shared/branchRemote'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
 import { withPullRequestText } from '../../shared/quickActions'
 
@@ -30,6 +33,8 @@ export default function App(): JSX.Element {
   const [repoPath, setRepoPath] = useState<string | null>(null)
   const [status, setStatus] = useState<RepoStatus | null>(null)
   const [branches, setBranches] = useState<BranchInfo[]>([])
+  const [remotes, setRemotes] = useState<RepoRemote[]>([])
+  const [pullRequests, setPullRequests] = useState<OpenPullRequest[]>([])
   const [graphCommits, setGraphCommits] = useState<GraphCommit[]>([])
   const [selection, setSelection] = useState<Selection>({ type: 'working' })
   const [commitMessage, setCommitMessage] = useState('')
@@ -101,12 +106,14 @@ export default function App(): JSX.Element {
     new Promise((resolve) => setPrompt({ ...request, resolve }))
 
   const refresh = useCallback(async (path: string) => {
-    const [statusRes, branchesRes, graphRes, operationRes] = await Promise.all([
+    const [statusRes, branchesRes, graphRes, operationRes, remotesRes] = await Promise.all([
       window.api.getStatus(path),
       window.api.branches(path),
       window.api.graphLog(path),
-      window.api.operationState(path)
+      window.api.operationState(path),
+      window.api.remotes(path)
     ])
+    setRemotes(remotesRes.ok ? remotesRes.data : [])
     if (statusRes.ok) setStatus(statusRes.data)
     else showError(statusRes.error)
     setOperation(operationRes.ok ? operationRes.data : null)
@@ -117,6 +124,29 @@ export default function App(): JSX.Element {
   useEffect(() => {
     if (repoPath) refresh(repoPath)
   }, [repoPath, refresh])
+
+  // Open pull requests come from GitHub via gh, which takes a second or two, so
+  // they load in the background (on open, then at most once a minute when the
+  // window regains focus) and the branch menu reads them from here.
+  useEffect(() => {
+    setPullRequests([])
+    if (!repoPath) return
+    let cancelled = false
+    let lastFetch = 0
+    const load = (): void => {
+      if (Date.now() - lastFetch < 60_000) return
+      lastFetch = Date.now()
+      window.api.openPullRequests(repoPath).then((res) => {
+        if (!cancelled && res.ok) setPullRequests(res.data)
+      })
+    }
+    load()
+    window.addEventListener('focus', load)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', load)
+    }
+  }, [repoPath])
 
   // Claude's edits and commands land in bursts; refresh once they settle.
   const claudeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -563,11 +593,7 @@ export default function App(): JSX.Element {
       const url = res.ok ? withPullRequestText(compareUrl, res.data) : compareUrl
       window.api.openExternal(url).then((r) => !r.ok && showError(r.error))
     },
-    remoteInfo: async (target) => {
-      if (!repoPath) return null
-      const res = await window.api.branchRemoteInfo(repoPath, target.name, target.remote)
-      return res.ok ? res.data : null
-    }
+    remoteInfo: (target) => resolveBranchRemote(target, branches, remotes, pullRequests)
   }
 
   return (
