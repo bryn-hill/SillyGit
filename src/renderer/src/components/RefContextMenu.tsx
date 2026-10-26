@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useEffect, type JSX } from 'react'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
@@ -45,6 +45,8 @@ export interface RefActions {
   startPullRequest: (compareUrl: string, base: string, head: string, headBranch: string) => void
   /** Where the branch lives on its remote. Synchronous: the app keeps remotes and open PRs cached. */
   remoteInfo: (target: RefTarget) => BranchRemoteInfo | null
+  /** Refreshes that cache in the background; the menu re-renders when it lands. */
+  revalidate: () => void
 }
 
 interface Props {
@@ -75,6 +77,10 @@ export default function RefContextMenu({
   onClose
 }: Props): JSX.Element {
   const info = target ? actions.remoteInfo(target) : null
+  const { revalidate } = actions
+  useEffect(() => {
+    if (target) revalidate()
+  }, [target, revalidate])
 
   const into = currentBranch ?? 'HEAD'
   const name = target ? shortRef(target.name) : ''
