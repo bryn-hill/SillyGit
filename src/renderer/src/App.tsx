@@ -20,6 +20,7 @@ import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './comp
 import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
+import { withPullRequestText } from '../../shared/quickActions'
 
 // 'none' means nothing is selected and the side bar is closed.
 export type Selection = { type: 'none' } | { type: 'working' } | { type: 'commit'; hash: string }
@@ -504,6 +505,13 @@ export default function App(): JSX.Element {
     copyText: handleCopyText,
     openUrl: (url) => {
       window.api.openExternal(url).then((res) => !res.ok && showError(res.error))
+    },
+    startPullRequest: async (compareUrl, base, head, headBranch) => {
+      if (!repoPath) return
+      // Prefill from the commits by rule; fall back to the bare form if that fails.
+      const res = await window.api.quickPullRequestText(repoPath, base, head, headBranch)
+      const url = res.ok ? withPullRequestText(compareUrl, res.data) : compareUrl
+      window.api.openExternal(url).then((r) => !r.ok && showError(r.error))
     },
     remoteInfo: async (target) => {
       if (!repoPath) return null

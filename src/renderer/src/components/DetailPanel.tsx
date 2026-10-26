@@ -3,6 +3,7 @@ import type { CommitDetail, FileStatus, OperationState, RepoStatus } from '../..
 import type { Selection } from '../App'
 import DiffBlock from './DiffBlock'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
 
 const OPERATION_NAMES: Record<OperationState['kind'], string> = {
   merge: 'Merge',
@@ -70,11 +71,79 @@ function WorkingDirectoryView({
   const [diffText, setDiffText] = useState('')
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null)
+  const [suggestions, setSuggestions] = useState<QuickMessage[]>([])
+  const [packageVersion, setPackageVersion] = useState<string | null>(null)
 
   const staged = status?.staged ?? []
   const unstaged = status?.unstaged ?? []
   const conflicted = status?.conflicted ?? []
   const totalChanges = staged.length + unstaged.length + conflicted.length
+
+  // Rule-based suggestions are cheap (no AI), so recompute whenever the index changes.
+  const stagedKey = staged.map((f) => `${f.index}${f.path}`).join('\n')
+  useEffect(() => {
+    let cancelled = false
+    if (!stagedKey) {
+      setSuggestions([])
+    } else {
+      window.api.quickSuggestMessages(repoPath).then((res) => !cancelled && setSuggestions(res.ok ? res.data : []))
+    }
+    window.api.quickPackageVersion(repoPath).then((res) => !cancelled && setPackageVersion(res.ok ? res.data : null))
+    return () => {
+      cancelled = true
+    }
+  }, [repoPath, stagedKey])
+
+  const handleBump = async (kind: BumpKind): Promise<void> => {
+    setGenerateError(null)
+    const res = await window.api.quickBumpVersion(repoPath, kind)
+    if (!res.ok) {
+      setGenerateError(res.error)
+      return
+    }
+    onCommitMessageChange(res.data.message)
+    onStage(res.data.files)
+  }
+
+  const quickMenuSections = (): ContextMenuItem[][] => {
+    const sections: ContextMenuItem[][] = []
+    if (suggestions.length > 0) {
+      sections.push(
+        suggestions.map((s) => ({
+          id: `suggest-${s.id}`,
+          label: s.label,
+          title: s.message,
+          onSelect: () => onCommitMessageChange(s.message)
+        }))
+      )
+    }
+    const tools: ContextMenuItem[] = []
+    const kinds: BumpKind[] = ['patch', 'minor', 'major']
+    const bumps = packageVersion ? kinds.filter((k) => bumpVersion(packageVersion, k)) : []
+    if (packageVersion && bumps.length > 0) {
+      tools.push({
+        id: 'bump',
+        label: `Bump version (${packageVersion})`,
+        submenu: bumps.map((k) => ({
+          id: `bump-${k}`,
+          label: `${k[0].toUpperCase()}${k.slice(1)} → ${bumpVersion(packageVersion, k)}`,
+          onSelect: () => void handleBump(k)
+        }))
+      })
+    }
+    tools.push({
+      id: 'prefix',
+      label: 'Prefix with',
+      submenu: COMMIT_PREFIXES.map((p) => ({
+        id: `prefix-${p}`,
+        label: `${p}:`,
+        onSelect: () => onCommitMessageChange(applyPrefix(commitMessage, p))
+      }))
+    })
+    sections.push(tools)
+    return sections
+  }
 
   const handleGenerateMessage = async (): Promise<void> => {
     setGenerating(true)
@@ -261,6 +330,16 @@ function WorkingDirectoryView({
           <div className="commit-box-toolbar">
             <button
               className="link-button"
+              title="Fill in a message from simple rules (no AI)"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect()
+                setQuickMenu({ x: r.left, y: r.bottom + 4 })
+              }}
+            >
+              Quick actions ▾
+            </button>
+            <button
+              className="link-button"
               disabled={staged.length === 0 || generating}
               onClick={handleGenerateMessage}
             >
@@ -268,6 +347,15 @@ function WorkingDirectoryView({
             </button>
           </div>
           {generateError && <div className="ai-error">{generateError}</div>}
+          {suggestions.length > 0 && !commitMessage.trim() && (
+            <button
+              className="quick-suggestion"
+              title="Use this message (no AI)"
+              onClick={() => onCommitMessageChange(suggestions[0].message)}
+            >
+              <span className="quick-suggestion-label">Use</span> {suggestions[0].message.split('\n')[0]}
+            </button>
+          )}
           <textarea
             placeholder="Commit message"
             value={commitMessage}
@@ -281,6 +369,14 @@ function WorkingDirectoryView({
             Commit {staged.length > 0 ? `(${staged.length})` : ''}
           </button>
         </div>
+      )}
+      {quickMenu && (
+        <ContextMenu
+          x={quickMenu.x}
+          y={quickMenu.y}
+          sections={quickMenuSections()}
+          onClose={() => setQuickMenu(null)}
+        />
       )}
       {conflictMenu && (
         <ContextMenu

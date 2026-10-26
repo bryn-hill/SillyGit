@@ -7,6 +7,7 @@ import * as branches from './branches'
 import * as ai from './ai'
 import * as settings from './settings'
 import * as launchpad from './launchpad'
+import * as quickActions from './quickActions'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
@@ -387,6 +388,22 @@ function registerIpcHandlers(): void {
       const fileContexts = await fetchReviewFileContexts(repoPath, hash, [{ path, status: 'M' }])
       return ai.reviewFile(path, diff, fileContexts)
     })
+  )
+
+  ipcMain.handle('quick:suggest-messages', (_e, repoPath: string) =>
+    wrap(() => quickActions.suggestForStaged(repoPath))
+  )
+
+  ipcMain.handle('quick:package-version', (_e, repoPath: string) =>
+    wrap(() => quickActions.getPackageVersion(repoPath))
+  )
+
+  ipcMain.handle('quick:bump-version', (_e, repoPath: string, kind: 'patch' | 'minor' | 'major') =>
+    wrap(() => quickActions.bumpPackageVersion(repoPath, kind))
+  )
+
+  ipcMain.handle('quick:pull-request-text', (_e, repoPath: string, base: string, head: string, headBranch: string) =>
+    wrap(() => quickActions.pullRequestText(repoPath, base, head, headBranch))
   )
 
   ipcMain.handle('ai:generate-commit-message', (_e, repoPath: string) =>

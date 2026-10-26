@@ -41,6 +41,8 @@ export interface RefActions {
   createPatch: (hash: string) => void
   copyText: (text: string) => void
   openUrl: (url: string) => void
+  /** Opens GitHub's new pull request form with the title and body filled in from the commits. */
+  startPullRequest: (compareUrl: string, base: string, head: string, headBranch: string) => void
   remoteInfo: (target: RefTarget) => Promise<BranchRemoteInfo | null>
 }
 
@@ -169,7 +171,7 @@ export default function RefContextMenu({
       prItems.push({
         id: 'pr-start',
         label: `Start a pull request from ${name} into ${shortRef(currentBranch)}`,
-        onSelect: () => actions.openUrl(compare)
+        onSelect: () => actions.startPullRequest(compare, currentBranch, target.name, info.remoteBranch!)
       })
     }
     if (prItems.length > 0) sections.push(prItems)

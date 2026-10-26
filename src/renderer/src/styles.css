@@ -680,8 +680,34 @@ input {
 
 .commit-box-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   font-size: 12px;
+}
+
+.quick-suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-suggestion:hover {
+  border-color: var(--accent);
+}
+
+.quick-suggestion-label {
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: 4px;
 }
 
 .commit-box textarea {
