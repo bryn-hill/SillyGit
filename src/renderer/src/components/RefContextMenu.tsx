@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import type { JSX } from 'react'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
@@ -43,7 +43,8 @@ export interface RefActions {
   openUrl: (url: string) => void
   /** Opens GitHub's new pull request form with the title and body filled in from the commits. */
   startPullRequest: (compareUrl: string, base: string, head: string, headBranch: string) => void
-  remoteInfo: (target: RefTarget) => Promise<BranchRemoteInfo | null>
+  /** Where the branch lives on its remote. Synchronous: the app keeps remotes and open PRs cached. */
+  remoteInfo: (target: RefTarget) => BranchRemoteInfo | null
 }
 
 interface Props {
@@ -73,19 +74,7 @@ export default function RefContextMenu({
   actions,
   onClose
 }: Props): JSX.Element {
-  const [remoteInfo, setRemoteInfo] = useState<BranchRemoteInfo | null | 'loading'>(target ? 'loading' : null)
-
-  useEffect(() => {
-    if (!target) return
-    let cancelled = false
-    actions.remoteInfo(target).then((info) => {
-      if (!cancelled) setRemoteInfo(info)
-    })
-    return () => {
-      cancelled = true
-    }
-    // Look the branch up once per menu.
-  }, [target?.name, target?.remote])
+  const info = target ? actions.remoteInfo(target) : null
 
   const into = currentBranch ?? 'HEAD'
   const name = target ? shortRef(target.name) : ''
@@ -155,12 +144,9 @@ export default function RefContextMenu({
   commitItems.push({ id: 'revert', label: 'Revert commit', onSelect: () => actions.revertCommit(hash) })
   sections.push(commitItems)
 
-  const info = remoteInfo === 'loading' ? null : remoteInfo
   if (target) {
     const prItems: ContextMenuItem[] = []
-    if (remoteInfo === 'loading') {
-      prItems.push({ id: 'pr-loading', label: 'Looking for a pull request…', disabled: true })
-    } else if (info?.pullRequest) {
+    if (info?.pullRequest) {
       const pr = info.pullRequest
       prItems.push(
         { id: 'pr-view', label: `View pull request #${pr.number} on GitHub`, onSelect: () => actions.openUrl(pr.url) },

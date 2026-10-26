@@ -125,15 +125,21 @@ test.describe('branch right-click menu', () => {
       expect(repo.git('rev-parse', '--abbrev-ref', 'feature@{upstream}').trim()).toBe('origin/feature')
     })
 
+    test('offers to start a pull request when the branch has none', async ({ sillygit, electronApp, repo }) => {
+      await stubIpc(electronApp, 'git:open-pull-requests', { ok: true, data: [] })
+      await sillygit.openRepository(repo.path)
+
+      await sillygit.graph.badge('origin/feature').click({ button: 'right' })
+      // No lookup when the menu opens: the item is there straight away.
+      await expect(
+        sillygit.page.getByRole('menuitem', { name: 'Start a pull request from origin/feature into main' })
+      ).toBeVisible({ timeout: 500 })
+    })
+
     test('offers the pull request and GitHub links', async ({ sillygit, electronApp, repo }) => {
-      await stubIpc(electronApp, 'git:branch-remote-info', {
+      await stubIpc(electronApp, 'git:open-pull-requests', {
         ok: true,
-        data: {
-          remote: 'origin',
-          webUrl: 'https://github.com/owner/repo',
-          remoteBranch: 'feature',
-          pullRequest: { number: 16, url: 'https://github.com/owner/repo/pull/16' }
-        }
+        data: [{ number: 16, url: 'https://github.com/owner/repo/pull/16', headRefName: 'feature' }]
       })
       await sillygit.openRepository(repo.path)
 
