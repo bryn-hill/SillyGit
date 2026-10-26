@@ -26,6 +26,19 @@ export interface BranchInfo {
   upstream?: string
 }
 
+/** A git remote and the web page of its repository, when it's on a host we know. */
+export interface RepoRemote {
+  name: string
+  webUrl: string | null
+}
+
+/** An open pull request, as `gh pr list` reports it. */
+export interface OpenPullRequest {
+  number: number
+  url: string
+  headRefName: string
+}
+
 /** Where a branch lives on its hosting site, for the branch right-click menu. */
 export interface BranchRemoteInfo {
   /** e.g. "origin"; null when the repo has no remote to link to. */
@@ -34,7 +47,7 @@ export interface BranchRemoteInfo {
   webUrl: string | null
   /** The branch's name on the remote, or null when it hasn't been pushed. */
   remoteBranch: string | null
-  /** The open pull request whose head is this branch, when gh can find one. */
+  /** The open pull request whose head is this branch, if any. */
   pullRequest: { number: number; url: string } | null
 }
 

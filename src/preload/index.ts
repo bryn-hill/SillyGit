@@ -102,12 +102,10 @@ const api = {
     ipcRenderer.invoke('git:create-annotated-tag', repoPath, name, message, hash),
   createPatchFile: (repoPath: string, hash: string): Wrapped<void> =>
     ipcRenderer.invoke('git:create-patch-file', repoPath, hash),
-  branchRemoteInfo: (
-    repoPath: string,
-    name: string,
-    isRemote: boolean
-  ): Wrapped<import('../shared/types').BranchRemoteInfo> =>
-    ipcRenderer.invoke('git:branch-remote-info', repoPath, name, isRemote),
+  remotes: (repoPath: string): Wrapped<import('../shared/types').RepoRemote[]> =>
+    ipcRenderer.invoke('git:remotes', repoPath),
+  openPullRequests: (repoPath: string): Wrapped<import('../shared/types').OpenPullRequest[]> =>
+    ipcRenderer.invoke('git:open-pull-requests', repoPath),
   checkoutRemoteBranch: (repoPath: string, name: string): Wrapped<void> =>
     ipcRenderer.invoke('git:checkout-remote-branch', repoPath, name),
   deleteBranch: (repoPath: string, name: string, force: boolean): Wrapped<void> =>

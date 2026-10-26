@@ -288,8 +288,10 @@ function registerIpcHandlers(): void {
     })
   )
 
-  ipcMain.handle('git:branch-remote-info', (_e, repoPath: string, name: string, isRemote: boolean) =>
-    wrap(() => branches.getBranchRemoteInfo(repoPath, name, isRemote))
+  ipcMain.handle('git:remotes', (_e, repoPath: string) => wrap(() => branches.listRepoRemotes(repoPath)))
+
+  ipcMain.handle('git:open-pull-requests', (_e, repoPath: string) =>
+    wrap(() => branches.listOpenPullRequests(repoPath))
   )
 
   ipcMain.handle('git:checkout-remote-branch', (_e, repoPath: string, name: string) =>

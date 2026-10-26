@@ -1,6 +1,6 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import type { BranchRemoteInfo } from '../shared/types'
+import type { OpenPullRequest, RepoRemote } from '../shared/types'
 import { runGit } from './gitExec'
 
 const execFileAsync = promisify(execFile)
@@ -43,55 +43,33 @@ export function remoteWebUrl(url: string): string | null {
   return null
 }
 
-async function findPullRequest(
-  repoPath: string,
-  branch: string
-): Promise<{ number: number; url: string } | null> {
+/** The repo's remotes with their web URLs. Plain git, so it's quick enough for every refresh. */
+export async function listRepoRemotes(repoPath: string): Promise<RepoRemote[]> {
+  const out = await runGit(repoPath, ['remote', '-v'])
+  const remotes = new Map<string, RepoRemote>()
+  for (const line of out.split('\n')) {
+    const [name, url] = line.split(/\s+/)
+    if (name && url && !remotes.has(name)) remotes.set(name, { name, webUrl: remoteWebUrl(url) })
+  }
+  return [...remotes.values()]
+}
+
+/**
+ * The repo's open pull requests, from the gh CLI. This is a network call that
+ * takes a second or two, so the app runs it in the background and the branch
+ * menu reads the cached result. Empty when gh is missing or not signed in.
+ */
+export async function listOpenPullRequests(repoPath: string): Promise<OpenPullRequest[]> {
   try {
     const { stdout } = await execFileAsync(
       'gh',
-      ['pr', 'list', '--head', branch, '--state', 'open', '--limit', '1', '--json', 'number,url'],
-      { cwd: repoPath, timeout: 5000 }
+      ['pr', 'list', '--state', 'open', '--limit', '200', '--json', 'number,url,headRefName'],
+      { cwd: repoPath, timeout: 15000 }
     )
-    const prs = JSON.parse(stdout) as { number: number; url: string }[]
-    return prs[0] ?? null
+    return JSON.parse(stdout) as OpenPullRequest[]
   } catch {
-    // gh missing, not logged in, or not a GitHub repo: just leave the PR items out.
-    return null
+    return []
   }
-}
-
-/** Looks up where `name` lives on its remote, and its open pull request if any. */
-export async function getBranchRemoteInfo(
-  repoPath: string,
-  name: string,
-  isRemote: boolean
-): Promise<BranchRemoteInfo> {
-  let target: { remote: string; branch: string } | null = null
-  if (isRemote) {
-    target = await splitRemoteBranch(repoPath, name)
-  } else {
-    const upstream = (
-      await runGit(repoPath, ['for-each-ref', '--format=%(upstream:short)', `refs/heads/${name}`]).catch(() => '')
-    ).trim()
-    if (upstream) target = await splitRemoteBranch(repoPath, upstream)
-  }
-
-  let remote = target?.remote ?? null
-  if (!remote) {
-    const remotes = await listRemotes(repoPath).catch((): string[] => [])
-    remote = remotes.includes('origin') ? 'origin' : (remotes[0] ?? null)
-  }
-
-  let webUrl: string | null = null
-  if (remote) {
-    const url = await runGit(repoPath, ['remote', 'get-url', remote]).catch(() => '')
-    webUrl = remoteWebUrl(url)
-  }
-
-  const remoteBranch = target?.branch ?? null
-  const pullRequest = remoteBranch && webUrl ? await findPullRequest(repoPath, remoteBranch) : null
-  return { remote, webUrl, remoteBranch, pullRequest }
 }
 
 /**
