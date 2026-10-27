@@ -159,12 +159,11 @@ export async function lastCommitMessage(repoPath: string): Promise<string> {
 export async function getDiff(repoPath: string, path: string, staged: boolean, untracked: boolean): Promise<string> {
   if (untracked) {
     try {
-      const out = await runGit(repoPath, ['diff', '--no-color', '--no-index', '--', '/dev/null', path])
-      return out
+      return await runGit(repoPath, ['diff', '--no-color', '--no-index', '--', '/dev/null', path])
     } catch (err) {
-      // git diff --no-index exits non-zero when files differ; the diff is still in the error output
-      const message = err instanceof Error ? err.message : ''
-      return message
+      // git diff --no-index exits 1 when the files differ, with the diff on stdout.
+      if (err instanceof GitError && err.stdout) return err.stdout
+      throw err
     }
   }
   const args = staged
