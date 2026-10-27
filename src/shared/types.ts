@@ -79,6 +79,8 @@ export interface GraphCommit {
   author: string
   authorEmail: string
   date: string
+  /** Committer date; the graph is ordered by it, so sprint markers use it too. */
+  committedAt: string
   subject: string
   refs: string[]
 }

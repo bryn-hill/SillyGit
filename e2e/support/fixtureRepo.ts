@@ -40,6 +40,16 @@ export class FixtureRepo {
     this.git('commit', '-q', '-m', message)
   }
 
+  /** Like commitFile, but authored and committed at `date` (ISO 8601). */
+  commitFileAt(relativePath: string, content: string, message: string, date: string): void {
+    this.writeFile(relativePath, content)
+    this.git('add', relativePath)
+    execFileSync('git', ['commit', '-q', '-m', message], {
+      cwd: this.path,
+      env: { ...process.env, ...GIT_IDENTITY, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+    })
+  }
+
   /**
    * Adds `notes.txt` on main, then a `feature` branch and a new main commit
    * that both change its 2nd and 8th lines differently: two conflict hunks
