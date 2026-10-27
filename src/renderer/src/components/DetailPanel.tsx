@@ -56,6 +56,7 @@ interface WorkingProps {
   onAmendChange: (amend: boolean) => void
   operation: OperationState | null
   conflictActions: ConflictActions
+  onEditFile: (path: string) => void
 }
 
 function WorkingDirectoryView({
@@ -70,7 +71,8 @@ function WorkingDirectoryView({
   amend,
   onAmendChange,
   operation,
-  conflictActions
+  conflictActions,
+  onEditFile
 }: WorkingProps): JSX.Element {
   const [conflictMenu, setConflictMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -183,6 +185,19 @@ function WorkingDirectoryView({
           </span>
           <span className="file-path">{file.path}</span>
           <span className="file-actions">
+            {(isStaged ? file.index : file.worktree) !== 'D' && (
+              <button
+                className="icon-button"
+                title="Edit file"
+                aria-label={`Edit ${file.path}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditFile(file.path)
+                }}
+              >
+                ✎
+              </button>
+            )}
             {!isStaged && (
               <button
                 className="icon-button"
@@ -603,6 +618,7 @@ interface Props {
   onOpenCommitFileDiff: (hash: string, path: string) => void
   operation: OperationState | null
   conflictActions: ConflictActions
+  onEditFile: (path: string) => void
 }
 
 export default function DetailPanel(props: Props): JSX.Element {
@@ -633,6 +649,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       onAmendChange={props.onAmendChange}
       operation={props.operation}
       conflictActions={props.conflictActions}
+      onEditFile={props.onEditFile}
     />
   )
 }

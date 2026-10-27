@@ -14,6 +14,8 @@ interface Props {
   highlightLine?: number
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
+  /** Opens the working-tree copy of the file in the in-app editor. */
+  onEditFile?: (path: string) => void
 }
 
 function renderLineHtml(text: string, lang: string | null, showWhitespace: boolean): string {
@@ -233,7 +235,8 @@ export default function FileDiffViewer({
   diffText,
   highlightLine,
   onNavigateToCommit,
-  onWorkingTreeChanged
+  onWorkingTreeChanged,
+  onEditFile
 }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('diff')
   const [layout, setLayout] = useState<Layout>('unified')
@@ -375,8 +378,15 @@ export default function FileDiffViewer({
     <div className="file-diff-viewer">
       <div className="diff-toolbar">
         <div className="diff-toolbar-left">
-          <button className="edit-working-btn" onClick={handleEditInWorkingDir} title="Open this file in your default editor">
-            ✎ Edit in Working Directory
+          <button
+            className="edit-working-btn"
+            onClick={() => (onEditFile ? onEditFile(path) : void handleEditInWorkingDir())}
+            title="Edit the working directory copy of this file"
+          >
+            ✎ Edit file
+          </button>
+          <button className="icon-button" onClick={handleEditInWorkingDir} title="Open in external editor" aria-label="Open in external editor">
+            ↗
           </button>
         </div>
         <div className="diff-toolbar-center">

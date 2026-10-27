@@ -78,6 +78,10 @@ const api = {
     ipcRenderer.invoke('git:file-at-ref', repoPath, ref, path),
   workingFile: (repoPath: string, path: string): Wrapped<string> =>
     ipcRenderer.invoke('git:working-file', repoPath, path),
+  readEditableFile: (repoPath: string, path: string): Wrapped<import('../shared/types').EditableFile> =>
+    ipcRenderer.invoke('file:read-editable', repoPath, path),
+  writeFile: (repoPath: string, path: string, content: string): Wrapped<void> =>
+    ipcRenderer.invoke('file:write', repoPath, path, content),
   blame: (repoPath: string, ref: string, path: string): Wrapped<import('../shared/types').BlameLine[]> =>
     ipcRenderer.invoke('git:blame', repoPath, ref, path),
   fileHistory: (

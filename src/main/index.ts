@@ -3,6 +3,7 @@ import { basename, dirname, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
 import * as conflicts from './conflicts'
+import * as editFile from './editFile'
 import * as branches from './branches'
 import * as ai from './ai'
 import * as settings from './settings'
@@ -353,6 +354,14 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:working-file', (_e, repoPath: string, path: string) =>
     wrap(() => git.getWorkingFileContent(repoPath, path))
+  )
+
+  ipcMain.handle('file:read-editable', (_e, repoPath: string, path: string) =>
+    wrap(() => editFile.readEditableFile(repoPath, path))
+  )
+
+  ipcMain.handle('file:write', (_e, repoPath: string, path: string, content: string) =>
+    wrap(() => editFile.writeEditableFile(repoPath, path, content))
   )
 
   ipcMain.handle('git:blame', (_e, repoPath: string, ref: string, path: string) =>

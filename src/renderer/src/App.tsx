@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type {
   BranchInfo,
   OpenPullRequest,
@@ -36,6 +36,9 @@ import type { ClickModifiers } from './components/CommitGraph'
 import { clickCommit } from './lib/selection'
 import { isPrimary, isTyping, MOD } from './lib/shortcuts'
 import logo from './assets/logo.png'
+
+// Monaco is several MB, so the editor loads the first time a file is opened in it.
+const FileEditor = lazy(() => import('./components/FileEditor'))
 
 // Commits loaded per page; the graph loads another page as you scroll near the end.
 const GRAPH_PAGE = 500
@@ -94,6 +97,7 @@ export default function App(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null)
   const [operation, setOperation] = useState<OperationState | null>(null)
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
+  const [editingFile, setEditingFile] = useState<{ repoPath: string; path: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
@@ -1363,6 +1367,7 @@ export default function App(): JSX.Element {
                   setSelection({ type: 'commit', hash })
                 }}
                 onWorkingTreeChanged={() => refresh(repoPath)}
+                onEditFile={(path) => setEditingFile({ repoPath, path })}
               />
             ) : (
               <div className="main-layout">
@@ -1432,6 +1437,7 @@ export default function App(): JSX.Element {
                         onAbort: handleAbort,
                         onSkip: handleSkip
                       }}
+                      onEditFile={(path) => setEditingFile({ repoPath, path })}
                     />
                   </div>
                 )}
@@ -1466,6 +1472,17 @@ export default function App(): JSX.Element {
           sprints={sprintSettings}
           onSprintsChange={handleSprintSettingsChange}
         />
+      )}
+      {editingFile && (
+        <Suspense fallback={<div className="modal-backdrop file-editor-backdrop" />}>
+          <FileEditor
+            key={`${editingFile.repoPath}\0${editingFile.path}`}
+            repoPath={editingFile.repoPath}
+            path={editingFile.path}
+            onClose={() => setEditingFile(null)}
+            onSaved={() => refresh(editingFile.repoPath)}
+          />
+        </Suspense>
       )}
       {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}
       {showActivity && <ActivityLog repoPath={repoPath} onClose={() => setShowActivity(false)} />}

@@ -13,6 +13,7 @@ interface Props {
   onClose: () => void
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
+  onEditFile?: (path: string) => void
 }
 
 function SparkleIcon(): JSX.Element {
@@ -35,7 +36,8 @@ export default function CommitFullView({
   isHead,
   onClose,
   onNavigateToCommit,
-  onWorkingTreeChanged
+  onWorkingTreeChanged,
+  onEditFile
 }: Props): JSX.Element {
   const [detail, setDetail] = useState<CommitDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -166,6 +168,7 @@ export default function CommitFullView({
                 highlightLine={highlightTarget?.file === selectedPath ? highlightTarget.line : undefined}
                 onNavigateToCommit={onNavigateToCommit}
                 onWorkingTreeChanged={onWorkingTreeChanged}
+                onEditFile={onEditFile}
               />
             )}
           </div>

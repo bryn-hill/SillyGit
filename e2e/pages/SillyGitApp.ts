@@ -4,6 +4,7 @@ import { CommitGraph } from './CommitGraph'
 import { CommitView } from './CommitView'
 import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
+import { FileEditor } from './FileEditor'
 import { MergeTool } from './MergeTool'
 import { RepoTabs } from './RepoTabs'
 import { SettingsDialog } from './SettingsDialog'
@@ -22,6 +23,7 @@ export class SillyGitApp {
   readonly mergeTool: MergeTool
   readonly settings: SettingsDialog
   readonly tabs: RepoTabs
+  readonly editor: FileEditor
 
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
@@ -50,6 +52,7 @@ export class SillyGitApp {
     this.mergeTool = new MergeTool(page)
     this.settings = new SettingsDialog(page)
     this.tabs = new RepoTabs(page)
+    this.editor = new FileEditor(page)
 
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })

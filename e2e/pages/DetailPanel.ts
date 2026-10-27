@@ -14,6 +14,11 @@ export class DetailPanel {
     return this.root.locator('.file-row').filter({ hasText: path })
   }
 
+  /** Opens a working-directory file in the in-app editor from its row's pencil button. */
+  async editFile(path: string): Promise<void> {
+    await this.file(path).getByRole('button', { name: `Edit ${path}` }).click()
+  }
+
   async openFile(path: string): Promise<void> {
     await this.file(path).click()
   }

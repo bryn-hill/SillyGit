@@ -292,3 +292,9 @@ export interface SavedTabs {
   /** The tab showing, or null when none is open. */
   activeTab: string | null
 }
+
+/** A working-tree file loaded for the in-app editor. */
+export type EditableFile =
+  | { kind: 'text'; absolutePath: string; content: string }
+  | { kind: 'binary' | 'too-large'; absolutePath: string; size: number }
+  | { kind: 'missing'; absolutePath: string }
