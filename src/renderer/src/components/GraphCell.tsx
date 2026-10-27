@@ -87,6 +87,7 @@ export default function GraphCell({ row }: { row: GraphRow }): JSX.Element {
     elements.push(
       <path
         key={`out-${k}`}
+        data-testid="merge-line"
         d={`M ${x0} ${cy} C ${x0} ${cy}, ${x1} ${cy}, ${x1} ${ROW_HEIGHT}`}
         stroke={row.afterColors[k]}
         strokeWidth={2}
