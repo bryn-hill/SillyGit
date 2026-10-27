@@ -1,0 +1,34 @@
+# Packages SillyGit into an installable app: `npm run dist` (or `dist:dir`
+# for an unpacked app you can run straight away). Output goes to dist/.
+appId: com.brynhill.sillygit
+productName: SillyGit
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out/**
+  - resources/**
+# node-pty ships N-API prebuilds that already work under Electron, the same
+# ones dev runs use, so skip rebuilding it from source.
+npmRebuild: false
+# Native helpers can't run from inside the asar archive.
+asarUnpack:
+  - node_modules/node-pty/**
+  - node_modules/@anthropic-ai/**
+mac:
+  icon: resources/icon.png
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+  # Ad hoc signed, not notarized: first launch needs right-click > Open.
+  identity: '-'
+  hardenedRuntime: false
+win:
+  icon: resources/icon.png
+  target: nsis
+linux:
+  icon: resources/icon.png
+  category: Development
+  target: AppImage
+publish: null

@@ -615,7 +615,7 @@ app.whenReady().then(() => {
   setNetworkEnv(accounts.gitAuthEnv)
   registerIpcHandlers()
   // Packaged macOS builds take the icon from the bundle; dev runs need it set here.
-  app.dock?.setIcon(icon)
+  if (!app.isPackaged) app.dock?.setIcon(icon)
   createWindow()
 
   app.on('activate', () => {
