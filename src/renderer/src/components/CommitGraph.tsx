@@ -7,6 +7,7 @@ import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMen
 import { selectedHashes } from '../lib/selection'
 import { groupRefs, parseRefs, type RefBadge } from '../lib/refs'
 import RefCell, { type RefHandlers } from './RefCell'
+import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
 const MIN_REF_COLUMN_WIDTH = 60
@@ -75,6 +76,8 @@ interface Props {
   searchFocusToken: number
   refColumnWidth: number
   onRefColumnWidthChange: (width: number) => void
+  /** Sprint dividers and shading, when turned on in Settings. */
+  sprints: SprintSettings
 }
 
 export default function CommitGraph({
@@ -96,7 +99,8 @@ export default function CommitGraph({
   onLoadMore,
   searchFocusToken,
   refColumnWidth,
-  onRefColumnWidthChange
+  onRefColumnWidthChange,
+  sprints
 }: Props): JSX.Element {
   const topLane = rows[0]?.lane ?? 0
   const topColor = rows[0]?.color ?? '#bd93f9'
@@ -120,6 +124,14 @@ export default function CommitGraph({
   )
 
   const selected = useMemo(() => selectedHashes(selection), [selection])
+
+  const marks = useMemo(
+    () => (sprints.enabled ? sprintMarks(rows.map((r) => r.commit.committedAt || r.commit.date), sprints) : null),
+    [rows, sprints]
+  )
+  const now = new Date()
+  const today = localDay(now.toISOString())
+  const currentSprint = today === null ? null : sprintIndexOfDay(today, sprints)
 
   // --- Search -------------------------------------------------------------
   const [query, setQuery] = useState('')
@@ -251,15 +263,21 @@ export default function CommitGraph({
     document.body.classList.add('col-resizing')
   }
 
-  const renderRow = (row: GraphRow): JSX.Element => {
+  const renderRow = (row: GraphRow, index: number): JSX.Element => {
     const badges = parseRefs(row.commit.refs, localBranches, remoteBranches)
     const isSelected = selected.has(row.commit.hash)
     const isContextTarget = menu?.hash === row.commit.hash
     const dimmed = hitSet !== null && !hitSet.has(row.commit.hash)
+    const mark = marks?.[index]
+    const sprintClass = mark
+      ? `sprint-band-${Math.abs(mark.sprint.index) % 2 ? 'odd' : 'even'} ${mark.starts ? 'sprint-start' : ''} ${
+          mark.starts && index + wipOffset === 0 ? 'sprint-first' : ''
+        }`
+      : ''
     return (
       <div
         key={row.commit.hash}
-        className={`graph-row ${isSelected ? 'selected' : ''} ${isContextTarget ? 'context-target' : ''} ${dimmed ? 'dimmed' : ''}`}
+        className={`graph-row ${isSelected ? 'selected' : ''} ${isContextTarget ? 'context-target' : ''} ${dimmed ? 'dimmed' : ''} ${sprintClass}`}
         role="option"
         aria-selected={isSelected}
         data-hash={row.commit.hash}
@@ -289,6 +307,15 @@ export default function CommitGraph({
             {row.commit.author} · {timeAgo(row.commit.date)}
           </span>
         </div>
+        {mark?.starts && (
+          <div
+            className={`sprint-marker ${mark.sprint.index === currentSprint ? 'current' : ''}`}
+            data-testid="sprint-marker"
+          >
+            {sprintLabel(mark.sprint, now.getFullYear())}
+            {mark.sprint.index === currentSprint && <span className="sprint-marker-now"> · current</span>}
+          </div>
+        )}
       </div>
     )
   }
@@ -322,7 +349,7 @@ export default function CommitGraph({
         </div>
       )
     } else {
-      visible.push(renderRow(rows[i - wipOffset]))
+      visible.push(renderRow(rows[i - wipOffset], i - wipOffset))
     }
   }
 

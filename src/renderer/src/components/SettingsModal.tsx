@@ -12,6 +12,15 @@ import {
   NOTIFICATION_KIND_ORDER,
   type NotificationSettings
 } from '../../../shared/notifications'
+import {
+  SPRINT_LENGTH_CHOICES,
+  localDay,
+  parseDay,
+  sprintAt,
+  sprintIndexOfDay,
+  sprintLabel,
+  type SprintSettings
+} from '../../../shared/sprints'
 import Avatar from './Avatar'
 import { resetAvatars } from '../lib/avatars'
 
@@ -19,6 +28,8 @@ interface Props {
   onClose: () => void
   autoFetchMinutes: number
   onAutoFetchChange: (minutes: number) => void
+  sprints: SprintSettings
+  onSprintsChange: (next: SprintSettings) => void
 }
 
 const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
@@ -303,7 +314,95 @@ function NotificationsSection(): JSX.Element {
   )
 }
 
-export default function SettingsModal({ onClose, autoFetchMinutes, onAutoFetchChange }: Props): JSX.Element {
+function SprintsSection({
+  sprints,
+  onChange
+}: {
+  sprints: SprintSettings
+  onChange: (next: SprintSettings) => void
+}): JSX.Element {
+  // Drafts, so a half-typed date or number isn't thrown away mid-edit.
+  const [startDate, setStartDate] = useState(sprints.startDate)
+  const [startNumber, setStartNumber] = useState(String(sprints.startNumber))
+  useEffect(() => setStartDate(sprints.startDate), [sprints.startDate])
+  useEffect(() => setStartNumber(String(sprints.startNumber)), [sprints.startNumber])
+
+  const today = localDay(new Date().toISOString())
+  const current = today === null ? null : sprintAt(sprintIndexOfDay(today, sprints), sprints)
+
+  return (
+    <section className="settings-section" aria-label="Sprints">
+      <label className="settings-checkbox">
+        <input
+          type="checkbox"
+          checked={sprints.enabled}
+          onChange={(e) => onChange({ ...sprints, enabled: e.target.checked })}
+        />
+        Show sprints on the graph
+      </label>
+      <div className="modal-hint">
+        Draws a divider where each sprint starts and shades alternate sprints, so you can see which commits landed in
+        which sprint.
+      </div>
+      {sprints.enabled && (
+        <div className="settings-suboptions">
+          <div className="settings-inline">
+            <label htmlFor="sprint-length">Sprints last</label>
+            <select
+              id="sprint-length"
+              value={sprints.lengthWeeks}
+              onChange={(e) => onChange({ ...sprints, lengthWeeks: Number(e.target.value) })}
+            >
+              {SPRINT_LENGTH_CHOICES.map((w) => (
+                <option key={w} value={w}>
+                  {w === 1 ? '1 week' : `${w} weeks`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="settings-inline sprint-start-row">
+            <label htmlFor="sprint-start">A sprint started on</label>
+            <input
+              id="sprint-start"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value)
+                if (parseDay(e.target.value) !== null) onChange({ ...sprints, startDate: e.target.value })
+              }}
+            />
+            <label htmlFor="sprint-number">and was number</label>
+            <input
+              id="sprint-number"
+              className="sprint-number-input"
+              type="number"
+              value={startNumber}
+              onChange={(e) => {
+                setStartNumber(e.target.value)
+                const n = Number(e.target.value)
+                if (e.target.value.trim() && Number.isInteger(n)) onChange({ ...sprints, startNumber: n })
+              }}
+            />
+          </div>
+          {current && (
+            <div className="modal-hint" data-testid="current-sprint">
+              Now: {sprintLabel(current, new Date().getFullYear())}. Commits are placed by commit date in your time
+              zone.
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+export default function SettingsModal({
+  onClose,
+  autoFetchMinutes,
+  onAutoFetchChange,
+  sprints,
+  onSprintsChange
+}: Props): JSX.Element {
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -362,6 +461,8 @@ export default function SettingsModal({ onClose, autoFetchMinutes, onAutoFetchCh
               Looked up on GitHub, GitLab and Gravatar by commit email, then cached. Off shows initials only.
             </div>
           </section>
+
+          <SprintsSection sprints={sprints} onChange={onSprintsChange} />
 
           <section className="settings-section">
             <label className="modal-label" htmlFor="auto-fetch">

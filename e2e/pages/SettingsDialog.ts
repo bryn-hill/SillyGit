@@ -13,6 +13,11 @@ export class SettingsDialog {
   readonly notificationsEnabled: Locator
   readonly notificationInterval: Locator
   readonly testNotificationButton: Locator
+  readonly sprints: Locator
+  readonly sprintsEnabled: Locator
+  readonly sprintLength: Locator
+  readonly sprintStart: Locator
+  readonly sprintNumber: Locator
 
   constructor(private readonly page: Page) {
     this.root = page.getByRole('dialog', { name: 'Settings' })
@@ -26,6 +31,11 @@ export class SettingsDialog {
     this.notificationsEnabled = this.notifications.getByRole('checkbox', { name: 'Pull request notifications' })
     this.notificationInterval = this.notifications.getByLabel('Check')
     this.testNotificationButton = this.notifications.getByRole('button', { name: 'Send a test notification' })
+    this.sprints = this.root.getByRole('region', { name: 'Sprints' })
+    this.sprintsEnabled = this.sprints.getByRole('checkbox', { name: 'Show sprints on the graph' })
+    this.sprintLength = this.sprints.getByLabel('Sprints last')
+    this.sprintStart = this.sprints.getByLabel('A sprint started on')
+    this.sprintNumber = this.sprints.getByLabel('and was number')
   }
 
   notificationKind(label: string): Locator {

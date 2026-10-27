@@ -158,6 +158,11 @@ const api = {
     ipcRenderer.invoke('accounts:add', input),
   removeAccount: (id: string): Wrapped<import('../shared/accounts').ProviderAccount[]> =>
     ipcRenderer.invoke('accounts:remove', id),
+  getSprintSettings: (): Promise<import('../shared/sprints').SprintSettings> =>
+    ipcRenderer.invoke('settings:get-sprints'),
+  setSprintSettings: (
+    next: import('../shared/sprints').SprintSettings
+  ): Wrapped<import('../shared/sprints').SprintSettings> => ipcRenderer.invoke('settings:set-sprints', next),
   getNotificationSettings: (): Promise<import('../shared/notifications').NotificationSettings> =>
     ipcRenderer.invoke('notifications:get-settings'),
   setNotificationSettings: (

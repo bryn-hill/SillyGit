@@ -3986,3 +3986,67 @@ button.link-button.danger {
   padding: 12px;
   color: var(--text-dim);
 }
+
+/* Sprint markers: a dashed divider and label above the newest commit of each
+   sprint, and faint alternating shading so a sprint's commits read as a group. */
+.graph-row.sprint-band-even,
+.graph-row.sprint-band-odd {
+  position: relative;
+}
+
+.graph-row.sprint-band-odd {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.035));
+}
+
+.graph-row.sprint-start::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  pointer-events: none;
+}
+
+.sprint-marker {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  transform: translateY(-50%);
+  z-index: 1;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  line-height: 15px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.graph-row.sprint-first .sprint-marker {
+  transform: none;
+  top: 1px;
+}
+
+.sprint-marker.current {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.settings-suboptions input.sprint-number-input {
+  width: 64px;
+}
+
+.settings-suboptions input[type='date'] {
+  width: auto;
+}
+
+.sprint-start-row {
+  flex-wrap: wrap;
+}
+
+.sprint-start-row label {
+  white-space: nowrap;
+}

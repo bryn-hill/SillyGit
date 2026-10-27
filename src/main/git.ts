@@ -278,7 +278,7 @@ const RS = '\x1e' // record separator, safe commit delimiter
 export const GRAPH_PAGE_SIZE = 500
 
 export async function getGraphLog(repoPath: string, limit = GRAPH_PAGE_SIZE): Promise<GraphCommit[]> {
-  const format = `%x1e%H${US}%P${US}%an${US}%ae${US}%ad${US}%s${US}%D`
+  const format = `%x1e%H${US}%P${US}%an${US}%ae${US}%ad${US}%cd${US}%s${US}%D`
   let out: string
   try {
     out = await runGit(repoPath, [
@@ -299,13 +299,14 @@ export async function getGraphLog(repoPath: string, limit = GRAPH_PAGE_SIZE): Pr
     .map((rec) => rec.trim())
     .filter((rec) => rec.length > 0)
     .map((rec) => {
-      const [hash, parents, author, authorEmail, date, subject, refs] = rec.split(US)
+      const [hash, parents, author, authorEmail, date, committedAt, subject, refs] = rec.split(US)
       return {
         hash,
         parents: parents ? parents.split(' ').filter(Boolean) : [],
         author,
         authorEmail,
         date,
+        committedAt,
         subject,
         refs: refs ? refs.split(', ').filter(Boolean) : []
       }

@@ -33,6 +33,16 @@ export class CommitGraph {
     return this.root.page().getByRole('separator', { name: 'Resize branch and tag column' })
   }
 
+  /** The "Sprint N · dates" labels drawn above the newest commit of each sprint. */
+  get sprintMarkers(): Locator {
+    return this.root.getByTestId('sprint-marker')
+  }
+
+  /** The sprint label above a commit's row, when it's the newest commit of its sprint. */
+  sprintMarker(subject: string): Locator {
+    return this.row(subject).getByTestId('sprint-marker')
+  }
+
   workingChangesRow(): Locator {
     return this.row('Uncommitted changes')
   }
