@@ -157,13 +157,13 @@ function TerminalIcon(): JSX.Element {
 function GearIcon(): JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.2" />
       <path
-        d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.2 3.8l-1.1 1.1M4.9 11.1l-1.1 1.1M12.2 12.2l-1.1-1.1M4.9 4.9 3.8 3.8"
+        d="M6.61 3.3 6.91 1.8h2.18l.3 1.5.95.39 1.27-.85 1.55 1.55-.85 1.27.39.95 1.5.3v2.18l-1.5.3-.39.95.85 1.27-1.55 1.55-1.27-.85-.95.39-.3 1.5H6.91l-.3-1.5-.95-.39-1.27.85-1.55-1.55.85-1.27-.39-.95-1.5-.3V6.91l1.5-.3.39-.95-.85-1.27 1.55-1.55 1.27.85Z"
         stroke="currentColor"
         strokeWidth="1.2"
-        strokeLinecap="round"
+        strokeLinejoin="round"
       />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
     </svg>
   )
 }
