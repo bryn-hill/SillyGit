@@ -1572,6 +1572,11 @@ button.ai-ask-button:focus-visible {
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  /* The title strip and toolbar under the backdrop drag the window on macOS,
+     and a drag region wins over whatever sits on top of it: without this,
+     clicks there (like the file editor's close button) move or zoom the
+     window instead. */
+  -webkit-app-region: no-drag;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
