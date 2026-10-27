@@ -31,6 +31,7 @@ import CommandPalette, { type Command } from './components/CommandPalette'
 import type { ClickModifiers } from './components/CommitGraph'
 import { clickCommit } from './lib/selection'
 import { isPrimary, isTyping, MOD } from './lib/shortcuts'
+import logo from './assets/logo.png'
 
 // Commits loaded per page; the graph loads another page as you scroll near the end.
 const GRAPH_PAGE = 500
@@ -977,6 +978,7 @@ export default function App(): JSX.Element {
           <div className="workspace-main">
             {!repoPath ? (
               <div className="empty-state">
+                <img className="empty-state-logo" src={logo} alt="SillyGit" />
                 <p>No repository open.</p>
                 <button onClick={handleOpenRepo}>Open Repository</button>
                 {recentRepos.length > 0 && (

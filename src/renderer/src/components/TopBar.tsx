@@ -3,6 +3,7 @@ import type { BranchInfo, RepoStatus } from '../../../shared/types'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
+import logo from '../assets/logo.png'
 
 interface Props {
   repoPath: string | null
@@ -201,6 +202,7 @@ export default function TopBar({
   return (
     <div className="top-bar">
       <div className="top-bar-left">
+        <img className="top-bar-logo" src={logo} alt="SillyGit" />
         <div className="breadcrumb">
           <div className="breadcrumb-segment-wrap">
             <button

@@ -129,6 +129,12 @@ input {
   flex-shrink: 0;
 }
 
+.top-bar-logo {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
 .top-bar button {
   display: inline-flex;
   align-items: center;
@@ -152,6 +158,12 @@ input {
   justify-content: center;
   gap: 12px;
   color: var(--text-dim);
+}
+
+.empty-state-logo {
+  width: 112px;
+  height: 112px;
+  margin-bottom: 4px;
 }
 
 .workspace {

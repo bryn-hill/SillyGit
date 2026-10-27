@@ -20,6 +20,7 @@ import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
 import { watchRepo, stopWatching } from './watcher'
+import icon from '../../resources/icon.png?asset'
 import type { AvatarRequest, CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -37,6 +38,7 @@ function createWindow(): void {
     height: 800,
     show: false,
     titleBarStyle: 'hiddenInset',
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -612,6 +614,8 @@ app.whenReady().then(() => {
   setFetch((url, init) => net.fetch(url, init))
   setNetworkEnv(accounts.gitAuthEnv)
   registerIpcHandlers()
+  // Packaged macOS builds take the icon from the bundle; dev runs need it set here.
+  app.dock?.setIcon(icon)
   createWindow()
 
   app.on('activate', () => {
