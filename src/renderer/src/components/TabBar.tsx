@@ -1,4 +1,5 @@
-import { useState, type DragEvent, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { BranchIcon, FolderIcon, LaunchpadIcon } from './TopBar'
 import { repoDisplayName } from '../lib/repoName'
@@ -64,12 +65,18 @@ function tabLabels(tabs: string[]): Map<string, string> {
   )
 }
 
-const DRAG_TYPE = 'application/x-sillygit-tab'
+// How far the pointer moves before a press on a tab becomes a drag.
+const DRAG_THRESHOLD = 5
 
 /**
  * GitKraken-style window title strip: open a repo, the Launchpad tab, one tab
  * per open repo (pinned ones grouped on the left) and + for a new tab. The
  * strip's empty space drags the window on macOS; tabs take clicks.
+ *
+ * Tabs are selected on pointer down, like browser tabs, and reordered with
+ * pointer events rather than HTML drag and drop: a native drag starts on the
+ * slightest wobble and eats the click, and inside a window drag region on
+ * macOS it is unreliable anyway.
  */
 export default function TabBar({
   tabs,
@@ -92,30 +99,71 @@ export default function TabBar({
   const otherTabs = tabs.filter((p) => !pinned.includes(p))
   const sameGroup = (a: string, b: string): boolean => pinned.includes(a) === pinned.includes(b)
 
+  // The press that may become a drag; `moved` once it passes the threshold.
+  const press = useRef<{ path: string; x: number; y: number; pointerId: number; moved: boolean } | null>(null)
+  const tabEls = useRef(new Map<string, HTMLDivElement>())
+
   const endDrag = (): void => {
+    press.current = null
     setDragging(null)
     setDropBefore(undefined)
   }
 
-  const handleDragOver = (e: DragEvent, path: string): void => {
-    if (!dragging || !sameGroup(dragging, path)) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const after = e.clientX > rect.left + rect.width / 2
-    if (!after) {
-      setDropBefore(path)
-      return
+  // Where a tab dragged to clientX would land among the tabs of its own group.
+  const dropTargetAt = (path: string, clientX: number): string | null => {
+    const group = (pinned.includes(path) ? pinnedTabs : otherTabs).filter((p) => p !== path)
+    for (const other of group) {
+      const rect = tabEls.current.get(other)?.getBoundingClientRect()
+      if (rect && clientX < rect.left + rect.width / 2) return other
     }
-    const group = pinned.includes(path) ? pinnedTabs : otherTabs
-    setDropBefore(group[group.indexOf(path) + 1] ?? null)
+    return null
   }
 
-  const handleDrop = (e: DragEvent): void => {
-    e.preventDefault()
-    if (dragging && dropBefore !== undefined && dropBefore !== dragging) onMove(dragging, dropBefore)
+  const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>, path: string): void => {
+    if (e.button !== 0) return
+    // The close button handles its own click.
+    if ((e.target as HTMLElement).closest('button')) return
+    onSelect(path)
+    press.current = { path, x: e.clientX, y: e.clientY, pointerId: e.pointerId, moved: false }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    const current = press.current
+    if (!current || current.pointerId !== e.pointerId) return
+    if (!current.moved) {
+      if (Math.hypot(e.clientX - current.x, e.clientY - current.y) < DRAG_THRESHOLD) return
+      current.moved = true
+      setDragging(current.path)
+    }
+    setDropBefore(dropTargetAt(current.path, e.clientX))
+  }
+
+  const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    const current = press.current
+    if (!current || current.pointerId !== e.pointerId) return
+    if (current.moved) {
+      const before = dropTargetAt(current.path, e.clientX)
+      const group = pinned.includes(current.path) ? pinnedTabs : otherTabs
+      const nextInGroup = group[group.indexOf(current.path) + 1] ?? null
+      if (before !== nextInGroup) onMove(current.path, before)
+    }
     endDrag()
   }
+
+  // A drag that loses its pointer (window blur, Escape) just stops.
+  useEffect(() => {
+    if (!dragging) return
+    const cancel = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') endDrag()
+    }
+    window.addEventListener('keydown', cancel)
+    window.addEventListener('blur', endDrag)
+    return () => {
+      window.removeEventListener('keydown', cancel)
+      window.removeEventListener('blur', endDrag)
+    }
+  }, [dragging])
 
   const renderTab = (path: string): JSX.Element => {
     const isPinned = pinned.includes(path)
@@ -140,8 +188,14 @@ export default function TabBar({
           dragging === path ? 'repo-tab-dragging' : ''
         } ${dropClass}`}
         title={path}
-        draggable
-        onClick={() => onSelect(path)}
+        ref={(el) => {
+          if (el) tabEls.current.set(path, el)
+          else tabEls.current.delete(path)
+        }}
+        onPointerDown={(e) => handlePointerDown(e, path)}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={endDrag}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
@@ -159,14 +213,6 @@ export default function TabBar({
           e.preventDefault()
           setMenu({ x: e.clientX, y: e.clientY, path })
         }}
-        onDragStart={(e) => {
-          e.dataTransfer.setData(DRAG_TYPE, path)
-          e.dataTransfer.effectAllowed = 'move'
-          setDragging(path)
-        }}
-        onDragOver={(e) => handleDragOver(e, path)}
-        onDrop={handleDrop}
-        onDragEnd={endDrag}
       >
         <span className="repo-tab-icon">{isPinned ? <PinIcon /> : <BranchIcon />}</span>
         <span className="repo-tab-name">{labels.get(path)}</span>
@@ -260,7 +306,14 @@ export default function TabBar({
           <PlusIcon />
         </button>
       </div>
-      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menuSections(menu.path)} onClose={() => setMenu(null)} />}
+      {/* In <body>, outside every window drag region: a menu inside the strip
+          hangs over the toolbar's drag region below, which on macOS swallows
+          its clicks. */}
+      {menu &&
+        createPortal(
+          <ContextMenu x={menu.x} y={menu.y} sections={menuSections(menu.path)} onClose={() => setMenu(null)} />,
+          document.body
+        )}
     </div>
   )
 }
