@@ -4,7 +4,10 @@ import { formatCommand, isLoggedCommand, type ActivityEntry } from '../shared/ac
 
 const execFileAsync = promisify(execFile)
 
-export class GitError extends Error {}
+export class GitError extends Error {
+  /** What the command printed before failing; some commands, like `diff --no-index`, exit non-zero on success. */
+  stdout = ''
+}
 
 const ACTIVITY_LIMIT = 300
 const activity: ActivityEntry[] = []
@@ -47,6 +50,7 @@ export async function runGit(
     const message = err instanceof Error ? err.message : String(err)
     const stderr = (err as { stderr?: string }).stderr
     const error = new GitError(stderr?.trim() || message)
+    error.stdout = (err as { stdout?: string }).stdout ?? ''
     record(false, error.message)
     throw error
   }
