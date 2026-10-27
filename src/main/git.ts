@@ -30,6 +30,7 @@ export async function initRepo(repoPath: string): Promise<void> {
   await runGit(repoPath, ['init'])
 }
 
+/** Parses `git status --porcelain=v2 -z`, whose paths are never quoted and may hold any character. */
 function parsePorcelainV2(output: string): RepoStatus {
   const status: RepoStatus = {
     branch: null,
@@ -41,9 +42,17 @@ function parsePorcelainV2(output: string): RepoStatus {
     conflicted: []
   }
 
-  const lines = output.split('\n').filter((l) => l.length > 0)
+  const records = output.split('\0')
 
-  for (const line of lines) {
+  // The path is everything after the fixed fields, so it may contain spaces.
+  const fieldsAndPath = (line: string, fieldCount: number): [string[], string] => {
+    const fields = line.split(' ', fieldCount)
+    return [fields, line.slice(fields.join(' ').length + 1)]
+  }
+
+  for (let r = 0; r < records.length; r++) {
+    const line = records[r]
+    if (line.length === 0) continue
     if (line.startsWith('# branch.head ')) {
       status.branch = line.slice('# branch.head '.length)
       if (status.branch === '(detached)') status.branch = null
@@ -56,20 +65,18 @@ function parsePorcelainV2(output: string): RepoStatus {
         status.behind = parseInt(match[2], 10)
       }
     } else if (line.startsWith('1 ')) {
-      const fields = line.split(' ')
+      const [fields, path] = fieldsAndPath(line, 8)
       const xy = fields[1]
-      const path = fields.slice(8).join(' ')
       pushEntry(status, { path, index: xy[0], worktree: xy[1], untracked: false })
     } else if (line.startsWith('2 ')) {
-      const fields = line.split(' ')
+      // A rename or copy: one more field (its score), and the original path in the next record.
+      const [fields, path] = fieldsAndPath(line, 9)
       const xy = fields[1]
-      const rest = fields.slice(8).join(' ')
-      const [path, origPath] = rest.split('\t')
+      const origPath = records[++r]
       pushEntry(status, { path, origPath, index: xy[0], worktree: xy[1], untracked: false })
     } else if (line.startsWith('u ')) {
-      const fields = line.split(' ')
+      const [fields, path] = fieldsAndPath(line, 10)
       const xy = fields[1]
-      const path = fields.slice(10).join(' ')
       status.conflicted.push({ path, index: xy[0], worktree: xy[1], untracked: false })
     } else if (line.startsWith('? ')) {
       const path = line.slice(2)
@@ -94,7 +101,7 @@ function pushEntry(status: RepoStatus, entry: FileStatus): void {
 }
 
 export async function getStatus(repoPath: string): Promise<RepoStatus> {
-  const out = await runGit(repoPath, ['status', '--porcelain=v2', '--branch', '--untracked-files=all'])
+  const out = await runGit(repoPath, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])
   return parsePorcelainV2(out)
 }
 
