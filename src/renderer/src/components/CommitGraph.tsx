@@ -1,42 +1,16 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { ROW_HEIGHT, WipGraphCell } from './GraphCell'
 import type { Selection } from '../App'
 import type { BranchInfo, CommitSearchHit } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import { selectedHashes } from '../lib/selection'
+import { groupRefs, parseRefs, type RefBadge } from '../lib/refs'
+import RefCell, { type RefHandlers } from './RefCell'
 
-interface RefBadge {
-  label: string
-  kind: 'head' | 'local' | 'remote' | 'tag'
-}
-
-/**
- * Turns `git log --decorate` refs into badges. Branch names can contain "/",
- * so local and remote branches are told apart with the real branch list.
- */
-function parseRefs(refs: string[], localBranches: Set<string>, remoteBranches: Set<string>): RefBadge[] {
-  const badges: RefBadge[] = []
-  for (const raw of refs) {
-    let label = raw.trim()
-    let kind: RefBadge['kind'] = 'local'
-    if (label.startsWith('HEAD -> ')) {
-      label = label.slice('HEAD -> '.length)
-      kind = 'head'
-    } else if (label.startsWith('tag: ')) {
-      label = label.slice('tag: '.length)
-      kind = 'tag'
-    } else if (localBranches.has(label)) {
-      kind = 'local'
-    } else if (remoteBranches.has(label) || label.includes('/')) {
-      kind = 'remote'
-    }
-    // HEAD on its own (detached) and symbolic remote refs like origin/HEAD.
-    if (label === 'HEAD' || label.endsWith('/HEAD')) continue
-    badges.push({ label, kind })
-  }
-  return badges
-}
+export const DEFAULT_REF_COLUMN_WIDTH = 170
+const MIN_REF_COLUMN_WIDTH = 60
+const MAX_REF_COLUMN_WIDTH = 480
 
 function badgeTarget(badge: RefBadge): RefTarget | null {
   if (badge.kind === 'tag') return null
@@ -99,6 +73,8 @@ interface Props {
   onLoadMore: () => void
   /** Bumped to move the keyboard focus into the search box. */
   searchFocusToken: number
+  refColumnWidth: number
+  onRefColumnWidthChange: (width: number) => void
 }
 
 export default function CommitGraph({
@@ -118,7 +94,9 @@ export default function CommitGraph({
   hasMore,
   loadingMore,
   onLoadMore,
-  searchFocusToken
+  searchFocusToken,
+  refColumnWidth,
+  onRefColumnWidthChange
 }: Props): JSX.Element {
   const topLane = rows[0]?.lane ?? 0
   const topColor = rows[0]?.color ?? '#bd93f9'
@@ -133,6 +111,11 @@ export default function CommitGraph({
       new Set(branches.filter((b) => !b.remote).map((b) => b.name)),
       new Set(branches.filter((b) => b.remote).map((b) => b.name))
     ],
+    [branches]
+  )
+
+  const upstreams = useMemo(
+    () => new Map(branches.filter((b) => !b.remote && b.upstream).map((b) => [b.name, b.upstream as string])),
     [branches]
   )
 
@@ -235,6 +218,39 @@ export default function CommitGraph({
     } else actions.checkoutRemote(badge.label)
   }
 
+  const refHandlers = (hash: string, isSelected: boolean): RefHandlers => ({
+    onClick: (e) => {
+      // A label selects its commit but never clears it, so double-clicking
+      // the label of the selected commit doesn't close the side bar.
+      if (isSelected && selection.type === 'commit') e.stopPropagation()
+    },
+    onDoubleClick: checkoutBadge,
+    onContextMenu: (e, badge) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setMenu({ x: e.clientX, y: e.clientY, hash, target: badgeTarget(badge) })
+    }
+  })
+
+  // --- Resizing the Branch / Tag column --------------------------------------
+  const startResize = (e: ReactMouseEvent): void => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = refColumnWidth
+    const onMove = (ev: MouseEvent): void => {
+      const next = startWidth + ev.clientX - startX
+      onRefColumnWidthChange(Math.round(Math.min(MAX_REF_COLUMN_WIDTH, Math.max(MIN_REF_COLUMN_WIDTH, next))))
+    }
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.classList.remove('col-resizing')
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    document.body.classList.add('col-resizing')
+  }
+
   const renderRow = (row: GraphRow): JSX.Element => {
     const badges = parseRefs(row.commit.refs, localBranches, remoteBranches)
     const isSelected = selected.has(row.commit.hash)
@@ -258,31 +274,14 @@ export default function CommitGraph({
           setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash, target: rowTarget(badges) })
         }}
       >
-        <GraphCell row={row} repoPath={repoPath} />
+        <RefCell
+          pills={groupRefs(badges, upstreams)}
+          color={row.color}
+          width={refColumnWidth}
+          handlers={refHandlers(row.commit.hash, isSelected)}
+        />
+        <GraphCell row={row} repoPath={repoPath} connector={badges.length > 0} />
         <div className="graph-row-message">
-          {badges.map((b) => (
-            <span
-              key={b.label}
-              className={`ref-badge ref-${b.kind}`}
-              title={b.kind === 'tag' || b.kind === 'head' ? b.label : `${b.label} (double-click to check out)`}
-              onClick={(e) => {
-                // A label selects its commit but never clears it, so double-clicking
-                // the label of the selected commit doesn't close the side bar.
-                if (isSelected && selection.type === 'commit') e.stopPropagation()
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                checkoutBadge(b)
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash, target: badgeTarget(b) })
-              }}
-            >
-              {b.label}
-            </span>
-          ))}
           <span className="graph-row-subject" style={{ color: row.color }}>
             {row.commit.subject}
           </span>
@@ -305,6 +304,7 @@ export default function CommitGraph({
           aria-selected={selection.type === 'working'}
           onClick={onSelectWorking}
         >
+          <div className="ref-cell" style={{ width: refColumnWidth }} />
           <WipGraphCell lane={topLane} color={topColor} />
           <div className="graph-row-message">
             <span className="wip-label">// WIP</span>
@@ -329,6 +329,18 @@ export default function CommitGraph({
   return (
     <div className="commit-graph">
       <div className="commit-graph-header">
+        <div className="col-refs" style={{ width: refColumnWidth }}>
+          Branch / Tag
+          <div
+            className="col-resize-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize branch and tag column"
+            title="Drag to resize, double-click to reset"
+            onMouseDown={startResize}
+            onDoubleClick={() => onRefColumnWidthChange(DEFAULT_REF_COLUMN_WIDTH)}
+          />
+        </div>
         <span className="col-graph">Graph</span>
         <span className="col-message">Commit message</span>
         <div className="graph-search">

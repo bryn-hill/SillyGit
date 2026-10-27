@@ -14,7 +14,7 @@ import type {
 } from '../../shared/types'
 import TopBar from './components/TopBar'
 import Sidebar from './components/Sidebar'
-import CommitGraph from './components/CommitGraph'
+import CommitGraph, { DEFAULT_REF_COLUMN_WIDTH } from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
 import MergeResolver from './components/MergeResolver'
@@ -89,6 +89,7 @@ export default function App(): JSX.Element {
   const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
   const [showClaude, setShowClaude] = useState(false)
   const [claudeWidth, setClaudeWidth] = useState(DEFAULT_CLAUDE_WIDTH)
+  const [refColumnWidth, setRefColumnWidth] = useState(DEFAULT_REF_COLUMN_WIDTH)
   const [recentRepos, setRecentRepos] = useState<string[]>([])
   const [graphLimit, setGraphLimit] = useState(GRAPH_PAGE)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -127,6 +128,7 @@ export default function App(): JSX.Element {
       if (layout.terminalHeight) setTerminalHeight(layout.terminalHeight)
       if (layout.showClaude !== undefined) setShowClaude(layout.showClaude)
       if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
+      if (layout.refColumnWidth) setRefColumnWidth(layout.refColumnWidth)
       setRecentRepos(session.recentRepos)
       if (session.repoPath) setRepoPath(session.repoPath)
       if (session.missingRepo) {
@@ -140,10 +142,10 @@ export default function App(): JSX.Element {
   useEffect(() => {
     if (!sessionRestored) return
     const timer = setTimeout(() => {
-      window.api.saveLayout({ showTerminal, terminalHeight, showClaude, claudeWidth })
+      window.api.saveLayout({ showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth })
     }, 300)
     return () => clearTimeout(timer)
-  }, [sessionRestored, showTerminal, terminalHeight, showClaude, claudeWidth])
+  }, [sessionRestored, showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -1227,6 +1229,8 @@ export default function App(): JSX.Element {
                   loadingMore={loadingMore}
                   onLoadMore={handleLoadMore}
                   searchFocusToken={searchFocusToken}
+                  refColumnWidth={refColumnWidth}
+                  onRefColumnWidthChange={setRefColumnWidth}
                 />
                 {selection.type !== 'none' && (
                   <div className="detail-panel" role="complementary" aria-label="Details">
