@@ -5,6 +5,10 @@ import { monaco } from '../lib/monaco'
 interface Props {
   repoPath: string
   path: string
+  /** Unsaved text from the last time this file was open, restored on top of the file on disk. */
+  draft?: string
+  /** Reports unsaved text when the editor goes away (a tab switch, Launchpad), or null when there is none. */
+  onDraftChange: (draft: string | null) => void
   onClose: () => void
   /** Called after each save, so the working-tree status can refresh. */
   onSaved: () => void
@@ -15,8 +19,8 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-/** Edits one working-tree file in Monaco, over the rest of the app. */
-export default function FileEditor({ repoPath, path, onClose, onSaved }: Props): JSX.Element {
+/** Edits one working-tree file in Monaco, in place of the commit graph. */
+export default function FileEditor({ repoPath, path, draft, onDraftChange, onClose, onSaved }: Props): JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -65,9 +69,15 @@ export default function FileEditor({ repoPath, path, onClose, onSaved }: Props):
 
   const saveRef = useRef(save)
   saveRef.current = save
+  const onDraftChangeRef = useRef(onDraftChange)
+  onDraftChangeRef.current = onDraftChange
+  const draftRef = useRef(draft)
+  const closing = useRef(false)
 
   const requestClose = useCallback((): void => {
     if (dirty && !window.confirm(`Discard unsaved changes to ${path}?`)) return
+    closing.current = true
+    onDraftChangeRef.current(null)
     onClose()
   }, [dirty, path, onClose])
 
@@ -94,6 +104,12 @@ export default function FileEditor({ repoPath, path, onClose, onSaved }: Props):
     })
     editorRef.current = editor
     savedVersion.current = model.getAlternativeVersionId()
+    // Bring back edits left unsaved when the editor was last hidden.
+    const restored = draftRef.current
+    if (restored != null && restored !== content) {
+      model.pushEditOperations([], [{ range: model.getFullModelRange(), text: restored }], () => null)
+      setDirty(true)
+    }
     setLanguage(monaco.languages.getLanguages().find((l) => l.id === model.getLanguageId())?.aliases?.[0] ?? model.getLanguageId())
     setEol(model.getEOL() === '\r\n' ? 'CRLF' : 'LF')
 
@@ -108,6 +124,10 @@ export default function FileEditor({ repoPath, path, onClose, onSaved }: Props):
     editor.focus()
 
     return () => {
+      if (!closing.current) {
+        const unsaved = model.getAlternativeVersionId() !== savedVersion.current
+        onDraftChangeRef.current(unsaved ? model.getValue() : null)
+      }
       subs.forEach((s) => s.dispose())
       editor.dispose()
       model.dispose()
@@ -176,53 +196,52 @@ export default function FileEditor({ repoPath, path, onClose, onSaved }: Props):
   else if (file.kind === 'too-large') placeholder = `${name} is too large to edit here (${formatSize(file.size)}).`
 
   return (
-    <div className="modal-backdrop file-editor-backdrop" onMouseDown={(e) => e.target === e.currentTarget && requestClose()}>
-      <div ref={rootRef} className="file-editor" role="dialog" aria-label="Edit file">
-        <div className="file-editor-toolbar">
-          <span className="file-editor-title" title={path}>
-            <span className="file-editor-dir">{dir}</span>
-            <span className="file-editor-name">{name}</span>
+    <div ref={rootRef} className="file-editor" role="region" aria-label="Edit file">
+      <div className="file-editor-toolbar">
+        <span className="file-editor-title" title={path}>
+          <span className="file-editor-dir">{dir}</span>
+          <span className="file-editor-name">{name}</span>
+        </span>
+        {dirty && (
+          <span className="file-editor-dirty" aria-label="Unsaved changes" title="Unsaved changes">
+            ●
           </span>
-          {dirty && (
-            <span className="file-editor-dirty" aria-label="Unsaved changes" title="Unsaved changes">
-              ●
-            </span>
-          )}
-          <span className="merge-toolbar-spacer" />
-          {file && file.kind !== 'missing' && (
-            <button className="link-button" onClick={openExternally} title="Open in your default editor">
-              Open in external editor ↗
-            </button>
-          )}
-          {file?.kind === 'text' && (
-            <button className="merge-save-button" disabled={!dirty || saving} onClick={() => void save()} title="Save (⌘S)">
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          )}
-          <button className="icon-button" title="Close" aria-label="Close editor" onClick={requestClose}>
-            ✕
-          </button>
-        </div>
-        {placeholder ? (
-          <div className="commit-fullview-empty">{placeholder}</div>
-        ) : (
-          <div ref={containerRef} className="file-editor-monaco" data-testid="file-editor-monaco" />
         )}
-        <div className="file-editor-status">
-          {saveError ? (
-            <span className="file-editor-error" role="alert">
-              {saveError}
-            </span>
-          ) : (
-            <span role="status">{savedFlash ? 'Saved' : dirty ? 'Unsaved changes' : ''}</span>
-          )}
-          <span className="merge-toolbar-spacer" />
-          {file?.kind === 'text' && (
-            <span>
-              Ln {cursor.line}, Col {cursor.column} · {eol} · {language}
-            </span>
-          )}
-        </div>
+        <span className="merge-toolbar-spacer" />
+        {file?.kind === 'text' && <span className="file-editor-language">{language}</span>}
+        {file && file.kind !== 'missing' && (
+          <button className="icon-button" onClick={openExternally} title="Open in external editor" aria-label="Open in external editor">
+            ↗
+          </button>
+        )}
+        {file?.kind === 'text' && (
+          <button className="merge-save-button" disabled={!dirty || saving} onClick={() => void save()} title="Save (⌘S)">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        )}
+        <button className="icon-button" title="Close" aria-label="Close editor" onClick={requestClose}>
+          ✕
+        </button>
+      </div>
+      {placeholder ? (
+        <div className="commit-fullview-empty">{placeholder}</div>
+      ) : (
+        <div ref={containerRef} className="file-editor-monaco" data-testid="file-editor-monaco" />
+      )}
+      <div className="file-editor-status">
+        {saveError ? (
+          <span className="file-editor-error" role="alert">
+            {saveError}
+          </span>
+        ) : (
+          <span role="status">{savedFlash ? 'Saved' : dirty ? 'Unsaved changes' : ''}</span>
+        )}
+        <span className="merge-toolbar-spacer" />
+        {file?.kind === 'text' && (
+          <span>
+            Ln {cursor.line}, Col {cursor.column} · {eol} · UTF-8
+          </span>
+        )}
       </div>
     </div>
   )
