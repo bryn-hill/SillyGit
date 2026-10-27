@@ -37,17 +37,6 @@ function legacySettingsPath(): string {
   return join(app.getPath('appData'), 'gitdesk', 'gitdesk-settings.json')
 }
 
-// Session saves (tabs, recent repos, layout) arrive in quick bursts, and each
-// rewrites the whole file, so they run one at a time or one would undo another.
-let sessionWrites: Promise<unknown> = Promise.resolve()
-function serialized<A extends unknown[], R>(fn: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
-  return (...args) => {
-    const run = sessionWrites.then(() => fn(...args))
-    sessionWrites = run.catch(() => {})
-    return run
-  }
-}
-
 async function readSettings(): Promise<StoredSettings> {
   let raw: string
   try {
@@ -68,15 +57,31 @@ async function readSettings(): Promise<StoredSettings> {
   }
 }
 
+// Saves arrive in quick bursts (tabs, recent repos, layout, a Settings change
+// at the same moment) and each rewrites the whole file, so they run one at a
+// time or one would undo another.
+let writes: Promise<unknown> = Promise.resolve()
+function updateSettings<R>(change: (current: StoredSettings) => R): Promise<R> {
+  const run = writes.then(async () => {
+    const current = await readSettings()
+    const result = change(current)
+    await fs.mkdir(app.getPath('userData'), { recursive: true })
+    await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+    return result
+  })
+  writes = run.catch(() => {})
+  return run
+}
+
 export async function getApiKey(): Promise<string | null> {
   const stored = await readSettings()
   return stored.anthropicApiKey?.trim() || process.env.ANTHROPIC_API_KEY?.trim() || null
 }
 
 export async function setApiKey(key: string): Promise<void> {
-  const current = await readSettings()
-  current.anthropicApiKey = key.trim()
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  await updateSettings((current) => {
+    current.anthropicApiKey = key.trim()
+  })
 }
 
 export async function hasStoredApiKey(): Promise<boolean> {
@@ -93,10 +98,9 @@ export async function getAutoFetchMinutes(): Promise<number> {
 }
 
 export async function setAutoFetchMinutes(minutes: number): Promise<void> {
-  const current = await readSettings()
-  current.autoFetchMinutes = Math.max(0, Math.round(minutes))
-  await fs.mkdir(app.getPath('userData'), { recursive: true })
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  await updateSettings((current) => {
+    current.autoFetchMinutes = Math.max(0, Math.round(minutes))
+  })
 }
 
 export async function getShowAvatars(): Promise<boolean> {
@@ -105,10 +109,9 @@ export async function getShowAvatars(): Promise<boolean> {
 }
 
 export async function setShowAvatars(show: boolean): Promise<void> {
-  const current = await readSettings()
-  current.showAvatars = show
-  await fs.mkdir(app.getPath('userData'), { recursive: true })
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  await updateSettings((current) => {
+    current.showAvatars = show
+  })
 }
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
@@ -116,12 +119,7 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
 }
 
 export async function setNotificationSettings(next: NotificationSettings): Promise<NotificationSettings> {
-  const current = await readSettings()
-  const normalized = normalizeNotificationSettings(next)
-  current.notifications = normalized
-  await fs.mkdir(app.getPath('userData'), { recursive: true })
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-  return normalized
+  return updateSettings((current) => (current.notifications = normalizeNotificationSettings(next)))
 }
 
 export async function getSprintSettings(): Promise<SprintSettings> {
@@ -129,12 +127,7 @@ export async function getSprintSettings(): Promise<SprintSettings> {
 }
 
 export async function setSprintSettings(next: SprintSettings): Promise<SprintSettings> {
-  const current = await readSettings()
-  const normalized = normalizeSprintSettings(next)
-  current.sprints = normalized
-  await fs.mkdir(app.getPath('userData'), { recursive: true })
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-  return normalized
+  return updateSettings((current) => (current.sprints = normalizeSprintSettings(next)))
 }
 
 export async function getWorkspaceRepos(): Promise<string[]> {
@@ -143,20 +136,15 @@ export async function getWorkspaceRepos(): Promise<string[]> {
 }
 
 export async function addWorkspaceRepo(repoPath: string): Promise<string[]> {
-  const current = await readSettings()
-  const list = current.workspaceRepos ?? []
-  if (!list.includes(repoPath)) list.push(repoPath)
-  current.workspaceRepos = list
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-  return list
+  return updateSettings((current) => {
+    const list = current.workspaceRepos ?? []
+    if (!list.includes(repoPath)) list.push(repoPath)
+    return (current.workspaceRepos = list)
+  })
 }
 
 export async function removeWorkspaceRepo(repoPath: string): Promise<string[]> {
-  const current = await readSettings()
-  const list = (current.workspaceRepos ?? []).filter((p) => p !== repoPath)
-  current.workspaceRepos = list
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-  return list
+  return updateSettings((current) => (current.workspaceRepos = (current.workspaceRepos ?? []).filter((p) => p !== repoPath)))
 }
 
 export async function getLastSession(): Promise<{
@@ -179,34 +167,32 @@ export async function getLastSession(): Promise<{
 }
 
 /** Remembers `repoPath` as the open repo and moves it to the top of the recent list. */
-export const recordOpenedRepo = serialized(async (repoPath: string): Promise<string[]> => {
-  const current = await readSettings()
-  const recent = [repoPath, ...(current.recentRepos ?? []).filter((p) => p !== repoPath)]
-  current.lastRepo = repoPath
-  current.recentRepos = recent.slice(0, MAX_RECENT_REPOS)
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-  return current.recentRepos
-})
+export async function recordOpenedRepo(repoPath: string): Promise<string[]> {
+  return updateSettings((current) => {
+    const recent = [repoPath, ...(current.recentRepos ?? []).filter((p) => p !== repoPath)]
+    current.lastRepo = repoPath
+    return (current.recentRepos = recent.slice(0, MAX_RECENT_REPOS))
+  })
+}
 
-export const forgetRecentRepo = serialized(async (repoPath: string): Promise<string[]> => {
-  const current = await readSettings()
-  current.recentRepos = (current.recentRepos ?? []).filter((p) => p !== repoPath)
-  if (current.lastRepo === repoPath) current.lastRepo = null
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-  return current.recentRepos
-})
+export async function forgetRecentRepo(repoPath: string): Promise<string[]> {
+  return updateSettings((current) => {
+    if (current.lastRepo === repoPath) current.lastRepo = null
+    return (current.recentRepos = (current.recentRepos ?? []).filter((p) => p !== repoPath))
+  })
+}
 
 /** Remembers the open tabs, which are pinned, and which one is active. */
-export const saveTabs = serialized(async (tabs: SavedTabs): Promise<void> => {
-  const current = await readSettings()
-  current.openTabs = tabs.openTabs
-  current.pinnedTabs = tabs.pinnedTabs.filter((p) => tabs.openTabs.includes(p))
-  current.lastRepo = tabs.activeTab
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-})
+export async function saveTabs(tabs: SavedTabs): Promise<void> {
+  await updateSettings((current) => {
+    current.openTabs = tabs.openTabs
+    current.pinnedTabs = tabs.pinnedTabs.filter((p) => tabs.openTabs.includes(p))
+    current.lastRepo = tabs.activeTab
+  })
+}
 
-export const saveLayout = serialized(async (layout: Partial<SavedLayout>): Promise<void> => {
-  const current = await readSettings()
-  current.layout = { ...current.layout, ...layout }
-  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-})
+export async function saveLayout(layout: Partial<SavedLayout>): Promise<void> {
+  await updateSettings((current) => {
+    current.layout = { ...current.layout, ...layout }
+  })
+}
