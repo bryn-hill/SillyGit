@@ -3,6 +3,7 @@ import type { CommitDetail } from '../../../shared/types'
 import FileDiffViewer from './FileDiffViewer'
 import AiResults, { idleAiRun, type AiRun } from './AiResults'
 import SplitCommitPanel from './SplitCommitPanel'
+import Avatar from './Avatar'
 
 interface Props {
   repoPath: string
@@ -192,7 +193,7 @@ export default function CommitFullView({
                 <div className="commit-subject-large">{detail.subject}</div>
                 {detail.body && <div className="commit-body">{detail.body}</div>}
                 <div className="commit-author-row">
-                  <div className="author-avatar">{detail.author.slice(0, 1).toUpperCase()}</div>
+                  <Avatar name={detail.author} email={detail.authorEmail} hash={detail.hash} repoPath={repoPath} size={28} />
                   <div>
                     <div>{detail.author}</div>
                     <div className="commit-meta-dim">

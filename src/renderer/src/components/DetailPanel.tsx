@@ -5,6 +5,7 @@ import DiffBlock from './DiffBlock'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { isPrimary, MOD } from '../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
+import Avatar from './Avatar'
 
 const OPERATION_NAMES: Record<OperationState['kind'], string> = {
   merge: 'Merge',
@@ -504,7 +505,7 @@ function CommitDetailView({
       </div>
       {detail.body && <div className="commit-body">{detail.body}</div>}
       <div className="commit-author-row">
-        <div className="author-avatar">{detail.author.slice(0, 1).toUpperCase()}</div>
+        <Avatar name={detail.author} email={detail.authorEmail} hash={detail.hash} repoPath={repoPath} size={28} />
         <div>
           <div>{detail.author}</div>
           <div className="commit-meta-dim">

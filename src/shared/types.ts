@@ -77,9 +77,16 @@ export interface GraphCommit {
   hash: string
   parents: string[]
   author: string
+  authorEmail: string
   date: string
   subject: string
   refs: string[]
+}
+
+/** A commit email to find an avatar for, and one of its commits (GitHub looks users up by commit). */
+export interface AvatarRequest {
+  email: string
+  hash: string
 }
 
 export interface CommitFileChange {

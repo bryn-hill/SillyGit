@@ -67,9 +67,10 @@ function UnavailableNotice({
   if (data.reason === 'gh-not-installed') {
     return (
       <div className="launchpad-notice">
-        <p>Launchpad uses the GitHub CLI to find your pull requests, and it isn't installed.</p>
+        <p>Launchpad needs a GitHub account to find your pull requests.</p>
         <p className="launchpad-notice-hint">
-          Install it from <span className="launchpad-code">cli.github.com</span>, then click Refresh.
+          Add a personal access token under Settings → Accounts, or install the GitHub CLI from{' '}
+          <span className="launchpad-code">cli.github.com</span>, then click Refresh.
         </p>
       </div>
     )
@@ -77,9 +78,10 @@ function UnavailableNotice({
   if (data.reason === 'not-authenticated') {
     return (
       <div className="launchpad-notice">
-        <p>Not signed in to the GitHub CLI.</p>
+        <p>Not signed in to GitHub.</p>
         <p className="launchpad-notice-hint">
-          Run <span className="launchpad-code">gh auth login</span> in a terminal, then click Refresh.
+          Add a personal access token under Settings → Accounts, or run{' '}
+          <span className="launchpad-code">gh auth login</span> in a terminal, then click Refresh.
         </p>
         <button onClick={onOpenTerminal}>Open Terminal</button>
       </div>

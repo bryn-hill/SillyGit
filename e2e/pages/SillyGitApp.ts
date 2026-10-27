@@ -5,6 +5,7 @@ import { CommitView } from './CommitView'
 import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
 import { MergeTool } from './MergeTool'
+import { SettingsDialog } from './SettingsDialog'
 import { Sidebar } from './Sidebar'
 import { TerminalPanel } from './TerminalPanel'
 
@@ -18,6 +19,7 @@ export class SillyGitApp {
   readonly sidebar: Sidebar
   readonly conflicts: ConflictPanel
   readonly mergeTool: MergeTool
+  readonly settings: SettingsDialog
 
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
@@ -39,6 +41,7 @@ export class SillyGitApp {
     this.sidebar = new Sidebar(page)
     this.conflicts = new ConflictPanel(page)
     this.mergeTool = new MergeTool(page)
+    this.settings = new SettingsDialog(page)
 
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })

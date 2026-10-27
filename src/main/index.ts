@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, clipboard } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, net } from 'electron'
 import { basename, dirname, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
@@ -8,11 +8,19 @@ import * as ai from './ai'
 import * as settings from './settings'
 import * as launchpad from './launchpad'
 import * as quickActions from './quickActions'
+import * as accounts from './accounts'
+import * as github from './github'
+import { AvatarResolver, type AvatarSources } from './avatars'
+import { githubAccess, remoteLocations } from './hosting'
+import { setFetch } from './http'
+import { setNetworkEnv } from './gitExec'
+import { gitlabAvatarUrl } from './providerApi'
+import { guessProvider, type NewAccountInput } from '../shared/accounts'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
 import { watchRepo, stopWatching } from './watcher'
-import type { CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
+import type { AvatarRequest, CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -106,6 +114,36 @@ async function fetchReviewFileContexts(
   )
 
   return results.filter((r): r is ai.FileContext => r !== null)
+}
+
+let avatarResolver: AvatarResolver | null = null
+
+/** What the avatar lookup may use for a repo: signed-in accounts, its GitHub or GitLab remotes, Gravatar. */
+async function avatarSources(repoPath: string): Promise<AvatarSources> {
+  const signedIn = await accounts.listAccounts()
+  const access = await githubAccess(repoPath).catch(() => null)
+  // A host counts as GitLab when its signed-in account says so, or by name when none is.
+  const isGitlab = (host: string): boolean => {
+    const account = signedIn.find((a) => a.host === host)
+    return account ? account.provider === 'gitlab' : guessProvider(host) === 'gitlab'
+  }
+  const gitlabHosts = [...new Set((await remoteLocations(repoPath)).map((l) => l.host).filter(isGitlab))]
+  return {
+    accounts: signedIn,
+    githubLookup: access ? (commits) => github.commitAuthorAvatars(access.creds, access.repo, commits) : undefined,
+    gitlabLookup:
+      gitlabHosts.length > 0
+        ? async (email) => {
+            for (const host of gitlabHosts) {
+              const creds = (await accounts.credentialsFor(host, 'gitlab'))?.creds
+              const url = await gitlabAvatarUrl(host, email, creds)
+              if (url) return url
+            }
+            return null
+          }
+        : undefined,
+    gravatar: true
+  }
 }
 
 function registerIpcHandlers(): void {
@@ -435,6 +473,32 @@ function registerIpcHandlers(): void {
     wrap(() => settings.setAutoFetchMinutes(minutes))
   )
 
+  ipcMain.handle('accounts:list', () => wrap(() => accounts.listAccounts()))
+
+  ipcMain.handle('accounts:storage-problem', () => accounts.encryptionProblem())
+
+  ipcMain.handle('accounts:add', (_e, input: NewAccountInput) =>
+    wrap(async () => {
+      const account = await accounts.addAccount(input)
+      await avatarResolver?.forgetMisses()
+      return account
+    })
+  )
+
+  ipcMain.handle('accounts:remove', (_e, id: string) => wrap(() => accounts.removeAccount(id)))
+
+  ipcMain.handle('settings:get-show-avatars', () => settings.getShowAvatars())
+
+  ipcMain.handle('settings:set-show-avatars', (_e, show: boolean) => wrap(() => settings.setShowAvatars(show)))
+
+  ipcMain.handle('avatars:resolve', (_e, repoPath: string, requests: AvatarRequest[]) =>
+    wrap(async () => {
+      if (!(await settings.getShowAvatars())) return {}
+      avatarResolver ??= new AvatarResolver(join(app.getPath('userData'), 'avatar-cache'))
+      return avatarResolver.resolve(requests, await avatarSources(repoPath))
+    })
+  )
+
   ipcMain.handle('settings:set-api-key', (_e, key: string) => wrap(() => settings.setApiKey(key)))
 
   ipcMain.handle('ai:review-commit', (_e, repoPath: string, hash: string) =>
@@ -544,6 +608,9 @@ function registerIpcHandlers(): void {
 }
 
 app.whenReady().then(() => {
+  // net.fetch goes through the system's proxy settings, like the rest of Chromium.
+  setFetch((url, init) => net.fetch(url, init))
+  setNetworkEnv(accounts.gitAuthEnv)
   registerIpcHandlers()
   createWindow()
 

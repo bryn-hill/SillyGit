@@ -1,8 +1,11 @@
 import type { JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
+import Avatar from './Avatar'
 
 export const ROW_HEIGHT = 32
-const LANE_W = 16
+// Wide enough for an author's avatar on each commit, like GitKraken.
+const LANE_W = 24
+const AVATAR_SIZE = 18
 
 export function laneX(i: number): number {
   return i * LANE_W + LANE_W / 2 + 4
@@ -12,7 +15,7 @@ export function graphWidth(maxLanes: number): number {
   return maxLanes * LANE_W + 8
 }
 
-export default function GraphCell({ row }: { row: GraphRow }): JSX.Element {
+export default function GraphCell({ row, repoPath }: { row: GraphRow; repoPath: string }): JSX.Element {
   const maxLanes = Math.max(row.before.length, row.after.length, row.lane + 1)
   const width = graphWidth(maxLanes)
   const cy = ROW_HEIGHT / 2
@@ -96,14 +99,32 @@ export default function GraphCell({ row }: { row: GraphRow }): JSX.Element {
     )
   }
 
-  elements.push(
-    <circle key="dot" cx={laneX(row.lane)} cy={cy} r={5} fill={row.color} stroke="#282a36" strokeWidth={2} />
-  )
+  // Merge commits keep a small dot; every other commit shows its author.
+  const isMerge = row.commit.parents.length > 1
+  if (isMerge) {
+    elements.push(
+      <circle key="dot" cx={laneX(row.lane)} cy={cy} r={5} fill={row.color} stroke="#282a36" strokeWidth={2} />
+    )
+  }
 
   return (
-    <svg width={width} height={ROW_HEIGHT} className="graph-svg">
-      {elements}
-    </svg>
+    <div className="graph-cell" style={{ width, height: ROW_HEIGHT }}>
+      <svg width={width} height={ROW_HEIGHT} className="graph-svg">
+        {elements}
+      </svg>
+      {!isMerge && (
+        <Avatar
+          className="graph-node-avatar"
+          name={row.commit.author}
+          email={row.commit.authorEmail}
+          hash={row.commit.hash}
+          repoPath={repoPath}
+          size={AVATAR_SIZE}
+          ring={row.color}
+          style={{ left: laneX(row.lane) - AVATAR_SIZE / 2, top: cy - AVATAR_SIZE / 2 }}
+        />
+      )}
+    </div>
   )
 }
 

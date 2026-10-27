@@ -11,6 +11,8 @@ interface StoredSettings {
   layout?: Partial<SavedLayout>
   /** Minutes between background fetches; 0 turns them off. */
   autoFetchMinutes?: number
+  /** Look up author avatars online (GitHub, GitLab, Gravatar); off shows initials only. */
+  showAvatars?: boolean
 }
 
 const MAX_RECENT_REPOS = 10
@@ -72,6 +74,18 @@ export async function getAutoFetchMinutes(): Promise<number> {
 export async function setAutoFetchMinutes(minutes: number): Promise<void> {
   const current = await readSettings()
   current.autoFetchMinutes = Math.max(0, Math.round(minutes))
+  await fs.mkdir(app.getPath('userData'), { recursive: true })
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+}
+
+export async function getShowAvatars(): Promise<boolean> {
+  const stored = await readSettings()
+  return stored.showAvatars !== false
+}
+
+export async function setShowAvatars(show: boolean): Promise<void> {
+  const current = await readSettings()
+  current.showAvatars = show
   await fs.mkdir(app.getPath('userData'), { recursive: true })
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
 }

@@ -2,6 +2,9 @@ import { execFile } from 'child_process'
 import { basename } from 'path'
 import { promisify } from 'util'
 import { LAUNCHPAD_BUCKET_ORDER } from '../shared/launchpad'
+import * as github from './github'
+import { githubAccess, type GithubAccess } from './hosting'
+import { HttpError } from './http'
 import type {
   LaunchpadBucketId,
   LaunchpadData,
@@ -145,7 +148,7 @@ function isNotGithubError(message: string): boolean {
 
 async function getRepoPullRequests(
   repoPath: string,
-  login: string
+  login: () => Promise<string>
 ): Promise<{ pullRequests: LaunchpadPullRequest[] } | { skipped: LaunchpadSkippedRepo }> {
   const repoName = basename(repoPath)
   try {
@@ -164,12 +167,7 @@ async function getRepoPullRequests(
         PR_FIELDS
       ])
     ) as RawPullRequest[]
-
-    const mine = authored.map((pr) => toPullRequest(pr, login, true, repoPath, repoName))
-    const theirs = reviewRequested
-      .filter((pr) => pr.author?.login !== login)
-      .map((pr) => toPullRequest(pr, login, false, repoPath, repoName))
-    return { pullRequests: [...mine, ...theirs] }
+    return { pullRequests: classify(authored, reviewRequested, await login(), repoPath, repoName) }
   } catch (err) {
     const message = errorMessage(err)
     if (isNotGithubError(message)) {
@@ -179,34 +177,104 @@ async function getRepoPullRequests(
   }
 }
 
+function classify(
+  authored: RawPullRequest[],
+  reviewRequested: RawPullRequest[],
+  login: string,
+  repoPath: string,
+  repoName: string
+): LaunchpadPullRequest[] {
+  const mine = authored.map((pr) => toPullRequest(pr, login, true, repoPath, repoName))
+  const theirs = reviewRequested
+    .filter((pr) => pr.author?.login !== login)
+    .map((pr) => toPullRequest(pr, login, false, repoPath, repoName))
+  return [...mine, ...theirs]
+}
+
+/** The same as getRepoPullRequests, through the GitHub API with the signed-in account's token. */
+async function getRepoPullRequestsByApi(
+  repoPath: string,
+  access: GithubAccess
+): Promise<{ pullRequests: LaunchpadPullRequest[] } | { skipped: LaunchpadSkippedRepo }> {
+  const repoName = basename(repoPath)
+  try {
+    const { authored, reviewRequested } = await github.launchpadPullRequests(access.creds, access.repo)
+    return { pullRequests: classify(authored, reviewRequested, access.account.username, repoPath, repoName) }
+  } catch (err) {
+    const message =
+      err instanceof HttpError && err.status === 401
+        ? `${access.repo.host} rejected the token for ${access.account.username}. Add it again in Settings.`
+        : errorMessage(err)
+    return { skipped: { repoPath, repoName, reason: 'error', message } }
+  }
+}
+
+type GhLogin = { login: string } | { unavailable: LaunchpadData }
+
+async function ghLogin(repoPath: string): Promise<GhLogin> {
+  try {
+    return { login: (await runGh(repoPath, ['api', 'user', '--jq', '.login'])).trim() }
+  } catch (err) {
+    if (isEnoent(err)) {
+      return { unavailable: { connected: false, reason: 'gh-not-installed', pullRequests: [] } }
+    }
+    const message = errorMessage(err)
+    if (/not logged into|gh auth login/i.test(message)) {
+      return { unavailable: { connected: false, reason: 'not-authenticated', pullRequests: [] } }
+    }
+    return { unavailable: { connected: false, reason: 'error', message, pullRequests: [] } }
+  }
+}
+
+/**
+ * Pull requests across the repos. A repo on a GitHub host with a signed-in
+ * account goes through the API; the rest fall back to the gh CLI.
+ */
 export async function getLaunchpadData(repoPaths: string[]): Promise<LaunchpadData> {
   const paths = [...new Set(repoPaths)]
   if (paths.length === 0) return { connected: true, pullRequests: [] }
 
-  let login: string
-  try {
-    login = (await runGh(paths[0], ['api', 'user', '--jq', '.login'])).trim()
-  } catch (err) {
-    if (isEnoent(err)) {
-      return { connected: false, reason: 'gh-not-installed', pullRequests: [] }
-    }
-    const message = errorMessage(err)
-    if (/not logged into|gh auth login/i.test(message)) {
-      return { connected: false, reason: 'not-authenticated', pullRequests: [] }
-    }
-    return { connected: false, reason: 'error', message, pullRequests: [] }
+  const access = await Promise.all(paths.map((p) => githubAccess(p).catch(() => null)))
+  const viaGh = paths.filter((_, i) => !access[i])
+
+  // gh is only needed (and only asked who's signed in, once) for repos without an account.
+  const gh: { login?: Promise<GhLogin> } = {}
+  const getGh = (): Promise<GhLogin> => (gh.login ??= ghLogin(viaGh[0]))
+  if (viaGh.length === paths.length) {
+    const result = await getGh()
+    if ('unavailable' in result) return result.unavailable
   }
 
-  const perRepo = await Promise.all(paths.map((repoPath) => getRepoPullRequests(repoPath, login)))
+  const perRepo = await Promise.all(
+    paths.map(async (repoPath, i) => {
+      const repoAccess = access[i]
+      if (repoAccess) return getRepoPullRequestsByApi(repoPath, repoAccess)
+      const result = await getGh()
+      if ('unavailable' in result) {
+        const repoName = basename(repoPath)
+        const message =
+          result.unavailable.reason === 'error'
+            ? result.unavailable.message
+            : 'Add a GitHub token in Settings (or sign in to the GitHub CLI) to see its pull requests.'
+        return { skipped: { repoPath, repoName, reason: 'error' as const, message } }
+      }
+      return getRepoPullRequests(repoPath, async () => result.login)
+    })
+  )
 
   const pullRequests = perRepo
     .flatMap((r) => ('pullRequests' in r ? r.pullRequests : []))
     .sort(bucketSort)
   const skippedRepos = perRepo.flatMap((r) => ('skipped' in r ? [r.skipped] : []))
+  const firstAccess = access.find((a) => a)
+  const ghResult = gh.login ? await gh.login : null
+  const login = firstAccess?.account.username ?? (ghResult && 'login' in ghResult ? ghResult.login : undefined)
 
   return { connected: true, login, pullRequests, skippedRepos }
 }
 
 export async function mergePullRequest(repoPath: string, number: number): Promise<void> {
-  await execFileAsync('gh', ['pr', 'merge', String(number), '--merge'], { cwd: repoPath })
+  const access = await githubAccess(repoPath)
+  if (access) await github.mergePullRequest(access.creds, access.repo, number)
+  else await execFileAsync('gh', ['pr', 'merge', String(number), '--merge'], { cwd: repoPath })
 }

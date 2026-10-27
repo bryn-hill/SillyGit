@@ -258,7 +258,7 @@ export default function CommitGraph({
           setMenu({ x: e.clientX, y: e.clientY, hash: row.commit.hash, target: rowTarget(badges) })
         }}
       >
-        <GraphCell row={row} />
+        <GraphCell row={row} repoPath={repoPath} />
         <div className="graph-row-message">
           {badges.map((b) => (
             <span

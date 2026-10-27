@@ -18,7 +18,7 @@ import type {
 import * as diffSplit from '../shared/diffSplit'
 import { planUndo, type UndoPlan } from '../shared/undo'
 import { getOperationState, runMayConflict } from './conflicts'
-import { GitError, runGit } from './gitExec'
+import { GitError, remoteEnv, runGit } from './gitExec'
 
 export async function isGitRepo(repoPath: string): Promise<boolean> {
   try {
@@ -210,19 +210,16 @@ export async function createBranch(repoPath: string, branch: string): Promise<vo
   await runGit(repoPath, ['checkout', '-b', branch])
 }
 
-// Never sit waiting for a username or password on a terminal nobody can see.
-const NO_PROMPT = { GIT_TERMINAL_PROMPT: '0' }
-
 export async function fetchAll(repoPath: string): Promise<void> {
-  await runGit(repoPath, ['fetch', '--all', '--prune', '--quiet'], NO_PROMPT)
+  await runGit(repoPath, ['fetch', '--all', '--prune', '--quiet'], await remoteEnv())
 }
 
 export async function push(repoPath: string): Promise<void> {
-  await runGit(repoPath, ['push'], NO_PROMPT)
+  await runGit(repoPath, ['push'], await remoteEnv())
 }
 
 export async function pull(repoPath: string): Promise<ConflictableResult> {
-  return runMayConflict(repoPath, ['pull'], NO_PROMPT)
+  return runMayConflict(repoPath, ['pull'], await remoteEnv())
 }
 
 export async function getLog(repoPath: string, limit = 50): Promise<CommitInfo[]> {
@@ -248,7 +245,7 @@ const RS = '\x1e' // record separator, safe commit delimiter
 export const GRAPH_PAGE_SIZE = 500
 
 export async function getGraphLog(repoPath: string, limit = GRAPH_PAGE_SIZE): Promise<GraphCommit[]> {
-  const format = `%x1e%H${US}%P${US}%an${US}%ad${US}%s${US}%D`
+  const format = `%x1e%H${US}%P${US}%an${US}%ae${US}%ad${US}%s${US}%D`
   let out: string
   try {
     out = await runGit(repoPath, [
@@ -269,11 +266,12 @@ export async function getGraphLog(repoPath: string, limit = GRAPH_PAGE_SIZE): Pr
     .map((rec) => rec.trim())
     .filter((rec) => rec.length > 0)
     .map((rec) => {
-      const [hash, parents, author, date, subject, refs] = rec.split(US)
+      const [hash, parents, author, authorEmail, date, subject, refs] = rec.split(US)
       return {
         hash,
         parents: parents ? parents.split(' ').filter(Boolean) : [],
         author,
+        authorEmail,
         date,
         subject,
         refs: refs ? refs.split(', ').filter(Boolean) : []

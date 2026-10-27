@@ -16,7 +16,7 @@ breaking change.
 
 **Scopes** are optional, lowercase, and name the area of the app:
 `graph`, `branch-menu`, `commit`, `conflicts`, `terminal`, `ai`, `claude`,
-`launchpad`, `session`, `e2e`, `deps`, `release`, `dev`. Add a new one when none fits.
+`launchpad`, `accounts`, `session`, `e2e`, `deps`, `release`, `dev`. Add a new one when none fits.
 
 Examples:
 

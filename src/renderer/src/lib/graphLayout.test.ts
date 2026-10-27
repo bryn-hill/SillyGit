@@ -3,7 +3,7 @@ import type { GraphCommit } from '../../../shared/types'
 import { layoutGraph } from './graphLayout'
 
 const commit = (hash: string, parents: string[]): GraphCommit =>
-  ({ hash, parents, author: 'a', date: '', subject: hash, refs: [] })
+  ({ hash, parents, author: 'a', authorEmail: 'a@example.com', date: '', subject: hash, refs: [] })
 
 describe('layoutGraph with merges of three or more branches', () => {
   // Newest first: an octopus merge M of a, b and c, all cut from root.

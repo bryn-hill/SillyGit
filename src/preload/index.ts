@@ -138,6 +138,20 @@ const api = {
   copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write-text', text),
 
   hasApiKey: (): Promise<boolean> => ipcRenderer.invoke('settings:has-api-key'),
+  listAccounts: (): Wrapped<import('../shared/accounts').ProviderAccount[]> => ipcRenderer.invoke('accounts:list'),
+  /** Why tokens can't be stored securely here, or null when they can. */
+  accountStorageProblem: (): Promise<string | null> => ipcRenderer.invoke('accounts:storage-problem'),
+  addAccount: (input: import('../shared/accounts').NewAccountInput): Wrapped<import('../shared/accounts').ProviderAccount> =>
+    ipcRenderer.invoke('accounts:add', input),
+  removeAccount: (id: string): Wrapped<import('../shared/accounts').ProviderAccount[]> =>
+    ipcRenderer.invoke('accounts:remove', id),
+  getShowAvatars: (): Promise<boolean> => ipcRenderer.invoke('settings:get-show-avatars'),
+  setShowAvatars: (show: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-show-avatars', show),
+  /** Avatar images (data: URLs) by lower-cased email; null or missing means show initials. */
+  resolveAvatars: (
+    repoPath: string,
+    requests: import('../shared/types').AvatarRequest[]
+  ): Wrapped<Record<string, string | null>> => ipcRenderer.invoke('avatars:resolve', repoPath, requests),
   setApiKey: (key: string): Wrapped<void> => ipcRenderer.invoke('settings:set-api-key', key),
   quickSuggestMessages: (repoPath: string): Wrapped<import('../shared/quickActions').QuickMessage[]> =>
     ipcRenderer.invoke('quick:suggest-messages', repoPath),

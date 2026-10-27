@@ -3432,3 +3432,135 @@ button.link-button.danger {
   padding: 10px 14px;
   color: var(--text-dim);
 }
+
+/* Author avatars: a picture when one is found, coloured initials otherwise. */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.graph-cell {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.graph-cell .graph-node-avatar {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ---------- settings: accounts ---------- */
+
+.settings-modal {
+  width: 460px;
+  max-height: calc(100vh - 80px);
+}
+
+.settings-modal .modal-body {
+  overflow-y: auto;
+  gap: 14px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-inline {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.settings-checkbox input {
+  width: auto;
+}
+
+.account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.account-row-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+.account-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.account-provider-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.account-provider-tabs button {
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
+.account-provider-tabs button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.account-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

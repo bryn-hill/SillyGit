@@ -1,7 +1,9 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { OpenPullRequest, RepoRemote } from '../shared/types'
-import { runGit } from './gitExec'
+import { remoteEnv, runGit } from './gitExec'
+import * as github from './github'
+import { githubAccess } from './hosting'
 
 const execFileAsync = promisify(execFile)
 
@@ -55,11 +57,19 @@ export async function listRepoRemotes(repoPath: string): Promise<RepoRemote[]> {
 }
 
 /**
- * The repo's open pull requests, from the gh CLI. This is a network call that
- * takes a second or two, so the app runs it in the background and the branch
- * menu reads the cached result. Empty when gh is missing or not signed in.
+ * The repo's open pull requests, from the GitHub API when an account is
+ * signed in for the remote's host, otherwise from the gh CLI. This is a
+ * network call that takes a second or two, so the app runs it in the
+ * background and the branch menu reads the cached result. Empty when
+ * neither works.
  */
 export async function listOpenPullRequests(repoPath: string): Promise<OpenPullRequest[]> {
+  try {
+    const access = await githubAccess(repoPath)
+    if (access) return await github.listOpenPullRequests(access.creds, access.repo)
+  } catch {
+    // Fall back to gh.
+  }
   try {
     const { stdout } = await execFileAsync(
       'gh',
@@ -98,7 +108,7 @@ export async function deleteBranch(repoPath: string, name: string, force: boolea
 export async function deleteRemoteBranch(repoPath: string, name: string): Promise<void> {
   const target = await splitRemoteBranch(repoPath, name)
   if (!target) throw new Error(`"${name}" isn't on a known remote`)
-  await runGit(repoPath, ['push', target.remote, '--delete', target.branch])
+  await runGit(repoPath, ['push', target.remote, '--delete', target.branch], await remoteEnv())
 }
 
 export async function renameBranch(repoPath: string, from: string, to: string): Promise<void> {

@@ -57,9 +57,9 @@ export const test = base.extend<Fixtures>({
     // settings file also stops the one-time copy from the old gitdesk
     // settings location.
     const userData = mkdtempSync(join(tmpdir(), 'sillygit-e2e-userdata-'))
-    // Background fetches are off so nothing reaches the network or prunes a
-    // test's fake remote branches.
-    writeFileSync(join(userData, 'sillygit-settings.json'), JSON.stringify({ autoFetchMinutes: 0 }))
+    // Background fetches and avatar lookups are off so nothing reaches the
+    // network or prunes a test's fake remote branches.
+    writeFileSync(join(userData, 'sillygit-settings.json'), JSON.stringify({ autoFetchMinutes: 0, showAvatars: false }))
     await use(userData)
     rmSync(userData, { recursive: true, force: true })
   },
