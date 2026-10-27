@@ -480,7 +480,7 @@ export default function FileDiffViewer({
         </div>
       )}
 
-      <div className={`diff-body ${wrapLines ? 'wrap' : ''}`}>
+      <div className={`diff-body ${wrapLines ? 'wrap' : ''}`} data-testid="diff-scroller">
         {mode === 'file' ? (
           <FileViewPane
             content={fileContent}

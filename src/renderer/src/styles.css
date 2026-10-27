@@ -796,6 +796,7 @@ input {
 .diff-content div {
   padding: 0 12px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .diff-add {
@@ -1398,10 +1399,30 @@ button.ai-ask-button:focus-visible {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* lets the hunk bars size to the visible width (cqw) while the code scrolls sideways */
+  container-type: inline-size;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Long lines widen the content past the viewport so .diff-body scrolls horizontally. */
+.diff-unified,
+.diff-split,
+.file-view-content {
+  width: max-content;
+  min-width: 100%;
+}
+
+.diff-body.wrap .diff-unified,
+.diff-body.wrap .diff-split,
+.diff-body.wrap .file-view-content {
+  width: auto;
 }
 
 .diff-body.wrap .line-code {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .diff-empty {
@@ -1437,7 +1458,9 @@ button.ai-ask-button:focus-visible {
   color: var(--cyan);
   position: sticky;
   top: 0;
+  left: 0;
   z-index: 1;
+  width: 100cqw;
 }
 
 .diff-hunk-header-text {
@@ -1465,10 +1488,8 @@ button.ai-ask-button:focus-visible {
 }
 
 .diff-row .line-code {
-  flex: 1;
+  flex: 1 0 auto;
   padding: 0 10px;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .gutter-num {
@@ -1510,18 +1531,21 @@ button.ai-ask-button:focus-visible {
 
 /* -- split view -- */
 
+/* A grid keeps both halves equal width, each as wide as the longer side needs. */
 .diff-split-rows {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.diff-body.wrap .diff-split-rows {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .diff-split-row {
-  display: flex;
+  display: contents;
 }
 
 .diff-split-cell {
-  flex: 1;
-  min-width: 0;
   display: flex;
   white-space: pre;
 }
@@ -1531,10 +1555,8 @@ button.ai-ask-button:focus-visible {
 }
 
 .diff-split-cell .line-code {
-  flex: 1;
+  flex: 1 0 auto;
   padding: 0 10px;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .diff-split-cell.diff-row-add {
@@ -1588,10 +1610,8 @@ button.ai-ask-button:focus-visible {
 }
 
 .file-view-row .line-code {
-  flex: 1;
+  flex: 1 0 auto;
   padding: 0 10px;
-  min-width: 0;
-  overflow: hidden;
 }
 
 /* -- whitespace markers -- */
