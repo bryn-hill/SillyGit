@@ -19,6 +19,7 @@ interface Actor {
 
 interface PrBase {
   id: string
+  headRefName: string
   number: number
   title: string
   url: string
@@ -51,7 +52,7 @@ export interface PrActivity {
   inWatchedRepos: PrBase[]
 }
 
-const PR_BASE = 'id number title url createdAt author { login } repository { nameWithOwner }'
+const PR_BASE = 'id headRefName number title url createdAt author { login } repository { nameWithOwner }'
 
 const MY_PR_FIELDS = `${PR_BASE}
   reviews(last: 20) { nodes { id state body url submittedAt author { login } comments(first: 1) { nodes { body } } } }
@@ -99,11 +100,22 @@ export interface PrEvent {
   /** The pull request it's about; one notification per pull request and check is enough. */
   prId: string
   prAuthor: string
+  /** The pull request's branch is a coding agent's (claude/..., codex/...). */
+  fromAgent: boolean
   /** When it happened, if GitHub says. Older events than the last check are never announced. */
   at: string | null
   title: string
   body: string
   url: string
+}
+
+// Branch prefixes coding agents push to. A pull request on one of these was
+// opened by an agent, even when it carries the user's own name.
+const AGENT_BRANCH = /^(claude|codex|copilot|cursor|devin|jules|sweep)[/-]/i
+
+/** Whether a pull request's branch looks like a coding agent's. */
+export function isAgentBranch(headRefName: string): boolean {
+  return AGENT_BRANCH.test(headRefName)
 }
 
 const SNIPPET_LENGTH = 140
@@ -130,6 +142,7 @@ export function collectEvents(login: string, activity: PrActivity): PrEvent[] {
       kind: 'newPullRequest',
       prId: pr.id,
       prAuthor: who(pr.author),
+      fromAgent: isAgentBranch(pr.headRefName ?? ''),
       at: pr.createdAt,
       title: `New pull request in ${pr.repository.nameWithOwner}`,
       body: `#${pr.number} ${pr.title} (by ${who(pr.author)})`,
@@ -144,6 +157,7 @@ export function collectEvents(login: string, activity: PrActivity): PrEvent[] {
       kind: 'reviewRequested',
       prId: pr.id,
       prAuthor: who(pr.author),
+      fromAgent: isAgentBranch(pr.headRefName ?? ''),
       at: null,
       title: `${who(pr.author)} asked for your review`,
       body: prLabel(pr),
@@ -175,6 +189,7 @@ export function collectEvents(login: string, activity: PrActivity): PrEvent[] {
         kind,
         prId: pr.id,
         prAuthor: login,
+        fromAgent: isAgentBranch(pr.headRefName ?? ''),
         at: review.submittedAt,
         title,
         body: text ? `${prLabel(pr)}\n${text}` : prLabel(pr),
@@ -189,6 +204,7 @@ export function collectEvents(login: string, activity: PrActivity): PrEvent[] {
         kind: 'comment',
         prId: pr.id,
         prAuthor: login,
+        fromAgent: isAgentBranch(pr.headRefName ?? ''),
         at: comment.createdAt,
         title: `${who(comment.author)} commented on #${pr.number}`,
         body: text ? `${prLabel(pr)}\n${text}` : prLabel(pr),
@@ -233,7 +249,10 @@ export function pickNotifications(
       !seen.has(e.id) &&
       settings.kinds[e.kind] &&
       (e.at === null || Date.parse(e.at) >= since) &&
-      (e.kind !== 'newPullRequest' || settings.includeMyOwnPullRequests || e.prAuthor.toLowerCase() !== me)
+      (e.kind !== 'newPullRequest' ||
+        e.prAuthor.toLowerCase() !== me ||
+        e.fromAgent ||
+        settings.includeMyOwnPullRequests)
   )
   // A new pull request that also asks for the user's review is announced once, as the review request.
   const requested = new Set(fresh.filter((e) => e.kind === 'reviewRequested').map((e) => e.prId))

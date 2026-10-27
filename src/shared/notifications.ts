@@ -6,7 +6,10 @@ export interface NotificationSettings {
   enabled: boolean
   /** Which kinds to show while enabled. */
   kinds: Record<PrNotificationKind, boolean>
-  /** Also tell me about pull requests I opened myself (e.g. from another tool or an agent). */
+  /**
+   * Also tell me about pull requests I opened by hand. Ones a coding agent
+   * opened under my name (on a claude/, codex/... branch) are always included.
+   */
   includeMyOwnPullRequests: boolean
   /** Minutes between checks. */
   intervalMinutes: number

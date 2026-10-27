@@ -7,6 +7,7 @@ import {
   PrNotifier,
   collectEvents,
   fetchPrActivity,
+  isAgentBranch,
   pickNotifications,
   toNotifications,
   type PrActivity,
@@ -139,7 +140,7 @@ describe('pickNotifications', () => {
   const events = collectEvents(
     login,
     activity({
-      inWatchedRepos: [pr('n1', { createdAt: '2026-10-27T11:59:00Z' }), pr('old1', { createdAt: '2026-09-01T00:00:00Z' }), pr('n2', { createdAt: '2026-10-27T11:59:00Z', author: { login: 'bryn' } }), pr('r1', { createdAt: '2026-10-27T11:59:00Z' })],
+      inWatchedRepos: [pr('n1', { createdAt: '2026-10-27T11:59:00Z' }), pr('old1', { createdAt: '2026-09-01T00:00:00Z' }), pr('n2', { createdAt: '2026-10-27T11:59:00Z', author: { login: 'bryn' } }), pr('r1', { createdAt: '2026-10-27T11:59:00Z' }), pr('a9', { createdAt: '2026-10-27T11:59:00Z', author: { login: 'bryn' }, headRefName: 'claude/project-thread-x' })],
       reviewRequested: [pr('r1')],
       mine: [myPr('m1', [review('v1', 'APPROVED', 'alice', '2026-10-27T11:59:30Z')])]
     })
@@ -152,9 +153,10 @@ describe('pickNotifications', () => {
     expect(picked.state.seen).toContain('rv:v1')
   })
 
-  it('announces new things once, skipping old PRs in newly watched repos and my own PRs', () => {
+  it('announces new things once, skipping old PRs in newly watched repos and PRs I opened by hand', () => {
     const picked = pickNotifications(events, lastCheck, settings, login, now)
-    expect(picked.notify.map((e) => e.id).sort()).toEqual(['pr:n1', 'rr:r1', 'rv:v1'])
+    // a9 is mine too, but on an agent's branch, so it counts as coming in.
+    expect(picked.notify.map((e) => e.id).sort()).toEqual(['pr:a9', 'pr:n1', 'rr:r1', 'rv:v1'])
     const again = pickNotifications(events, picked.state, settings, login, new Date('2026-10-27T12:02:00Z'))
     expect(again.notify).toEqual([])
   })
@@ -163,7 +165,7 @@ describe('pickNotifications', () => {
     const quiet = normalizeNotificationSettings({ kinds: { approved: false, reviewRequested: false }, includeMyOwnPullRequests: true })
     const picked = pickNotifications(events, lastCheck, quiet, login, now)
     // r1 falls back to its new-PR notification when review requests are off.
-    expect(picked.notify.map((e) => e.id).sort()).toEqual(['pr:n1', 'pr:n2', 'pr:r1'])
+    expect(picked.notify.map((e) => e.id).sort()).toEqual(['pr:a9', 'pr:n1', 'pr:n2', 'pr:r1'])
     // Switched-off kinds still count as seen, so turning them on later doesn't replay them.
     expect(picked.state.seen).toContain('rv:v1')
   })
@@ -179,6 +181,16 @@ describe('pickNotifications', () => {
   it('starts over quietly after a long gap', () => {
     const stale = { lastCheckedAt: '2026-10-01T00:00:00Z', seen: [] }
     expect(pickNotifications(events, stale, settings, login, now).notify).toEqual([])
+  })
+})
+
+describe('isAgentBranch', () => {
+  it('recognises coding agents’ branches', () => {
+    expect(isAgentBranch('claude/project-thread-k81sdb')).toBe(true)
+    expect(isAgentBranch('codex/fix-login')).toBe(true)
+    expect(isAgentBranch('copilot/fix-123')).toBe(true)
+    expect(isAgentBranch('feature/claude-panel')).toBe(false)
+    expect(isAgentBranch('main')).toBe(false)
   })
 })
 

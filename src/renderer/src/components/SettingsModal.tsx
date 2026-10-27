@@ -253,7 +253,7 @@ function NotificationsSection(): JSX.Element {
       </label>
       <div className="modal-hint">
         Desktop notifications from your GitHub accounts. New pull requests are watched in repositories you own and ones
-        you&apos;ve opened in SillyGit.
+        you&apos;ve opened in SillyGit, including ones a coding agent opens under your name.
       </div>
       {hasGithub === false && <div className="modal-hint">Add a GitHub account above to get them.</div>}
       {prefs && (
@@ -276,7 +276,7 @@ function NotificationsSection(): JSX.Element {
               disabled={off || !prefs.kinds.newPullRequest}
               onChange={(e) => void update({ ...prefs, includeMyOwnPullRequests: e.target.checked })}
             />
-            Include new pull requests I opened (e.g. from an agent)
+            Include new pull requests I opened myself
           </label>
           <div className="settings-inline">
             <label htmlFor="notification-interval">Check</label>
