@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-/** The in-app Monaco editor for a working-tree file. */
+/** The in-app Monaco editor for a working-tree file, shown in place of the commit graph. */
 export class FileEditor {
   readonly root: Locator
   readonly code: Locator
@@ -11,11 +11,11 @@ export class FileEditor {
   readonly status: Locator
 
   constructor(private readonly page: Page) {
-    this.root = page.getByRole('dialog', { name: 'Edit file' })
+    this.root = page.getByRole('region', { name: 'Edit file' })
     this.code = this.root.getByTestId('file-editor-monaco').locator('.view-lines')
     this.saveButton = this.root.getByRole('button', { name: 'Save', exact: true })
     this.closeButton = this.root.getByRole('button', { name: 'Close editor' })
-    this.externalButton = this.root.getByRole('button', { name: /Open in external editor/ })
+    this.externalButton = this.root.getByRole('button', { name: 'Open in external editor' })
     this.unsavedMarker = this.root.getByLabel('Unsaved changes')
     this.status = this.root.getByRole('status')
   }

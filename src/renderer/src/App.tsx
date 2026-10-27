@@ -97,7 +97,10 @@ export default function App(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null)
   const [operation, setOperation] = useState<OperationState | null>(null)
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
-  const [editingFile, setEditingFile] = useState<{ repoPath: string; path: string } | null>(null)
+  // The file open in the editor, per repo tab, and unsaved text left in files
+  // whose editor was hidden (tab switch, Launchpad, another file opened).
+  const [editingFiles, setEditingFiles] = useState<Record<string, string>>({})
+  const editorDrafts = useRef(new Map<string, string>())
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
@@ -527,6 +530,13 @@ export default function App(): JSX.Element {
 
   const closeTabs = (paths: string[]): void => {
     if (paths.length === 0) return
+    const draftKeys = [...editorDrafts.current.keys()].filter((key) => paths.includes(key.split('\0')[0]))
+    if (draftKeys.length > 0) {
+      const files = draftKeys.map((key) => key.split('\0')[1]).join(', ')
+      if (!window.confirm(`Discard unsaved changes to ${files}?`)) return
+      draftKeys.forEach((key) => editorDrafts.current.delete(key))
+    }
+    setEditingFiles((current) => Object.fromEntries(Object.entries(current).filter(([repo]) => !paths.includes(repo))))
     const remaining = tabs.filter((p) => !paths.includes(p))
     for (const path of paths) tabSnapshots.current.delete(path)
     setTabs(remaining)
@@ -1249,6 +1259,50 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  const editingPath = repoPath ? editingFiles[repoPath] : undefined
+  const openEditor = (path: string): void => {
+    if (repoPath) setEditingFiles((current) => ({ ...current, [repoPath]: path }))
+  }
+  const closeEditor = (): void => {
+    if (!repoPath) return
+    setEditingFiles(({ [repoPath]: _closed, ...rest }) => rest)
+  }
+  const detailPanel =
+    repoPath && selection.type !== 'none' ? (
+      <div className="detail-panel" role="complementary" aria-label="Details">
+        <DetailPanel
+          repoPath={repoPath}
+          selection={selection}
+          lookupCommit={(hash) => commitByHash.get(hash)}
+          multiActions={multiActions}
+          amend={amend}
+          onAmendChange={handleAmendChange}
+          status={status}
+          commitMessage={commitMessage}
+          onCommitMessageChange={setCommitMessage}
+          onStage={handleStage}
+          onUnstage={handleUnstage}
+          onDiscard={handleDiscard}
+          onCommit={handleCommit}
+          onOpenCommitFileDiff={(hash, path) => {
+            closeEditor()
+            setFullScreenHash(hash)
+            setFullScreenPath(path)
+          }}
+          operation={operation}
+          conflictActions={{
+            onOpenConflict: setResolvingPath,
+            onTakeSide: handleTakeSide,
+            onMarkResolved: handleMarkResolved,
+            onContinue: handleContinue,
+            onAbort: handleAbort,
+            onSkip: handleSkip
+          }}
+          onEditFile={openEditor}
+        />
+      </div>
+    ) : null
+
   return (
     <div className="app">
       <TabBar
@@ -1351,6 +1405,25 @@ export default function App(): JSX.Element {
                 }}
                 onError={showError}
               />
+            ) : editingPath ? (
+              <div className="main-layout">
+                <Suspense fallback={<div className="file-editor" />}>
+                  <FileEditor
+                    key={`${repoPath}\0${editingPath}`}
+                    repoPath={repoPath}
+                    path={editingPath}
+                    draft={editorDrafts.current.get(`${repoPath}\0${editingPath}`)}
+                    onDraftChange={(draft) => {
+                      const key = `${repoPath}\0${editingPath}`
+                      if (draft == null) editorDrafts.current.delete(key)
+                      else editorDrafts.current.set(key, draft)
+                    }}
+                    onClose={closeEditor}
+                    onSaved={() => refresh(repoPath)}
+                  />
+                </Suspense>
+                {detailPanel}
+              </div>
             ) : fullScreenHash ? (
               <CommitFullView
                 repoPath={repoPath}
@@ -1367,7 +1440,7 @@ export default function App(): JSX.Element {
                   setSelection({ type: 'commit', hash })
                 }}
                 onWorkingTreeChanged={() => refresh(repoPath)}
-                onEditFile={(path) => setEditingFile({ repoPath, path })}
+                onEditFile={openEditor}
               />
             ) : (
               <div className="main-layout">
@@ -1408,39 +1481,7 @@ export default function App(): JSX.Element {
                   sprints={sprintSettings}
                   onRefColumnWidthChange={setRefColumnWidth}
                 />
-                {selection.type !== 'none' && (
-                  <div className="detail-panel" role="complementary" aria-label="Details">
-                    <DetailPanel
-                      repoPath={repoPath}
-                      selection={selection}
-                      lookupCommit={(hash) => commitByHash.get(hash)}
-                      multiActions={multiActions}
-                      amend={amend}
-                      onAmendChange={handleAmendChange}
-                      status={status}
-                      commitMessage={commitMessage}
-                      onCommitMessageChange={setCommitMessage}
-                      onStage={handleStage}
-                      onUnstage={handleUnstage}
-                      onDiscard={handleDiscard}
-                      onCommit={handleCommit}
-                      onOpenCommitFileDiff={(hash, path) => {
-                        setFullScreenHash(hash)
-                        setFullScreenPath(path)
-                      }}
-                      operation={operation}
-                      conflictActions={{
-                        onOpenConflict: setResolvingPath,
-                        onTakeSide: handleTakeSide,
-                        onMarkResolved: handleMarkResolved,
-                        onContinue: handleContinue,
-                        onAbort: handleAbort,
-                        onSkip: handleSkip
-                      }}
-                      onEditFile={(path) => setEditingFile({ repoPath, path })}
-                    />
-                  </div>
-                )}
+                {detailPanel}
               </div>
             )}
           </div>
@@ -1472,17 +1513,6 @@ export default function App(): JSX.Element {
           sprints={sprintSettings}
           onSprintsChange={handleSprintSettingsChange}
         />
-      )}
-      {editingFile && (
-        <Suspense fallback={<div className="modal-backdrop file-editor-backdrop" />}>
-          <FileEditor
-            key={`${editingFile.repoPath}\0${editingFile.path}`}
-            repoPath={editingFile.repoPath}
-            path={editingFile.path}
-            onClose={() => setEditingFile(null)}
-            onSaved={() => refresh(editingFile.repoPath)}
-          />
-        </Suspense>
       )}
       {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}
       {showActivity && <ActivityLog repoPath={repoPath} onClose={() => setShowActivity(false)} />}

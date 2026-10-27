@@ -38,6 +38,28 @@ test.describe('editing a changed file in the app', () => {
     expect(repo.readFile('hello.txt')).toBe('hello\nworld\nchanged\n')
   })
 
+  test('opens in the main window beside the details panel', async ({ sillygit }) => {
+    await expect(sillygit.details.root).toBeVisible()
+    await expect(sillygit.graph.root).toBeHidden()
+
+    await sillygit.editor.closeButton.click()
+
+    await sillygit.editor.expectClosed()
+    await expect(sillygit.graph.root).toBeVisible()
+  })
+
+  test('unsaved edits survive a trip to Launchpad', async ({ sillygit, repo }) => {
+    await sillygit.editor.appendText('still here')
+    await sillygit.tabs.launchpad.click()
+    await sillygit.editor.expectClosed()
+
+    await sillygit.tabs.tab(repo.name).click()
+
+    await sillygit.editor.expectOpen('hello.txt', 'still here')
+    await expect(sillygit.editor.unsavedMarker).toBeVisible()
+    expect(repo.readFile('hello.txt')).toBe('hello\nworld\nchanged\n')
+  })
+
   test('typing in the editor does not drive the app shortcuts', async ({ sillygit }) => {
     await sillygit.editor.code.click()
     await sillygit.page.keyboard.press('Escape')
