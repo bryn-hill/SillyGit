@@ -28,6 +28,7 @@ import { repoDisplayName } from './lib/repoName'
 import { resolveBranchRemote } from '../../shared/branchRemote'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
 import { withPullRequestText } from '../../shared/quickActions'
+import { DEFAULT_SPRINT_SETTINGS, type SprintSettings } from '../../shared/sprints'
 import CommandPalette, { type Command } from './components/CommandPalette'
 import ActivityLog from './components/ActivityLog'
 import type { ClickModifiers } from './components/CommitGraph'
@@ -118,6 +119,18 @@ export default function App(): JSX.Element {
   const handleAutoFetchChange = (minutes: number): void => {
     setAutoFetchMinutes(minutes)
     window.api.setAutoFetchMinutes(minutes).then((res) => !res.ok && showError(res.error))
+  }
+
+  // Sprint markers on the graph, from settings (off by default).
+  const [sprintSettings, setSprintSettings] = useState<SprintSettings>(DEFAULT_SPRINT_SETTINGS)
+
+  useEffect(() => {
+    window.api.getSprintSettings().then(setSprintSettings)
+  }, [])
+
+  const handleSprintSettingsChange = (next: SprintSettings): void => {
+    setSprintSettings(next)
+    window.api.setSprintSettings(next).then((res) => !res.ok && showError(res.error))
   }
 
   // Reopen whatever was open when the app last quit.
@@ -1230,6 +1243,7 @@ export default function App(): JSX.Element {
                   onLoadMore={handleLoadMore}
                   searchFocusToken={searchFocusToken}
                   refColumnWidth={refColumnWidth}
+                  sprints={sprintSettings}
                   onRefColumnWidthChange={setRefColumnWidth}
                 />
                 {selection.type !== 'none' && (
@@ -1292,6 +1306,8 @@ export default function App(): JSX.Element {
           onClose={() => setShowSettings(false)}
           autoFetchMinutes={autoFetchMinutes ?? 0}
           onAutoFetchChange={handleAutoFetchChange}
+          sprints={sprintSettings}
+          onSprintsChange={handleSprintSettingsChange}
         />
       )}
       {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}

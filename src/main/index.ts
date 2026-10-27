@@ -22,6 +22,7 @@ import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
 import { watchRepo, stopWatching } from './watcher'
 import { PrNotifier, type ShownNotification } from './prNotifications'
 import type { NotificationSettings } from '../shared/notifications'
+import type { SprintSettings } from '../shared/sprints'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
@@ -585,6 +586,10 @@ function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('accounts:remove', (_e, id: string) => wrap(() => accounts.removeAccount(id)))
+
+  ipcMain.handle('settings:get-sprints', () => settings.getSprintSettings())
+
+  ipcMain.handle('settings:set-sprints', (_e, next: SprintSettings) => wrap(() => settings.setSprintSettings(next)))
 
   ipcMain.handle('notifications:get-settings', () => settings.getNotificationSettings())
 

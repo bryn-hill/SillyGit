@@ -3,6 +3,7 @@ import { join } from 'path'
 import { promises as fs } from 'fs'
 import type { SavedLayout } from '../shared/types'
 import { normalizeNotificationSettings, type NotificationSettings } from '../shared/notifications'
+import { normalizeSprintSettings, type SprintSettings } from '../shared/sprints'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -16,6 +17,8 @@ interface StoredSettings {
   showAvatars?: boolean
   /** Desktop notifications about pull requests. */
   notifications?: Partial<NotificationSettings>
+  /** Sprint markers on the commit graph. */
+  sprints?: Partial<SprintSettings>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -101,6 +104,19 @@ export async function setNotificationSettings(next: NotificationSettings): Promi
   const current = await readSettings()
   const normalized = normalizeNotificationSettings(next)
   current.notifications = normalized
+  await fs.mkdir(app.getPath('userData'), { recursive: true })
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  return normalized
+}
+
+export async function getSprintSettings(): Promise<SprintSettings> {
+  return normalizeSprintSettings((await readSettings()).sprints)
+}
+
+export async function setSprintSettings(next: SprintSettings): Promise<SprintSettings> {
+  const current = await readSettings()
+  const normalized = normalizeSprintSettings(next)
+  current.sprints = normalized
   await fs.mkdir(app.getPath('userData'), { recursive: true })
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
   return normalized
