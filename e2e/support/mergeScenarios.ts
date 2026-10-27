@@ -98,6 +98,32 @@ export function renameRename(repo: FixtureRepo): void {
   commitAll(repo, 'Rename shared to ours')
 }
 
+/**
+ * Like renameRename, but both sides also edit the file: line 3 differently
+ * (a conflict), line 7 only on `feature`, line 19 only on main.
+ */
+export function renameRenameEdited(repo: FixtureRepo): void {
+  repo.commitFile('shared.txt', numbered(20), 'Add shared')
+  repo.git('checkout', '-q', '-b', 'feature')
+  repo.git('mv', 'shared.txt', 'theirs.txt')
+  repo.writeFile('theirs.txt', numbered(20).replace('line 3\n', 'line 3 (feature)\n').replace('line 7\n', 'line 7 (feature)\n'))
+  commitAll(repo, 'Rename shared to theirs and edit it')
+  repo.git('checkout', '-q', 'main')
+  repo.git('mv', 'shared.txt', 'ours.txt')
+  repo.writeFile('ours.txt', numbered(20).replace('line 3\n', 'line 3 (main)\n').replace('line 19\n', 'line 19 (main)\n'))
+  commitAll(repo, 'Rename shared to ours and edit it')
+}
+
+/**
+ * part.txt: both sides change line 2 but only main changes line
+ * 8: taking a whole side must still keep main's line 8.
+ */
+export function partialConflict(repo: FixtureRepo): void {
+  repo.commitFile('part.txt', numbered(10), 'Add part')
+  branchWith(repo, 'feature', { 'part.txt': numbered(10).replace('line 2\n', 'line 2 (feature)\n') }, 'Feature edits line 2')
+  repo.commitFile('part.txt', numbered(10).replace('line 2\n', 'line 2 (main)\n').replace('line 8\n', 'line 8 (main)\n'), 'Main edits lines 2 and 8')
+}
+
 /** Main renames shared.txt to kept.txt while `feature` deletes it. */
 export function renameDelete(repo: FixtureRepo): void {
   repo.commitFile('shared.txt', numbered(10), 'Add shared')

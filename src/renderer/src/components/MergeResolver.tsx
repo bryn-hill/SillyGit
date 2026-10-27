@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
-import type { ConflictFileContent } from '../../../shared/types'
+import type { ConflictFileContent, RenameKeep } from '../../../shared/types'
 import {
   buildOutput,
   buildOutputLines,
@@ -155,16 +155,20 @@ function SidePane({
   )
 }
 
-/** Choices for a file deleted on one side, or a binary file: no line picking possible. */
+/** Choices for a file deleted on one side, renamed, moved aside, or binary: no line picking possible. */
 function WholeFileChoice({
   file,
   onTake,
   onDelete,
+  onResolveRename,
+  onKeepAsIs,
   onClose
 }: {
   file: ConflictFileContent
   onTake: (side: 'current' | 'incoming' | 'base') => void
   onDelete: () => void
+  onResolveRename: (keep: RenameKeep) => void
+  onKeepAsIs: () => void
   onClose: () => void
 }): JSX.Element {
   if (file.kind === 'binary') {
@@ -176,6 +180,57 @@ function WholeFileChoice({
         <div className="merge-choice-buttons">
           <button onClick={() => onTake('current')}>Take current ({file.currentLabel})</button>
           <button onClick={() => onTake('incoming')}>Take incoming ({file.incomingLabel})</button>
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    )
+  }
+  if (file.folderInTheWay) {
+    const { folder, fileSide } = file.folderInTheWay
+    const [fileOn, folderOn] =
+      fileSide === 'current' ? [file.currentLabel, file.incomingLabel] : [file.incomingLabel, file.currentLabel]
+    return (
+      <div className="merge-choice" role="alertdialog" aria-label="File and folder conflict">
+        <p>
+          {fileOn} added a file <strong>{folder}</strong>, but {folderOn} added a folder with the same name. Git kept
+          the folder and saved the file as <strong>{file.path}</strong>.
+        </p>
+        <div className="merge-choice-buttons">
+          <button onClick={onKeepAsIs}>Keep As {file.path}</button>
+          <button className="danger-button" onClick={onDelete}>
+            Delete The File
+          </button>
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    )
+  }
+  if (file.rename) {
+    const { from, current, incoming } = file.rename
+    const renamedBoth = current !== null && incoming !== null
+    return (
+      <div className="merge-choice" role="alertdialog" aria-label="Rename conflict">
+        <p>
+          {renamedBoth ? (
+            <>
+              Both sides renamed <strong>{from}</strong>: {file.currentLabel} to <strong>{current}</strong>,{' '}
+              {file.incomingLabel} to <strong>{incoming}</strong>.
+            </>
+          ) : (
+            <>
+              {current !== null ? file.currentLabel : file.incomingLabel} renamed <strong>{from}</strong> to{' '}
+              <strong>{current ?? incoming}</strong>, but {current !== null ? file.incomingLabel : file.currentLabel}{' '}
+              deleted it.
+            </>
+          )}
+        </p>
+        <div className="merge-choice-buttons">
+          {current !== null && <button onClick={() => onResolveRename('current')}>Keep As {current}</button>}
+          {incoming !== null && <button onClick={() => onResolveRename('incoming')}>Keep As {incoming}</button>}
+          {renamedBoth && <button onClick={() => onResolveRename('both')}>Keep Both</button>}
+          <button className="danger-button" onClick={() => onResolveRename('none')}>
+            Delete The File
+          </button>
           <button onClick={onClose}>Cancel</button>
         </div>
       </div>
@@ -320,6 +375,18 @@ export default function MergeResolver({ repoPath, path, onClose, onResolved, onE
     else onError(res.error)
   }
 
+  const resolveRename = async (keep: RenameKeep): Promise<void> => {
+    const res = await window.api.resolveRename(repoPath, path, keep)
+    if (res.ok) onResolved()
+    else onError(res.error)
+  }
+
+  const keepAsIs = async (): Promise<void> => {
+    const res = await window.api.markResolved(repoPath, [path])
+    if (res.ok) onResolved()
+    else onError(res.error)
+  }
+
   const header = (
     <div className="merge-toolbar">
       <span className="operation-warning" aria-hidden="true">
@@ -349,7 +416,14 @@ export default function MergeResolver({ repoPath, path, onClose, onResolved, onE
       {loadError && <div className="commit-fullview-empty">{loadError}</div>}
       {!file && !loadError && <div className="commit-fullview-empty">Loading diff…</div>}
       {file && file.kind !== 'text' && (
-        <WholeFileChoice file={file} onTake={takeWhole} onDelete={deleteFile} onClose={onClose} />
+        <WholeFileChoice
+          file={file}
+          onTake={takeWhole}
+          onDelete={deleteFile}
+          onResolveRename={resolveRename}
+          onKeepAsIs={keepAsIs}
+          onClose={onClose}
+        />
       )}
       {file?.kind === 'text' && (
         <>

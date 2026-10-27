@@ -11,7 +11,7 @@ import * as quickActions from './quickActions'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
-import type { CommitSplitProposal, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
+import type { CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -246,6 +246,10 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:take-side', (_e, repoPath: string, path: string, side: 'current' | 'incoming' | 'base') =>
     wrap(() => conflicts.takeSide(repoPath, path, side))
+  )
+
+  ipcMain.handle('git:resolve-rename', (_e, repoPath: string, path: string, keep: RenameKeep) =>
+    wrap(() => conflicts.resolveRename(repoPath, path, keep))
   )
 
   ipcMain.handle('git:delete-conflicted-file', (_e, repoPath: string, path: string) =>

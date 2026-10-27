@@ -206,7 +206,28 @@ export interface ConflictFileContent {
   markerSize?: number
   currentLabel: string
   incomingLabel: string
+  /**
+   * Set when the conflict comes from a rename: one side renamed the file and
+   * the other renamed it differently or deleted it. Each side's name for it,
+   * or null where that side deleted it.
+   */
+  rename?: RenameConflict
+  /**
+   * Set when one side added a folder where the other added a file: git kept
+   * the folder and moved the file aside to `path`. The folder's name, and
+   * the side the file came from.
+   */
+  folderInTheWay?: { folder: string; fileSide: 'current' | 'incoming' }
 }
+
+export interface RenameConflict {
+  from: string
+  current: string | null
+  incoming: string | null
+}
+
+/** Which name to keep when resolving a rename conflict ('none' deletes the file). */
+export type RenameKeep = 'current' | 'incoming' | 'both' | 'none'
 
 /** Panel layout saved between launches. */
 export interface SavedLayout {

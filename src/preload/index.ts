@@ -84,6 +84,8 @@ const api = {
     ipcRenderer.invoke('git:save-resolution', repoPath, path, content, stage),
   takeSide: (repoPath: string, path: string, side: 'current' | 'incoming' | 'base'): Wrapped<void> =>
     ipcRenderer.invoke('git:take-side', repoPath, path, side),
+  resolveRename: (repoPath: string, path: string, keep: import('../shared/types').RenameKeep): Wrapped<void> =>
+    ipcRenderer.invoke('git:resolve-rename', repoPath, path, keep),
   deleteConflictedFile: (repoPath: string, path: string): Wrapped<void> =>
     ipcRenderer.invoke('git:delete-conflicted-file', repoPath, path),
   markResolved: (repoPath: string, paths: string[]): Wrapped<void> =>

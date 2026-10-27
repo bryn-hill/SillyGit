@@ -87,21 +87,97 @@ test('rename/modify: the conflict appears at the new name and the rename is kept
   expect(repo.readFile('salutation.txt')).toBe(numbered(10).replace('line 3\n', 'line 3 (main)\nline 3 (feature)\n'))
 })
 
-test('rename/rename: resolving every path keeps only our name', async ({ sillygit, repo }) => {
+test('rename/rename: the rename dialog keeps one name for all three paths', async ({ sillygit, repo }) => {
   scenario.renameRename(repo)
   await sillygit.openRepository(repo.path)
   await mergeFeature(sillygit, ['ours.txt', 'shared.txt', 'theirs.txt'])
   await expect(sillygit.page.getByText('Resolve all 3 conflicted files to continue.')).toBeVisible()
 
-  await sillygit.conflicts.fileMenu('ours.txt', 'Take current (main)')
-  await sillygit.conflicts.fileMenu('theirs.txt', 'Take current (main)')
-  await sillygit.conflicts.openFile('shared.txt')
-  await sillygit.page.getByRole('alertdialog', { name: 'Modify/delete conflict' }).getByRole('button', { name: 'Delete The File' }).click()
+  await sillygit.conflicts.openFile('theirs.txt')
+  const dialog = sillygit.page.getByRole('alertdialog', { name: 'Rename conflict' })
+  await expect(dialog).toContainText('Both sides renamed shared.txt: main to ours.txt, feature to theirs.txt.')
+  await expect(dialog.getByRole('button', { name: 'Keep Both' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Keep As ours.txt' }).click()
 
   await sillygit.conflicts.expectNoConflictedFiles()
   await sillygit.conflicts.button('Commit and Merge').click()
   await expect(sillygit.conflicts.header).toHaveCount(0)
   expect(repo.git('ls-tree', '--name-only', 'HEAD').trim().split('\n')).toEqual(['README.md', 'hello.txt', 'ours.txt'])
+})
+
+test('rename/rename with edits: the kept name becomes an ordinary conflict', async ({ sillygit, repo }) => {
+  scenario.renameRenameEdited(repo)
+  await sillygit.openRepository(repo.path)
+  await mergeFeature(sillygit, ['ours.txt', 'shared.txt', 'theirs.txt'])
+
+  await sillygit.conflicts.openFile('ours.txt')
+  await sillygit.page
+    .getByRole('alertdialog', { name: 'Rename conflict' })
+    .getByRole('button', { name: 'Keep As theirs.txt' })
+    .click()
+  await expect(sillygit.conflicts.conflictedFiles.locator('.file-path')).toHaveText(['theirs.txt'])
+
+  await sillygit.conflicts.openFile('theirs.txt')
+  await expect(sillygit.mergeTool.position).toHaveText('conflict 1 of 1')
+  await sillygit.mergeTool.takeAll('B')
+  await sillygit.mergeTool.saveWithShortcut()
+  await sillygit.conflicts.expectNoConflictedFiles()
+  expect(repo.readFile('theirs.txt')).toBe(
+    numbered(20)
+      .replace('line 3\n', 'line 3 (feature)\n')
+      .replace('line 7\n', 'line 7 (feature)\n')
+      .replace('line 19\n', 'line 19 (main)\n')
+  )
+})
+
+test('rename/delete: the dialog says which side renamed and which deleted', async ({ sillygit, repo }) => {
+  scenario.renameDelete(repo)
+  await sillygit.openRepository(repo.path)
+  await mergeFeature(sillygit, ['kept.txt'])
+
+  await sillygit.conflicts.openFile('kept.txt')
+  const dialog = sillygit.page.getByRole('alertdialog', { name: 'Rename conflict' })
+  await expect(dialog).toContainText('main renamed shared.txt to kept.txt, but feature deleted it.')
+  await expect(dialog.getByRole('button', { name: 'Keep Both' })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Keep As kept.txt' }).click()
+
+  await sillygit.conflicts.expectNoConflictedFiles()
+  expect(repo.readFile('kept.txt')).toBe(numbered(10))
+})
+
+test('a file where the other side added a folder explains where git put it', async ({ sillygit, repo }) => {
+  scenario.directoryFile(repo)
+  await sillygit.openRepository(repo.path)
+  await mergeFeature(sillygit, ['thing~HEAD'])
+
+  await sillygit.conflicts.openFile('thing~HEAD')
+  const dialog = sillygit.page.getByRole('alertdialog', { name: 'File and folder conflict' })
+  await expect(dialog).toContainText(
+    'main added a file thing, but feature added a folder with the same name. Git kept the folder and saved the file as thing~HEAD.'
+  )
+  await dialog.getByRole('button', { name: 'Keep As thing~HEAD' }).click()
+
+  await sillygit.conflicts.expectNoConflictedFiles()
+  await sillygit.conflicts.button('Commit and Merge').click()
+  await expect(sillygit.conflicts.header).toHaveCount(0)
+  expect(repo.git('ls-tree', '-r', '--name-only', 'HEAD').split('\n')).toEqual(
+    expect.arrayContaining(['thing/inner.txt', 'thing~HEAD'])
+  )
+})
+
+test('taking a whole side from the file menu keeps the other side\'s changes that did not conflict', async ({
+  sillygit,
+  repo
+}) => {
+  scenario.partialConflict(repo)
+  await sillygit.openRepository(repo.path)
+  await mergeFeature(sillygit, ['part.txt'])
+
+  await sillygit.conflicts.fileMenu('part.txt', 'Take incoming (feature)')
+  await sillygit.conflicts.expectNoConflictedFiles()
+  expect(repo.readFile('part.txt')).toBe(
+    numbered(10).replace('line 2\n', 'line 2 (feature)\n').replace('line 8\n', 'line 8 (main)\n')
+  )
 })
 
 test('a file with a non-ASCII name is listed and resolved by its real name', async ({ sillygit, repo }) => {
