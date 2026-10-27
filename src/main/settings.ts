@@ -9,6 +9,8 @@ interface StoredSettings {
   lastRepo?: string | null
   recentRepos?: string[]
   layout?: Partial<SavedLayout>
+  /** Minutes between background fetches; 0 turns them off. */
+  autoFetchMinutes?: number
 }
 
 const MAX_RECENT_REPOS = 10
@@ -57,6 +59,21 @@ export async function setApiKey(key: string): Promise<void> {
 export async function hasStoredApiKey(): Promise<boolean> {
   const key = await getApiKey()
   return !!key
+}
+
+export const DEFAULT_AUTO_FETCH_MINUTES = 5
+
+export async function getAutoFetchMinutes(): Promise<number> {
+  const stored = await readSettings()
+  const minutes = stored.autoFetchMinutes
+  return typeof minutes === 'number' && minutes >= 0 ? minutes : DEFAULT_AUTO_FETCH_MINUTES
+}
+
+export async function setAutoFetchMinutes(minutes: number): Promise<void> {
+  const current = await readSettings()
+  current.autoFetchMinutes = Math.max(0, Math.round(minutes))
+  await fs.mkdir(app.getPath('userData'), { recursive: true })
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
 }
 
 export async function getWorkspaceRepos(): Promise<string[]> {

@@ -17,8 +17,21 @@ const api = {
   unstageAll: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:unstage-all', repoPath),
   discard: (repoPath: string, path: string, untracked: boolean): Wrapped<void> =>
     ipcRenderer.invoke('git:discard', repoPath, path, untracked),
-  commit: (repoPath: string, message: string): Wrapped<void> =>
-    ipcRenderer.invoke('git:commit', repoPath, message),
+  commit: (repoPath: string, message: string, amend?: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('git:commit', repoPath, message, amend),
+  lastCommitMessage: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:last-commit-message', repoPath),
+  fetch: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:fetch', repoPath),
+  undoLabel: (repoPath: string): Wrapped<string | null> => ipcRenderer.invoke('git:undo-label', repoPath),
+  undo: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:undo', repoPath),
+  searchCommits: (repoPath: string, query: string): Wrapped<import('../shared/types').CommitSearchHit[]> =>
+    ipcRenderer.invoke('git:search-commits', repoPath, query),
+  /** Starts watching `repoPath` for outside changes (null stops); see onRepoChanged. */
+  watchRepo: (repoPath: string | null): Promise<void> => ipcRenderer.invoke('repo:watch', repoPath),
+  onRepoChanged: (callback: (repoPath: string) => void): (() => void) => {
+    const listener = (_e: unknown, repoPath: string): void => callback(repoPath)
+    ipcRenderer.on('repo:changed', listener)
+    return () => ipcRenderer.removeListener('repo:changed', listener)
+  },
   diff: (repoPath: string, path: string, staged: boolean, untracked: boolean): Wrapped<string> =>
     ipcRenderer.invoke('git:diff', repoPath, path, staged, untracked),
   branches: (repoPath: string): Wrapped<import('../shared/types').BranchInfo[]> =>
@@ -31,8 +44,8 @@ const api = {
   pull: (repoPath: string): Wrapped<import('../shared/types').ConflictableResult> => ipcRenderer.invoke('git:pull', repoPath),
   log: (repoPath: string): Wrapped<import('../shared/types').CommitInfo[]> =>
     ipcRenderer.invoke('git:log', repoPath),
-  graphLog: (repoPath: string): Wrapped<import('../shared/types').GraphCommit[]> =>
-    ipcRenderer.invoke('git:graph-log', repoPath),
+  graphLog: (repoPath: string, limit?: number): Wrapped<import('../shared/types').GraphCommit[]> =>
+    ipcRenderer.invoke('git:graph-log', repoPath, limit),
   commitDetail: (repoPath: string, hash: string): Wrapped<import('../shared/types').CommitDetail> =>
     ipcRenderer.invoke('git:commit-detail', repoPath, hash),
   commitFileDiff: (
@@ -42,8 +55,12 @@ const api = {
     ignoreWhitespace?: boolean
   ): Wrapped<string> =>
     ipcRenderer.invoke('git:commit-file-diff', repoPath, hash, path, ignoreWhitespace),
-  stash: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:stash', repoPath),
-  stashPop: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:stash-pop', repoPath),
+  stash: (repoPath: string, message?: string): Wrapped<void> => ipcRenderer.invoke('git:stash', repoPath, message),
+  stashPop: (repoPath: string, ref?: string): Wrapped<void> => ipcRenderer.invoke('git:stash-pop', repoPath, ref),
+  stashApply: (repoPath: string, ref: string): Wrapped<void> => ipcRenderer.invoke('git:stash-apply', repoPath, ref),
+  stashDrop: (repoPath: string, ref: string): Wrapped<void> => ipcRenderer.invoke('git:stash-drop', repoPath, ref),
+  stashes: (repoPath: string): Wrapped<import('../shared/types').StashEntry[]> =>
+    ipcRenderer.invoke('git:stashes', repoPath),
   fileAtRef: (repoPath: string, ref: string, path: string): Wrapped<string> =>
     ipcRenderer.invoke('git:file-at-ref', repoPath, ref, path),
   workingFile: (repoPath: string, path: string): Wrapped<string> =>
@@ -62,9 +79,9 @@ const api = {
   openPath: (absolutePath: string): Wrapped<void> => ipcRenderer.invoke('shell:open-path', absolutePath),
   openExternal: (url: string): Wrapped<void> => ipcRenderer.invoke('shell:open-external', url),
 
-  cherryPick: (repoPath: string, hash: string): Wrapped<import('../shared/types').ConflictableResult> =>
+  cherryPick: (repoPath: string, hash: string | string[]): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:cherry-pick', repoPath, hash),
-  revertCommit: (repoPath: string, hash: string): Wrapped<import('../shared/types').ConflictableResult> =>
+  revertCommit: (repoPath: string, hash: string | string[]): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:revert-commit', repoPath, hash),
 
   operationState: (repoPath: string): Wrapped<import('../shared/types').OperationState | null> =>
@@ -166,6 +183,8 @@ const api = {
   forgetRecentRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:forget-repo', repoPath),
   saveLayout: (layout: Partial<import('../shared/types').SavedLayout>): Wrapped<void> =>
     ipcRenderer.invoke('session:save-layout', layout),
+  getAutoFetchMinutes: (): Promise<number> => ipcRenderer.invoke('settings:get-auto-fetch'),
+  setAutoFetchMinutes: (minutes: number): Wrapped<void> => ipcRenderer.invoke('settings:set-auto-fetch', minutes),
   getWorkspaceRepos: (): Promise<string[]> => ipcRenderer.invoke('settings:get-workspace-repos'),
   addWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
     ipcRenderer.invoke('settings:add-workspace-repo', repoPath),

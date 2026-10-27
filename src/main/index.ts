@@ -11,6 +11,7 @@ import * as quickActions from './quickActions'
 import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
+import { watchRepo, stopWatching } from './watcher'
 import type { CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -140,9 +141,28 @@ function registerIpcHandlers(): void {
       wrap(() => git.discardFile(repoPath, path, untracked))
   )
 
-  ipcMain.handle('git:commit', (_e, repoPath: string, message: string) =>
-    wrap(() => git.commit(repoPath, message))
+  ipcMain.handle('git:commit', (_e, repoPath: string, message: string, amend?: boolean) =>
+    wrap(() => git.commit(repoPath, message, !!amend))
   )
+
+  ipcMain.handle('git:last-commit-message', (_e, repoPath: string) =>
+    wrap(() => git.lastCommitMessage(repoPath))
+  )
+
+  ipcMain.handle('git:fetch', (_e, repoPath: string) => wrap(() => git.fetchAll(repoPath)))
+
+  ipcMain.handle('git:undo-label', (_e, repoPath: string) => wrap(() => git.undoLabel(repoPath)))
+
+  ipcMain.handle('git:undo', (_e, repoPath: string) => wrap(() => git.undo(repoPath)))
+
+  ipcMain.handle('git:search-commits', (_e, repoPath: string, query: string) =>
+    wrap(() => git.searchCommits(repoPath, query))
+  )
+
+  ipcMain.handle('repo:watch', (e, repoPath: string | null) => {
+    if (repoPath) watchRepo(e.sender, repoPath)
+    else stopWatching(e.sender)
+  })
 
   ipcMain.handle(
     'git:diff',
@@ -166,7 +186,9 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:log', (_e, repoPath: string) => wrap(() => git.getLog(repoPath)))
 
-  ipcMain.handle('git:graph-log', (_e, repoPath: string) => wrap(() => git.getGraphLog(repoPath)))
+  ipcMain.handle('git:graph-log', (_e, repoPath: string, limit?: number) =>
+    wrap(() => git.getGraphLog(repoPath, limit))
+  )
 
   ipcMain.handle('git:commit-detail', (_e, repoPath: string, hash: string) =>
     wrap(() => git.getCommitDetail(repoPath, hash))
@@ -178,9 +200,15 @@ function registerIpcHandlers(): void {
       wrap(() => git.getCommitFileDiff(repoPath, hash, path, ignoreWhitespace))
   )
 
-  ipcMain.handle('git:stash', (_e, repoPath: string) => wrap(() => git.stash(repoPath)))
+  ipcMain.handle('git:stash', (_e, repoPath: string, message?: string) => wrap(() => git.stash(repoPath, message)))
 
-  ipcMain.handle('git:stash-pop', (_e, repoPath: string) => wrap(() => git.stashPop(repoPath)))
+  ipcMain.handle('git:stash-pop', (_e, repoPath: string, ref?: string) => wrap(() => git.stashPop(repoPath, ref)))
+
+  ipcMain.handle('git:stash-apply', (_e, repoPath: string, ref: string) => wrap(() => git.stashApply(repoPath, ref)))
+
+  ipcMain.handle('git:stash-drop', (_e, repoPath: string, ref: string) => wrap(() => git.stashDrop(repoPath, ref)))
+
+  ipcMain.handle('git:stashes', (_e, repoPath: string) => wrap(() => git.listStashes(repoPath)))
 
   ipcMain.handle('git:file-at-ref', (_e, repoPath: string, ref: string, path: string) =>
     wrap(() => git.getFileAtRef(repoPath, ref, path))
@@ -204,11 +232,11 @@ function registerIpcHandlers(): void {
     wrap(() => git.revertHunk(repoPath, diffText, unitId))
   )
 
-  ipcMain.handle('git:cherry-pick', (_e, repoPath: string, hash: string) =>
+  ipcMain.handle('git:cherry-pick', (_e, repoPath: string, hash: string | string[]) =>
     wrap(() => git.cherryPick(repoPath, hash))
   )
 
-  ipcMain.handle('git:revert-commit', (_e, repoPath: string, hash: string) =>
+  ipcMain.handle('git:revert-commit', (_e, repoPath: string, hash: string | string[]) =>
     wrap(() => git.revertCommit(repoPath, hash))
   )
 
@@ -400,6 +428,12 @@ function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('settings:has-api-key', () => settings.hasStoredApiKey())
+
+  ipcMain.handle('settings:get-auto-fetch', () => settings.getAutoFetchMinutes())
+
+  ipcMain.handle('settings:set-auto-fetch', (_e, minutes: number) =>
+    wrap(() => settings.setAutoFetchMinutes(minutes))
+  )
 
   ipcMain.handle('settings:set-api-key', (_e, key: string) => wrap(() => settings.setApiKey(key)))
 

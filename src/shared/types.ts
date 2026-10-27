@@ -51,6 +51,21 @@ export interface BranchRemoteInfo {
   pullRequest: { number: number; url: string } | null
 }
 
+export interface StashEntry {
+  /** e.g. "stash@{0}" */
+  ref: string
+  hash: string
+  /** e.g. "WIP on main: 1a2b3c4 Subject" or "On main: my message" */
+  message: string
+  date: string
+}
+
+/** A commit search match and its row in the full graph (0 = newest). */
+export interface CommitSearchHit {
+  hash: string
+  index: number
+}
+
 export interface CommitInfo {
   hash: string
   author: string
