@@ -72,6 +72,15 @@ test('pins tabs into a group on the left and reorders tabs by dragging', async (
     await sillygit.tabs.tab(second.name).dragTo(sillygit.tabs.tab(repo.name), { targetPosition: { x: 4, y: 10 } })
     await sillygit.tabs.expectNames([third.name, second.name, repo.name])
 
+    // A press that wobbles a pixel or two is still a click, not a drag.
+    const box = (await sillygit.tabs.tab(second.name).boundingBox())!
+    await sillygit.page.mouse.move(box.x + 20, box.y + 10)
+    await sillygit.page.mouse.down()
+    await sillygit.page.mouse.move(box.x + 22, box.y + 11)
+    await sillygit.page.mouse.up()
+    await sillygit.tabs.expectActive(second.name)
+    await sillygit.tabs.expectNames([third.name, second.name, repo.name])
+
     await sillygit.tabs.menu(repo.name, 'Close other tabs')
     await sillygit.tabs.expectNames([third.name, repo.name])
 
@@ -128,8 +137,11 @@ test('tabs, their buttons and menu take clicks instead of dragging the window', 
     )
   expect(await appRegion('.tab-bar')).toEqual(['drag'])
   const clickable = await appRegion(
-    '.tab-bar [role="tab"], .tab-bar [role="tab"] *, .tab-bar button, .tab-bar .context-menu-backdrop, .tab-bar [role="menu"] *'
+    '.tab-bar [role="tab"], .tab-bar [role="tab"] *, .tab-bar button, .context-menu-backdrop, [role="menu"], [role="menu"] *'
   )
   expect(clickable.length).toBeGreaterThan(5)
   expect(clickable.filter((region) => region !== 'no-drag')).toEqual([])
+  // The menu hangs over the toolbar's drag region, so it must not live inside
+  // the strip: on macOS the toolbar's region, later in the page, would win.
+  await expect(sillygit.page.locator('.tab-bar [role="menu"]')).toHaveCount(0)
 })

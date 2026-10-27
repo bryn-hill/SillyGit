@@ -128,9 +128,7 @@ input {
 }
 
 .tab-bar button,
-.tab-bar .repo-tab,
-.tab-bar .context-menu,
-.tab-bar .context-menu-backdrop {
+.tab-bar .repo-tab {
   -webkit-app-region: no-drag;
 }
 
@@ -186,6 +184,7 @@ input {
   font-weight: 500;
   cursor: default;
   outline: none;
+  touch-action: none;
 }
 
 .repo-tab:hover {
@@ -2245,6 +2244,13 @@ button.ai-ask-button:focus-visible {
   position: fixed;
   inset: 0;
   z-index: 100;
+}
+
+/* Menus can hang over the title strip or toolbar, which drag the window on
+   macOS; a drag region there would take the clicks meant for the menu. */
+.context-menu,
+.context-menu-backdrop {
+  -webkit-app-region: no-drag;
 }
 
 .context-menu {
