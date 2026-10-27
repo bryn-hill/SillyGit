@@ -129,12 +129,6 @@ input {
   flex-shrink: 0;
 }
 
-.top-bar-logo {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-}
-
 .top-bar button {
   display: inline-flex;
   align-items: center;
