@@ -1,4 +1,4 @@
-import { useState, type JSX, type ReactNode } from 'react'
+import { useEffect, useState, type JSX, type ReactNode } from 'react'
 import type { BranchInfo, PullMode, RepoStatus } from '../../../shared/types'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
@@ -284,6 +284,20 @@ export default function TopBar({
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [showRepoMenu, setShowRepoMenu] = useState(false)
   const [showPullMenu, setShowPullMenu] = useState(false)
+  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu
+
+  // Escape closes whichever top-bar menu is open.
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return
+      setShowBranchMenu(false)
+      setShowRepoMenu(false)
+      setShowPullMenu(false)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [menuOpen])
   const repoName = repoPath ? repoDisplayName(repoPath) : null
   const localBranches = branches.filter((b) => !b.remote)
   const pullLabel = PULL_OPTIONS.find((o) => o.mode === pullMode)?.label ?? 'Pull'

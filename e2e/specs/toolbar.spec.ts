@@ -130,3 +130,39 @@ test.describe('Actions', () => {
     expect(repo.readFile('b.txt')).toBe('b\n')
   })
 })
+
+// -webkit-app-region is inherited, and on macOS a "drag" region swallows clicks
+// to move the window, so a top-bar menu (or the backdrop that closes it) left
+// draggable can't be clicked or closed. Playwright's clicks get through anyway,
+// so check the computed style instead.
+test.describe('top bar menus take clicks instead of dragging the window', () => {
+  const dragRegions = (page: import('@playwright/test').Page): Promise<string[]> =>
+    page
+      .locator('.top-bar .dropdown-backdrop, .top-bar [role="menu"], .top-bar [role="menu"] *')
+      .evaluateAll((els) =>
+        els
+          .filter((el) => {
+            const style = el.ownerDocument.defaultView!.getComputedStyle(el) as unknown as Record<string, string>
+            return style['-webkit-app-region'] !== 'no-drag'
+          })
+          .map((el) => el.outerHTML.slice(0, 80))
+      )
+
+  test('the pull menu', async ({ sillygit, repo }) => {
+    repo.git('remote', 'add', 'origin', repo.path)
+    await sillygit.openRepository(repo.path)
+    await sillygit.toolbarButton('Pull options').click()
+    await expect(sillygit.page.getByRole('menu', { name: 'Pull options' })).toBeVisible()
+    expect(await dragRegions(sillygit.page)).toEqual([])
+
+    await sillygit.page.keyboard.press('Escape')
+    await expect(sillygit.page.getByRole('menu', { name: 'Pull options' })).toHaveCount(0)
+  })
+
+  test('the repository menu', async ({ sillygit, repo }) => {
+    await sillygit.openRepository(repo.path)
+    await sillygit.repositoryCrumb.click()
+    await expect(sillygit.page.getByRole('menu', { name: 'Repositories' })).toBeVisible()
+    expect(await dragRegions(sillygit.page)).toEqual([])
+  })
+})

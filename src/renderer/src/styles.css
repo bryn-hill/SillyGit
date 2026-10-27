@@ -113,7 +113,11 @@ input {
 }
 
 .top-bar button,
-.top-bar input {
+.top-bar input,
+.top-bar .dropdown-backdrop,
+.top-bar .branch-dropdown {
+  /* app-region is inherited, so without this the menus and the full-window
+     backdrop behind them drag the window on macOS instead of taking clicks. */
   -webkit-app-region: no-drag;
 }
 
