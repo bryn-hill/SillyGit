@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { join } from 'path'
 import { promises as fs } from 'fs'
-import type { SavedLayout } from '../shared/types'
+import type { SavedLayout, SavedTabs } from '../shared/types'
 import { normalizeNotificationSettings, type NotificationSettings } from '../shared/notifications'
 import { normalizeSprintSettings, type SprintSettings } from '../shared/sprints'
 
@@ -10,6 +10,10 @@ interface StoredSettings {
   workspaceRepos?: string[]
   lastRepo?: string | null
   recentRepos?: string[]
+  /** Repos open as tabs, in tab order; lastRepo is the active one. */
+  openTabs?: string[]
+  /** Tabs pinned to the left-hand group. */
+  pinnedTabs?: string[]
   layout?: Partial<SavedLayout>
   /** Minutes between background fetches; 0 turns them off. */
   autoFetchMinutes?: number
@@ -31,6 +35,17 @@ function settingsPath(): string {
 // (userData was <appData>/gitdesk). Copied over once, left in place.
 function legacySettingsPath(): string {
   return join(app.getPath('appData'), 'gitdesk', 'gitdesk-settings.json')
+}
+
+// Session saves (tabs, recent repos, layout) arrive in quick bursts, and each
+// rewrites the whole file, so they run one at a time or one would undo another.
+let sessionWrites: Promise<unknown> = Promise.resolve()
+function serialized<A extends unknown[], R>(fn: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
+  return (...args) => {
+    const run = sessionWrites.then(() => fn(...args))
+    sessionWrites = run.catch(() => {})
+    return run
+  }
 }
 
 async function readSettings(): Promise<StoredSettings> {
@@ -147,36 +162,51 @@ export async function removeWorkspaceRepo(repoPath: string): Promise<string[]> {
 export async function getLastSession(): Promise<{
   lastRepo: string | null
   recentRepos: string[]
+  openTabs: string[]
+  pinnedTabs: string[]
   layout: Partial<SavedLayout>
 }> {
   const stored = await readSettings()
+  const lastRepo = stored.lastRepo ?? null
   return {
-    lastRepo: stored.lastRepo ?? null,
+    lastRepo,
     recentRepos: stored.recentRepos ?? [],
+    // Settings from before tabs only know the one open repo.
+    openTabs: stored.openTabs ?? (lastRepo ? [lastRepo] : []),
+    pinnedTabs: stored.pinnedTabs ?? [],
     layout: stored.layout ?? {}
   }
 }
 
 /** Remembers `repoPath` as the open repo and moves it to the top of the recent list. */
-export async function recordOpenedRepo(repoPath: string): Promise<string[]> {
+export const recordOpenedRepo = serialized(async (repoPath: string): Promise<string[]> => {
   const current = await readSettings()
   const recent = [repoPath, ...(current.recentRepos ?? []).filter((p) => p !== repoPath)]
   current.lastRepo = repoPath
   current.recentRepos = recent.slice(0, MAX_RECENT_REPOS)
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
   return current.recentRepos
-}
+})
 
-export async function forgetRecentRepo(repoPath: string): Promise<string[]> {
+export const forgetRecentRepo = serialized(async (repoPath: string): Promise<string[]> => {
   const current = await readSettings()
   current.recentRepos = (current.recentRepos ?? []).filter((p) => p !== repoPath)
   if (current.lastRepo === repoPath) current.lastRepo = null
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
   return current.recentRepos
-}
+})
 
-export async function saveLayout(layout: Partial<SavedLayout>): Promise<void> {
+/** Remembers the open tabs, which are pinned, and which one is active. */
+export const saveTabs = serialized(async (tabs: SavedTabs): Promise<void> => {
+  const current = await readSettings()
+  current.openTabs = tabs.openTabs
+  current.pinnedTabs = tabs.pinnedTabs.filter((p) => tabs.openTabs.includes(p))
+  current.lastRepo = tabs.activeTab
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+})
+
+export const saveLayout = serialized(async (layout: Partial<SavedLayout>): Promise<void> => {
   const current = await readSettings()
   current.layout = { ...current.layout, ...layout }
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
-}
+})

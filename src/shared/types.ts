@@ -278,5 +278,17 @@ export interface SavedSession {
   missingRepo: string | null
   /** Recently opened repos that still exist, most recent first. */
   recentRepos: string[]
+  /** Repos open as tabs at last quit that still exist, in tab order. */
+  openTabs: string[]
+  /** Which of openTabs are pinned. */
+  pinnedTabs: string[]
   layout: Partial<SavedLayout>
+}
+
+/** The repo tabs across the top of the window. */
+export interface SavedTabs {
+  openTabs: string[]
+  pinnedTabs: string[]
+  /** The tab showing, or null when none is open. */
+  activeTab: string | null
 }

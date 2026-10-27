@@ -221,6 +221,7 @@ const api = {
   getSession: (): Promise<import('../shared/types').SavedSession> => ipcRenderer.invoke('session:get'),
   recordOpenedRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:repo-opened', repoPath),
   forgetRecentRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:forget-repo', repoPath),
+  saveTabs: (tabs: import('../shared/types').SavedTabs): Wrapped<void> => ipcRenderer.invoke('session:save-tabs', tabs),
   saveLayout: (layout: Partial<import('../shared/types').SavedLayout>): Wrapped<void> =>
     ipcRenderer.invoke('session:save-layout', layout),
   getAutoFetchMinutes: (): Promise<number> => ipcRenderer.invoke('settings:get-auto-fetch'),

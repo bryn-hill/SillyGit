@@ -5,6 +5,7 @@ import { CommitView } from './CommitView'
 import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
 import { MergeTool } from './MergeTool'
+import { RepoTabs } from './RepoTabs'
 import { SettingsDialog } from './SettingsDialog'
 import { Sidebar } from './Sidebar'
 import { TerminalPanel } from './TerminalPanel'
@@ -20,6 +21,7 @@ export class SillyGitApp {
   readonly conflicts: ConflictPanel
   readonly mergeTool: MergeTool
   readonly settings: SettingsDialog
+  readonly tabs: RepoTabs
 
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
@@ -47,6 +49,7 @@ export class SillyGitApp {
     this.conflicts = new ConflictPanel(page)
     this.mergeTool = new MergeTool(page)
     this.settings = new SettingsDialog(page)
+    this.tabs = new RepoTabs(page)
 
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })
@@ -78,6 +81,15 @@ export class SillyGitApp {
     }, repoPath)
     await this.openRepositoryButton.click()
     await expect(this.graph.rows.first()).toBeVisible()
+  }
+
+  /** Opens `repoPath` in a new tab through the + button, with the folder picker stubbed. */
+  async openRepositoryInNewTab(repoPath: string): Promise<void> {
+    await this.electronApp.evaluate(({ dialog }, path) => {
+      dialog.showOpenDialog = (() => Promise.resolve({ canceled: false, filePaths: [path] })) as never
+    }, repoPath)
+    await this.tabs.newTabButton.click()
+    await expect(this.repositoryCrumb).toContainText(repoPath.split('/').pop()!)
   }
 
   /** Opens `repoPath` through the repository crumb's menu, with the folder picker stubbed. */

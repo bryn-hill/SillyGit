@@ -13,6 +13,7 @@ import type {
   StashEntry
 } from '../../shared/types'
 import TopBar from './components/TopBar'
+import TabBar from './components/TabBar'
 import Sidebar from './components/Sidebar'
 import CommitGraph, { DEFAULT_REF_COLUMN_WIDTH } from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
@@ -46,6 +47,19 @@ export type Selection =
   | { type: 'working' }
   | { type: 'commit'; hash: string }
   | { type: 'commits'; hashes: string[]; anchor: string }
+
+/** What a repo tab last showed, so switching back to it is instant. */
+interface TabSnapshot {
+  status: RepoStatus | null
+  branches: BranchInfo[]
+  graphCommits: GraphCommit[]
+  operation: OperationState | null
+  remotes: RepoRemote[]
+  stashes: StashEntry[]
+  undoLabel: string | null
+  redoLabel: string | null
+  selection?: Selection
+}
 
 const PULL_MODE_KEY = 'sillygit.pullMode'
 
@@ -92,6 +106,9 @@ export default function App(): JSX.Element {
   const [claudeWidth, setClaudeWidth] = useState(DEFAULT_CLAUDE_WIDTH)
   const [refColumnWidth, setRefColumnWidth] = useState(DEFAULT_REF_COLUMN_WIDTH)
   const [recentRepos, setRecentRepos] = useState<string[]>([])
+  // Repos open as tabs, pinned ones first; repoPath is the active one.
+  const [tabs, setTabs] = useState<string[]>([])
+  const [pinnedTabs, setPinnedTabs] = useState<string[]>([])
   const [graphLimit, setGraphLimit] = useState(GRAPH_PAGE)
   const [loadingMore, setLoadingMore] = useState(false)
   const [stashes, setStashes] = useState<StashEntry[]>([])
@@ -143,6 +160,8 @@ export default function App(): JSX.Element {
       if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
       if (layout.refColumnWidth) setRefColumnWidth(layout.refColumnWidth)
       setRecentRepos(session.recentRepos)
+      setTabs(session.openTabs)
+      setPinnedTabs(session.pinnedTabs)
       if (session.repoPath) setRepoPath(session.repoPath)
       if (session.missingRepo) {
         setNotice(`Couldn't reopen ${session.missingRepo}: the folder is gone or is no longer a git repository.`)
@@ -159,6 +178,11 @@ export default function App(): JSX.Element {
     }, 300)
     return () => clearTimeout(timer)
   }, [sessionRestored, showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth])
+
+  // Saved straight away (tabs change rarely) so a quick quit never loses one.
+  useEffect(() => {
+    if (sessionRestored) window.api.saveTabs({ openTabs: tabs, pinnedTabs, activeTab: repoPath })
+  }, [sessionRestored, tabs, pinnedTabs, repoPath])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -188,6 +212,7 @@ export default function App(): JSX.Element {
   const refreshSeq = useRef(0)
   const openRepo = useRef<string | null>(null)
   openRepo.current = repoPath
+  const tabSnapshots = useRef(new Map<string, TabSnapshot>())
 
   const refresh = useCallback(async (path: string) => {
     const seq = ++refreshSeq.current
@@ -211,14 +236,46 @@ export default function App(): JSX.Element {
     setStashes(stashesRes.ok ? stashesRes.data : [])
     setUndoLabel(undoRes.ok ? undoRes.data : null)
     setRedoLabel(redoRes.ok ? redoRes.data : null)
+    const previous = tabSnapshots.current.get(path)
+    tabSnapshots.current.set(path, {
+      status: statusRes.ok ? statusRes.data : (previous?.status ?? null),
+      branches: branchesRes.ok ? branchesRes.data : (previous?.branches ?? []),
+      graphCommits: graphRes.ok ? graphRes.data : (previous?.graphCommits ?? []),
+      operation: operationRes.ok ? operationRes.data : null,
+      remotes: remotesRes.ok ? remotesRes.data : [],
+      stashes: stashesRes.ok ? stashesRes.data : [],
+      undoLabel: undoRes.ok ? undoRes.data : null,
+      redoLabel: redoRes.ok ? redoRes.data : null,
+      selection: previous?.selection
+    })
   }, [])
 
+  // A different repo (tab) is showing: put up what it showed last time, or
+  // nothing, so another repo's commits never show under its name, then refresh.
   useEffect(() => {
     graphLimitRef.current = GRAPH_PAGE
     setGraphLimit(GRAPH_PAGE)
     setAmend(false)
+    const snapshot = repoPath ? tabSnapshots.current.get(repoPath) : undefined
+    setStatus(snapshot?.status ?? null)
+    setBranches(snapshot?.branches ?? [])
+    setGraphCommits(snapshot?.graphCommits ?? [])
+    setOperation(snapshot?.operation ?? null)
+    setRemotes(snapshot?.remotes ?? [])
+    setStashes(snapshot?.stashes ?? [])
+    setUndoLabel(snapshot?.undoLabel ?? null)
+    setRedoLabel(snapshot?.redoLabel ?? null)
+    setSelection(snapshot?.selection ?? { type: 'working' })
+    setFullScreenHash(null)
+    setResolvingPath(null)
     if (repoPath) refresh(repoPath)
   }, [repoPath, refresh])
+
+  // Remember each tab's selection for when it's switched back to.
+  useEffect(() => {
+    const snapshot = repoPath ? tabSnapshots.current.get(repoPath) : undefined
+    if (snapshot) snapshot.selection = selection
+  }, [repoPath, selection])
 
   /** Loads the graph up to `limit` commits, e.g. to scroll further or reach a search result. */
   const loadGraph = useCallback(
@@ -421,25 +478,95 @@ export default function App(): JSX.Element {
     await switchToRepo(picked)
   }
 
-  const switchToRepo = async (path: string): Promise<void> => {
+  /**
+   * Shows `path`: its tab if it has one, otherwise a new tab, or, with
+   * `replace`, the current tab now showing `path` (unless that tab is pinned).
+   */
+  const switchToRepo = async (path: string, replace = false): Promise<void> => {
+    setTabs((current) => {
+      if (current.includes(path)) return current
+      const at = repoPath ? current.indexOf(repoPath) : -1
+      if (replace && at !== -1 && !pinnedTabs.includes(repoPath!)) {
+        tabSnapshots.current.delete(repoPath!)
+        return current.map((p, i) => (i === at ? path : p))
+      }
+      return [...current, path]
+    })
     setRepoPath(path)
-    setResolvingPath(null)
-    setSelection({ type: 'working' })
+    setShowLaunchpad(false)
     setError(null)
     setNotice(null)
     const res = await window.api.recordOpenedRepo(path)
     if (res.ok) setRecentRepos(res.data)
   }
 
-  const handleOpenRecentRepo = async (path: string): Promise<void> => {
-    if (path === repoPath) return
+  /** Opens a recent repo, in place of the current tab when `replace` is set. */
+  const handleOpenRecentRepo = async (path: string, replace = false): Promise<void> => {
+    if (path === repoPath) {
+      setShowLaunchpad(false)
+      return
+    }
     if (!(await window.api.isGitRepo(path))) {
       showError(`${path} is gone or is no longer a git repository, so it was removed from recent repositories.`)
       const res = await window.api.forgetRecentRepo(path)
       if (res.ok) setRecentRepos(res.data)
+      if (tabs.includes(path)) closeTabs([path])
       return
     }
-    await switchToRepo(path)
+    await switchToRepo(path, replace)
+  }
+
+  const selectTab = (path: string): void => {
+    if (path === repoPath) setShowLaunchpad(false)
+    else handleOpenRecentRepo(path)
+  }
+
+  const closeTabs = (paths: string[]): void => {
+    if (paths.length === 0) return
+    const remaining = tabs.filter((p) => !paths.includes(p))
+    for (const path of paths) tabSnapshots.current.delete(path)
+    setTabs(remaining)
+    setPinnedTabs((current) => current.filter((p) => !paths.includes(p)))
+    if (repoPath && paths.includes(repoPath)) {
+      // Like a browser: the tab to the right takes over, else the one to the left.
+      const index = tabs.indexOf(repoPath)
+      const next = tabs.slice(index + 1).find((p) => !paths.includes(p)) ??
+        [...tabs.slice(0, index)].reverse().find((p) => !paths.includes(p)) ??
+        null
+      if (next) handleOpenRecentRepo(next)
+      else setRepoPath(null)
+    }
+  }
+
+  // Pinned tabs sit together on the left, so pinning moves a tab to the end
+  // of that group and unpinning to the start of the rest.
+  const togglePinTab = (path: string): void => {
+    const pinning = !pinnedTabs.includes(path)
+    const nextPinned = pinning ? [...pinnedTabs, path] : pinnedTabs.filter((p) => p !== path)
+    const pinnedInOrder = pinning ? nextPinned : tabs.filter((p) => nextPinned.includes(p))
+    setPinnedTabs(pinnedInOrder)
+    setTabs([...pinnedInOrder, ...(pinning ? [] : [path]), ...tabs.filter((p) => !nextPinned.includes(p) && p !== path)])
+  }
+
+  const moveTab = (path: string, before: string | null): void => {
+    setTabs((current) => {
+      const without = current.filter((p) => p !== path)
+      if (before !== null) {
+        without.splice(without.indexOf(before), 0, path)
+        return without
+      }
+      // The end of the tab's own group.
+      const lastPinned = without.reduce((last, p, i) => (pinnedTabs.includes(p) ? i : last), -1)
+      without.splice(pinnedTabs.includes(path) ? lastPinned + 1 : without.length, 0, path)
+      return without
+    })
+  }
+
+  /** Ctrl+Tab and friends: the tab `offset` places along, wrapping around. */
+  const cycleTab = (offset: number): void => {
+    if (tabs.length === 0) return
+    const index = repoPath ? tabs.indexOf(repoPath) : -1
+    selectTab(tabs[(index + offset + tabs.length) % tabs.length])
   }
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
@@ -1041,7 +1168,8 @@ export default function App(): JSX.Element {
         add('continue', `Continue ${operation.kind}`, handleContinue)
         add('abort', `Abort ${operation.kind}`, handleAbort)
       }
-      add('launchpad', showLaunchpad ? 'Close Launchpad' : 'Open Launchpad', () => setShowLaunchpad((v) => !v))
+      add('close-tab', 'Close tab', () => closeTabs([repoPath]))
+      add('pin-tab', pinnedTabs.includes(repoPath) ? 'Unpin tab' : 'Pin tab', () => togglePinTab(repoPath))
       add('claude', showClaude ? 'Hide Claude' : 'Show Claude', () => setShowClaude((v) => !v), 'Ctrl+Esc')
       add('reveal', 'Open repository folder', () => {
         window.api.openPath(repoPath).then((res) => {
@@ -1051,6 +1179,11 @@ export default function App(): JSX.Element {
       add('copy-path', 'Copy repository path', () => handleCopyText(repoPath))
     }
     add('activity', 'Activity log', () => setShowActivity(true))
+    add('launchpad', showLaunchpad ? 'Close Launchpad' : 'Open Launchpad', () => setShowLaunchpad((v) => !v))
+    if (tabs.length > 1) {
+      add('next-tab', 'Next tab', () => cycleTab(1), 'Ctrl+Tab')
+      add('previous-tab', 'Previous tab', () => cycleTab(-1), 'Ctrl+⇧Tab')
+    }
     add('clone', 'Clone repository…', handleClone)
     add('terminal', showTerminal ? 'Hide terminal' : 'Show terminal', () => setShowTerminal((v) => !v), 'Ctrl+`')
     add('open-repo', 'Open repository…', handleOpenRepo, `${MOD}O`)
@@ -1086,9 +1219,21 @@ export default function App(): JSX.Element {
     } else if (isPrimary(e, true) && key === 'z' && !isTyping(e.target) && repoPath) {
       e.preventDefault()
       if (!busy) handleRedo()
-    } else if (isPrimary(e) && key === 'o') {
+    } else if (isPrimary(e) && (key === 'o' || key === 't')) {
       e.preventDefault()
       handleOpenRepo()
+    } else if (e.key === 'Tab' && e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      cycleTab(e.shiftKey ? -1 : 1)
+    } else if (isPrimary(e, true) && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
+      e.preventDefault()
+      cycleTab(e.code === 'BracketLeft' ? -1 : 1)
+    } else if (isPrimary(e) && /^Digit[1-9]$/.test(e.code) && tabs.length > 0) {
+      // Like a browser: Cmd+1 to Cmd+8 pick that tab, Cmd+9 the last one.
+      e.preventDefault()
+      const n = Number(e.code.slice(5))
+      const target = n === 9 ? tabs[tabs.length - 1] : tabs[n - 1]
+      if (target) selectTab(target)
     } else if (isPrimary(e) && key === ',') {
       e.preventDefault()
       setShowSettings(true)
@@ -1102,6 +1247,19 @@ export default function App(): JSX.Element {
 
   return (
     <div className="app">
+      <TabBar
+        tabs={tabs}
+        pinned={pinnedTabs}
+        activeTab={repoPath}
+        launchpadActive={showLaunchpad}
+        onSelect={selectTab}
+        onClose={closeTabs}
+        onNewTab={handleOpenRepo}
+        onOpenLaunchpad={() => setShowLaunchpad(true)}
+        onTogglePin={togglePinTab}
+        onMove={moveTab}
+        onCopyPath={handleCopyText}
+      />
       <TopBar
         repoPath={repoPath}
         status={status}
@@ -1109,7 +1267,7 @@ export default function App(): JSX.Element {
         busy={busy}
         onOpenRepo={handleOpenRepo}
         recentRepos={recentRepos}
-        onOpenRecentRepo={handleOpenRecentRepo}
+        onOpenRecentRepo={(path) => handleOpenRecentRepo(path, true)}
         onPush={handlePush}
         onPull={handlePull}
         pullMode={pullMode}
@@ -1133,8 +1291,6 @@ export default function App(): JSX.Element {
         onToggleTerminal={() => setShowTerminal((v) => !v)}
         claudeVisible={showClaude}
         onToggleClaude={() => setShowClaude((v) => !v)}
-        launchpadActive={showLaunchpad}
-        onToggleLaunchpad={() => setShowLaunchpad((v) => !v)}
       />
       {error && (
         <div className="error-banner" onClick={() => setError(null)}>
@@ -1149,7 +1305,14 @@ export default function App(): JSX.Element {
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
-            {!repoPath ? (
+            {showLaunchpad ? (
+              <Launchpad
+                repoPath={repoPath}
+                openRepos={tabs}
+                onClose={() => setShowLaunchpad(false)}
+                onOpenTerminal={() => setShowTerminal(true)}
+              />
+            ) : !repoPath ? (
               <div className="empty-state">
                 <img className="empty-state-logo" src={logo} alt="SillyGit" />
                 <p>No repository open.</p>
@@ -1171,12 +1334,6 @@ export default function App(): JSX.Element {
                   </section>
                 )}
               </div>
-            ) : showLaunchpad ? (
-              <Launchpad
-                repoPath={repoPath}
-                onClose={() => setShowLaunchpad(false)}
-                onOpenTerminal={() => setShowTerminal(true)}
-              />
             ) : resolvingPath ? (
               <MergeResolver
                 key={resolvingPath}

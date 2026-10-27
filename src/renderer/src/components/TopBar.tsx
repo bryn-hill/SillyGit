@@ -38,11 +38,9 @@ interface Props {
   onToggleTerminal: () => void
   claudeVisible: boolean
   onToggleClaude: () => void
-  launchpadActive: boolean
-  onToggleLaunchpad: () => void
 }
 
-function FolderIcon(): JSX.Element {
+export function FolderIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
       <path
@@ -55,7 +53,7 @@ function FolderIcon(): JSX.Element {
   )
 }
 
-function BranchIcon(): JSX.Element {
+export function BranchIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
       <circle cx="4.5" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
@@ -140,7 +138,7 @@ function PopIcon(): JSX.Element {
   )
 }
 
-function LaunchpadIcon(): JSX.Element {
+export function LaunchpadIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
       <path
@@ -277,9 +275,7 @@ export default function TopBar({
   terminalVisible,
   onToggleTerminal,
   claudeVisible,
-  onToggleClaude,
-  launchpadActive,
-  onToggleLaunchpad
+  onToggleClaude
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [showRepoMenu, setShowRepoMenu] = useState(false)
@@ -513,15 +509,6 @@ export default function TopBar({
           onClick={onToggleActions}
           title={`Search for commands and actions (${MOD}K)`}
         />
-        {repoPath && (
-          <button
-            className={`icon-button ${launchpadActive ? 'icon-button-active' : ''}`}
-            onClick={onToggleLaunchpad}
-            title="Launchpad — your open pull requests"
-          >
-            <LaunchpadIcon />
-          </button>
-        )}
         {repoPath && (
           <button
             className={`icon-button ${claudeVisible ? 'icon-button-active' : ''}`}

@@ -35,7 +35,8 @@ test('switches between recent repositories from the repository menu', async ({ s
 test('shows a notice when the last repository no longer exists', async ({ sillygit, repo, relaunch }) => {
   const doomed = new FixtureRepo()
   await sillygit.openRepository(repo.path)
-  await sillygit.openRepositoryFromMenu(doomed.path)
+  await sillygit.tabs.close(repo.name)
+  await sillygit.openRepository(doomed.path)
   doomed.remove()
 
   const reopened = await relaunch()
@@ -47,5 +48,19 @@ test('shows a notice when the last repository no longer exists', async ({ sillyg
   await expect(recent.getByRole('button', { name: new RegExp(doomed.name) })).toHaveCount(0)
 
   await recent.getByRole('button', { name: new RegExp(repo.name) }).click()
+  await reopened.graph.expectSubjects(FixtureRepo.commits)
+})
+
+test('falls back to another open tab when the active tab\'s repository is gone', async ({ sillygit, repo, relaunch }) => {
+  const doomed = new FixtureRepo()
+  await sillygit.openRepository(repo.path)
+  await sillygit.openRepositoryInNewTab(doomed.path)
+  doomed.remove()
+
+  const reopened = await relaunch()
+
+  await expect(reopened.notice).toContainText(`Couldn't reopen ${doomed.path}`)
+  await reopened.tabs.expectNames([repo.name])
+  await reopened.tabs.expectActive(repo.name)
   await reopened.graph.expectSubjects(FixtureRepo.commits)
 })

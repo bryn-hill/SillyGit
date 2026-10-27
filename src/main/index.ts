@@ -26,7 +26,7 @@ import type { SprintSettings } from '../shared/sprints'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
-import type { AvatarRequest, CommitSplitProposal, PullMode, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
+import type { AvatarRequest, CommitSplitProposal, PullMode, RenameKeep, SavedLayout, SavedSession, SavedTabs, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let prNotifier: PrNotifier | null = null
@@ -541,13 +541,18 @@ function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('session:get', async (): Promise<SavedSession> => {
-    const { lastRepo, recentRepos, layout } = await settings.getLastSession()
+    const { lastRepo, recentRepos, openTabs, pinnedTabs, layout } = await settings.getLastSession()
     const exists = await Promise.all(recentRepos.map((p) => git.isGitRepo(p)))
+    const tabExists = await Promise.all(openTabs.map((p) => git.isGitRepo(p)))
     const lastRepoExists = !!lastRepo && (await git.isGitRepo(lastRepo))
+    const tabs = openTabs.filter((_, i) => tabExists[i])
     return {
-      repoPath: lastRepoExists ? lastRepo : null,
+      // When the active tab's repo is gone, show the first tab still open.
+      repoPath: lastRepoExists ? lastRepo : (tabs[0] ?? null),
       missingRepo: lastRepo && !lastRepoExists ? lastRepo : null,
       recentRepos: recentRepos.filter((_, i) => exists[i]),
+      openTabs: lastRepoExists && !tabs.includes(lastRepo) ? [...tabs, lastRepo] : tabs,
+      pinnedTabs: pinnedTabs.filter((p) => tabs.includes(p)),
       layout
     }
   })
@@ -559,6 +564,8 @@ function registerIpcHandlers(): void {
   ipcMain.handle('session:forget-repo', (_e, repoPath: string) =>
     wrap(() => settings.forgetRecentRepo(repoPath))
   )
+
+  ipcMain.handle('session:save-tabs', (_e, tabs: SavedTabs) => wrap(() => settings.saveTabs(tabs)))
 
   ipcMain.handle('session:save-layout', (_e, layout: Partial<SavedLayout>) =>
     wrap(() => settings.saveLayout(layout))

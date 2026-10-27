@@ -3,10 +3,15 @@ import type { LaunchpadBucketId, LaunchpadData, LaunchpadPullRequest } from '../
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
 
 interface Props {
-  repoPath: string
+  /** The active repo tab, if any. */
+  repoPath: string | null
+  /** Every repo open in a tab; their pull requests show alongside the workspace's. */
+  openRepos?: string[]
   onClose: () => void
   onOpenTerminal: () => void
 }
+
+const NO_REPOS: string[] = []
 
 function repoDisplayName(path: string): string {
   return path.split('/').filter(Boolean).pop() ?? path
@@ -103,7 +108,7 @@ function UnavailableNotice({
   )
 }
 
-export default function Launchpad({ repoPath, onClose, onOpenTerminal }: Props): JSX.Element {
+export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onOpenTerminal }: Props): JSX.Element {
   const [data, setData] = useState<LaunchpadData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -120,8 +125,8 @@ export default function Launchpad({ repoPath, onClose, onOpenTerminal }: Props):
   }, [])
 
   const allRepoPaths = useMemo(
-    () => [...new Set([repoPath, ...workspaceRepos])],
-    [repoPath, workspaceRepos]
+    () => [...new Set([...(repoPath ? [repoPath] : []), ...openRepos, ...workspaceRepos])],
+    [repoPath, openRepos, workspaceRepos]
   )
 
   const load = useCallback(async () => {
@@ -187,9 +192,11 @@ export default function Launchpad({ repoPath, onClose, onOpenTerminal }: Props):
       </div>
       <div className="launchpad-workspace">
         <span className="launchpad-workspace-label">Workspace</span>
-        <span className="launchpad-chip launchpad-chip-current" title={repoPath}>
-          {repoDisplayName(repoPath)}
-        </span>
+        {repoPath && (
+          <span className="launchpad-chip launchpad-chip-current" title={repoPath}>
+            {repoDisplayName(repoPath)}
+          </span>
+        )}
         {workspaceRepos.map((path) => (
           <span key={path} className="launchpad-chip" title={path}>
             {repoDisplayName(path)}
