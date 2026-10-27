@@ -9,6 +9,7 @@ import type {
   OperationState,
   RepoStatus,
   CommitSearchHit,
+  PullMode,
   StashEntry
 } from '../../shared/types'
 import TopBar from './components/TopBar'
@@ -28,6 +29,7 @@ import { resolveBranchRemote } from '../../shared/branchRemote'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
 import { withPullRequestText } from '../../shared/quickActions'
 import CommandPalette, { type Command } from './components/CommandPalette'
+import ActivityLog from './components/ActivityLog'
 import type { ClickModifiers } from './components/CommitGraph'
 import { clickCommit } from './lib/selection'
 import { isPrimary, isTyping, MOD } from './lib/shortcuts'
@@ -43,6 +45,26 @@ export type Selection =
   | { type: 'working' }
   | { type: 'commit'; hash: string }
   | { type: 'commits'; hashes: string[]; anchor: string }
+
+const PULL_MODE_KEY = 'sillygit.pullMode'
+
+function loadPullMode(): PullMode {
+  try {
+    const saved = localStorage.getItem(PULL_MODE_KEY)
+    if (saved === 'ff' || saved === 'ff-only' || saved === 'rebase') return saved
+  } catch {
+    // Storage can be unavailable; fall back to the default.
+  }
+  return 'ff'
+}
+
+function savePullMode(mode: PullMode): void {
+  try {
+    localStorage.setItem(PULL_MODE_KEY, mode)
+  } catch {
+    // Not remembering it is fine.
+  }
+}
 
 export default function App(): JSX.Element {
   const [repoPath, setRepoPath] = useState<string | null>(null)
@@ -74,7 +96,13 @@ export default function App(): JSX.Element {
   const [undoLabel, setUndoLabel] = useState<string | null>(null)
   const [fetching, setFetching] = useState(false)
   const [amend, setAmend] = useState(false)
-  const [showPalette, setShowPalette] = useState(false)
+  const [redoLabel, setRedoLabel] = useState<string | null>(null)
+  // Cmd+K opens the palette in the middle of the window; the toolbar's
+  // Actions button opens the same list hanging under it.
+  const [palette, setPalette] = useState<'modal' | 'dropdown' | null>(null)
+  const showPalette = palette !== null
+  const [showActivity, setShowActivity] = useState(false)
+  const [pullMode, setPullMode] = useState<PullMode>(loadPullMode)
   // Minutes between background fetches (0 = off), from settings.
   const [autoFetchMinutes, setAutoFetchMinutes] = useState<number | null>(null)
   const [searchFocusToken, setSearchFocusToken] = useState(0)
@@ -148,14 +176,15 @@ export default function App(): JSX.Element {
 
   const refresh = useCallback(async (path: string) => {
     const seq = ++refreshSeq.current
-    const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes] = await Promise.all([
+    const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes, redoRes] = await Promise.all([
       window.api.getStatus(path),
       window.api.branches(path),
       window.api.graphLog(path, graphLimitRef.current),
       window.api.operationState(path),
       window.api.remotes(path),
       window.api.stashes(path),
-      window.api.undoLabel(path)
+      window.api.undoLabel(path),
+      window.api.redoLabel(path)
     ])
     if (seq !== refreshSeq.current || openRepo.current !== path) return
     setRemotes(remotesRes.ok ? remotesRes.data : [])
@@ -166,6 +195,7 @@ export default function App(): JSX.Element {
     if (graphRes.ok) setGraphCommits(graphRes.data)
     setStashes(stashesRes.ok ? stashesRes.data : [])
     setUndoLabel(undoRes.ok ? undoRes.data : null)
+    setRedoLabel(redoRes.ok ? redoRes.data : null)
   }, [])
 
   useEffect(() => {
@@ -483,6 +513,16 @@ export default function App(): JSX.Element {
     })
   }
 
+  const handleRedo = (): void => {
+    if (!repoPath || !redoLabel) return
+    withBusy(async () => {
+      const res = await window.api.redo(repoPath)
+      if (!res.ok) showError(res.error)
+      else setNotice(`${res.data}.`)
+      await refresh(repoPath)
+    })
+  }
+
   const handleCheckout = (branch: string): void => {
     if (!repoPath) return
     withBusy(async () => {
@@ -530,7 +570,59 @@ export default function App(): JSX.Element {
     })
   }
 
-  const handlePull = (): void => runConflictable((path) => window.api.pull(path))
+  /** Pulls the remembered way, or `mode`, which then becomes what Pull does. */
+  const handlePull = (mode?: PullMode): void => {
+    if (mode) {
+      setPullMode(mode)
+      savePullMode(mode)
+    }
+    runConflictable((path) => window.api.pull(path, mode ?? pullMode))
+  }
+
+  const promptCreateBranch = async (): Promise<void> => {
+    const name = await askText({ title: 'Create branch', label: 'Branch name', submitLabel: 'Create branch' })
+    if (name) handleCreateBranch(name)
+  }
+
+  const handleApplyPatch = (): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      const res = await window.api.applyPatch(repoPath)
+      if (!res.ok) showError(res.error)
+      else if (res.data) {
+        setNotice(
+          res.data.conflicts
+            ? `${res.data.file} applied with conflicts. Resolve them in the changed files.`
+            : `Applied ${res.data.file}. Its changes are staged.`
+        )
+        setFullScreenHash(null)
+        setShowLaunchpad(false)
+        setSelection({ type: 'working' })
+      }
+      await refresh(repoPath)
+    })
+  }
+
+  const handleClone = async (): Promise<void> => {
+    const url = await askText({
+      title: 'Clone a repository',
+      label: 'Repository URL',
+      placeholder: 'https://github.com/owner/repo.git',
+      submitLabel: 'Choose folder…'
+    })
+    if (!url?.trim()) return
+    setBusy(true)
+    setError(null)
+    setNotice('Cloning…')
+    try {
+      const res = await window.api.clone(url.trim())
+      setNotice(null)
+      if (!res.ok) showError(res.error)
+      else if (res.data) await switchToRepo(res.data)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleMerge = (branch: string): void => runConflictable((path) => window.api.mergeBranch(path, branch))
 
@@ -852,17 +944,30 @@ export default function App(): JSX.Element {
     handleAmendChange(true)
   }
 
-  /** Everything the command palette offers, in the order shown before anything is typed. */
+  /**
+   * Everything the Actions list and command palette offer, alphabetically
+   * like GitKraken's. Actions that need a branch or stash open a sub-list.
+   */
   const paletteCommands = (): Command[] => {
     const commands: Command[] = []
-    const add = (id: string, label: string, run: () => void, shortcut?: string, group?: string): void => {
-      commands.push({ id, label, run, shortcut, group })
+    const add = (id: string, label: string, run: () => void, shortcut?: string): void => {
+      commands.push({ id, label, run, shortcut })
     }
+    const addList = (id: string, label: string, children: Command[]): void => {
+      if (children.length > 0) commands.push({ id, label, children })
+    }
+    const localOthers = branches.filter((b) => !b.current && !b.remote)
+    const current = status?.branch ?? 'HEAD'
     if (repoPath) {
       if (undoLabel) add('undo', undoLabel, handleUndo, `${MOD}Z`)
-      add('fetch', 'Fetch all remotes', handleFetch)
-      add('pull', 'Pull', handlePull)
-      add('push', 'Push', handlePush)
+      if (redoLabel) add('redo', redoLabel, handleRedo, `${MOD}⇧Z`)
+      if (remotes.length > 0) {
+        add('fetch', 'Fetch all remotes', handleFetch)
+        add('pull', 'Pull (fast-forward if possible)', () => handlePull('ff'))
+        add('pull-ff-only', 'Pull (fast-forward only)', () => handlePull('ff-only'))
+        add('pull-rebase', 'Pull (rebase)', () => handlePull('rebase'))
+        add('push', 'Push', handlePush)
+      }
       add('search', 'Search commits', focusSearch, `${MOD}F`)
       add('commit', 'Go to uncommitted changes', () => {
         setFullScreenHash(null)
@@ -870,49 +975,90 @@ export default function App(): JSX.Element {
         setSelection({ type: 'working' })
       })
       add('amend', 'Amend last commit', startAmend)
-      add('stash', 'Stash changes', handleStash)
-      add('stash-message', 'Stash changes with a message…', handleStashWithMessage)
-      for (const stash of stashes) {
-        add(`stash-apply-${stash.ref}`, `Apply ${stash.ref}: ${stash.message}`, () => stashActions.apply(stash), undefined, 'Stash')
-        add(`stash-pop-${stash.ref}`, `Pop ${stash.ref}: ${stash.message}`, () => stashActions.pop(stash), undefined, 'Stash')
+      add('apply-patch', 'Apply patch…', handleApplyPatch)
+      if (hasWorkingChanges && !operation) {
+        add('stash', 'Stash changes', handleStash)
+        add('stash-message', 'Stash changes with a message…', handleStashWithMessage)
       }
-      add('new-branch', 'Create branch…', async () => {
-        const name = await askText({ title: 'Create branch', label: 'Branch name', submitLabel: 'Create branch' })
-        if (name) handleCreateBranch(name)
-      })
+      addList(
+        'stash-apply',
+        'Apply stash',
+        stashes.map((stash) => ({ id: stash.ref, label: `${stash.ref}: ${stash.message}`, run: () => stashActions.apply(stash) }))
+      )
+      addList(
+        'stash-pop',
+        'Pop stash',
+        stashes.map((stash) => ({ id: stash.ref, label: `${stash.ref}: ${stash.message}`, run: () => stashActions.pop(stash) }))
+      )
+      add('new-branch', 'Create branch…', promptCreateBranch)
+      const checkouts: Command[] = []
       for (const b of branches) {
         if (b.current) continue
         if (b.remote) {
           if (branches.some((l) => !l.remote && l.upstream === b.name)) continue
-          add(`checkout-${b.name}`, `Check out ${b.name}`, () => handleCheckoutRemote(b.name), undefined, 'Branch')
+          checkouts.push({ id: b.name, label: `Check out ${b.name}`, run: () => handleCheckoutRemote(b.name) })
         } else {
-          add(`checkout-${b.name}`, `Check out ${b.name}`, () => handleCheckout(b.name), undefined, 'Branch')
+          checkouts.push({ id: b.name, label: `Check out ${b.name}`, run: () => handleCheckout(b.name) })
         }
       }
-      for (const b of branches) {
-        if (!b.current && !b.remote) add(`merge-${b.name}`, `Merge ${b.name} into ${status?.branch ?? 'HEAD'}`, () => handleMerge(b.name), undefined, 'Branch')
+      addList('checkout', 'Checkout', checkouts)
+      addList(
+        'merge',
+        `Merge into ${current}`,
+        localOthers.map((b) => ({ id: b.name, label: `Merge ${b.name} into ${current}`, run: () => handleMerge(b.name) }))
+      )
+      addList(
+        'rebase',
+        `Rebase ${current} onto`,
+        localOthers.map((b) => ({ id: b.name, label: `Rebase ${current} onto ${b.name}`, run: () => handleRebase(b.name) }))
+      )
+      addList(
+        'delete-branch',
+        'Delete branch',
+        localOthers.map((b) => ({
+          id: b.name,
+          label: `Delete ${b.name}`,
+          run: () => handleDeleteBranch({ name: b.name, remote: false, current: false })
+        }))
+      )
+      if (status?.branch) add('rename-branch', `Rename ${status.branch}…`, () => handleRenameBranch(status.branch!))
+      if (operation) {
+        add('continue', `Continue ${operation.kind}`, handleContinue)
+        add('abort', `Abort ${operation.kind}`, handleAbort)
       }
       add('launchpad', showLaunchpad ? 'Close Launchpad' : 'Open Launchpad', () => setShowLaunchpad((v) => !v))
       add('claude', showClaude ? 'Hide Claude' : 'Show Claude', () => setShowClaude((v) => !v), 'Ctrl+Esc')
+      add('reveal', 'Open repository folder', () => {
+        window.api.openPath(repoPath).then((res) => {
+          if (!res.ok) showError(res.error)
+        })
+      })
+      add('copy-path', 'Copy repository path', () => handleCopyText(repoPath))
     }
+    add('activity', 'Activity log', () => setShowActivity(true))
+    add('clone', 'Clone repository…', handleClone)
     add('terminal', showTerminal ? 'Hide terminal' : 'Show terminal', () => setShowTerminal((v) => !v), 'Ctrl+`')
     add('open-repo', 'Open repository…', handleOpenRepo, `${MOD}O`)
-    for (const path of recentRepos) {
-      if (path !== repoPath) add(`recent-${path}`, `Open ${repoDisplayName(path)}`, () => handleOpenRecentRepo(path), undefined, 'Repository')
-    }
+    addList(
+      'recent',
+      'Open recent repository',
+      recentRepos
+        .filter((path) => path !== repoPath)
+        .map((path) => ({ id: path, label: repoDisplayName(path), run: () => handleOpenRecentRepo(path) }))
+    )
     add('settings', 'Settings', () => setShowSettings(true), `${MOD},`)
-    return commands
+    return commands.sort((a, b) => a.label.localeCompare(b.label))
   }
 
   // App-wide shortcuts. A ref keeps the listener's view of state current
   // without re-registering it on every render.
   const shortcutHandlers = useRef<(e: KeyboardEvent) => void>(() => {})
   shortcutHandlers.current = (e: KeyboardEvent): void => {
-    if (prompt || showSettings) return
+    if (prompt || showSettings || showActivity) return
     const key = e.key.toLowerCase()
     if ((isPrimary(e) && key === 'k') || (isPrimary(e, true) && key === 'p')) {
       e.preventDefault()
-      setShowPalette((v) => !v)
+      setPalette((v) => (v ? null : 'modal'))
       return
     }
     if (showPalette) return
@@ -922,6 +1068,9 @@ export default function App(): JSX.Element {
     } else if (isPrimary(e) && key === 'z' && !isTyping(e.target) && repoPath) {
       e.preventDefault()
       if (!busy) handleUndo()
+    } else if (isPrimary(e, true) && key === 'z' && !isTyping(e.target) && repoPath) {
+      e.preventDefault()
+      if (!busy) handleRedo()
     } else if (isPrimary(e) && key === 'o') {
       e.preventDefault()
       handleOpenRepo()
@@ -948,10 +1097,19 @@ export default function App(): JSX.Element {
         onOpenRecentRepo={handleOpenRecentRepo}
         onPush={handlePush}
         onPull={handlePull}
+        pullMode={pullMode}
         onFetch={handleFetch}
         fetching={fetching}
+        hasRemotes={remotes.length > 0}
         undoLabel={undoLabel}
         onUndo={handleUndo}
+        redoLabel={redoLabel}
+        onRedo={handleRedo}
+        onCreateBranch={promptCreateBranch}
+        hasChanges={!!status && (status.staged.length > 0 || status.unstaged.length > 0) && !operation}
+        stashCount={stashes.length}
+        actionsOpen={palette === 'dropdown'}
+        onToggleActions={() => setPalette((v) => (v === 'dropdown' ? null : 'dropdown'))}
         onStash={handleStash}
         onStashPop={handleStashPop}
         onCheckout={handleCheckout}
@@ -1132,7 +1290,8 @@ export default function App(): JSX.Element {
           onAutoFetchChange={handleAutoFetchChange}
         />
       )}
-      {showPalette && <CommandPalette commands={paletteCommands()} onClose={() => setShowPalette(false)} />}
+      {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}
+      {showActivity && <ActivityLog repoPath={repoPath} onClose={() => setShowActivity(false)} />}
       {prompt && (
         <PromptDialog
           key={prompt.title}

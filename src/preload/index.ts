@@ -23,6 +23,16 @@ const api = {
   fetch: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:fetch', repoPath),
   undoLabel: (repoPath: string): Wrapped<string | null> => ipcRenderer.invoke('git:undo-label', repoPath),
   undo: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:undo', repoPath),
+  redoLabel: (repoPath: string): Wrapped<string | null> => ipcRenderer.invoke('git:redo-label', repoPath),
+  redo: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:redo', repoPath),
+  activityLog: (): Promise<import('../shared/activity').ActivityEntry[]> => ipcRenderer.invoke('activity:list'),
+  /** Asks for a patch file and applies it; null when the dialog was cancelled. */
+  applyPatch: (
+    repoPath: string
+  ): Wrapped<({ file: string } & import('../shared/types').ConflictableResult) | null> =>
+    ipcRenderer.invoke('git:apply-patch', repoPath),
+  /** Asks where to clone `url` and clones it there, returning the new repo's path; null when cancelled. */
+  clone: (url: string): Wrapped<string | null> => ipcRenderer.invoke('git:clone', url),
   searchCommits: (repoPath: string, query: string): Wrapped<import('../shared/types').CommitSearchHit[]> =>
     ipcRenderer.invoke('git:search-commits', repoPath, query),
   /** Starts watching `repoPath` for outside changes (null stops); see onRepoChanged. */
@@ -41,7 +51,10 @@ const api = {
   createBranch: (repoPath: string, branch: string): Wrapped<void> =>
     ipcRenderer.invoke('git:create-branch', repoPath, branch),
   push: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:push', repoPath),
-  pull: (repoPath: string): Wrapped<import('../shared/types').ConflictableResult> => ipcRenderer.invoke('git:pull', repoPath),
+  pull: (
+    repoPath: string,
+    mode?: import('../shared/types').PullMode
+  ): Wrapped<import('../shared/types').ConflictableResult> => ipcRenderer.invoke('git:pull', repoPath, mode),
   log: (repoPath: string): Wrapped<import('../shared/types').CommitInfo[]> =>
     ipcRenderer.invoke('git:log', repoPath),
   graphLog: (repoPath: string, limit?: number): Wrapped<import('../shared/types').GraphCommit[]> =>

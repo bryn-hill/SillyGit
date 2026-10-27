@@ -212,6 +212,13 @@ export interface ConflictableResult {
   conflicts: boolean
 }
 
+/**
+ * How Pull brings remote commits in, like GitKraken's Pull menu: `ff` merges
+ * when the branches have diverged and fast-forwards otherwise, `ff-only`
+ * refuses to merge, `rebase` replays local commits on top.
+ */
+export type PullMode = 'ff' | 'ff-only' | 'rebase'
+
 export interface ConflictFileContent {
   path: string
   /**

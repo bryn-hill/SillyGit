@@ -13,7 +13,7 @@ import * as github from './github'
 import { AvatarResolver, type AvatarSources } from './avatars'
 import { githubAccess, remoteLocations } from './hosting'
 import { setFetch } from './http'
-import { setNetworkEnv } from './gitExec'
+import { activityLog, setNetworkEnv } from './gitExec'
 import { gitlabAvatarUrl } from './providerApi'
 import { guessProvider, type NewAccountInput } from '../shared/accounts'
 import * as diffSplit from '../shared/diffSplit'
@@ -25,7 +25,7 @@ import type { NotificationSettings } from '../shared/notifications'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
-import type { AvatarRequest, CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
+import type { AvatarRequest, CommitSplitProposal, PullMode, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let prNotifier: PrNotifier | null = null
@@ -256,6 +256,41 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:undo', (_e, repoPath: string) => wrap(() => git.undo(repoPath)))
 
+  ipcMain.handle('git:redo-label', (_e, repoPath: string) => wrap(() => git.redoLabel(repoPath)))
+
+  ipcMain.handle('git:redo', (_e, repoPath: string) => wrap(() => git.redo(repoPath)))
+
+  ipcMain.handle('activity:list', () => activityLog())
+
+  ipcMain.handle('git:apply-patch', (_e, repoPath: string) =>
+    wrap(async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Apply patch',
+        defaultPath: repoPath,
+        properties: ['openFile'],
+        filters: [
+          { name: 'Patches', extensions: ['patch', 'diff'] },
+          { name: 'All files', extensions: ['*'] }
+        ]
+      })
+      if (result.canceled || result.filePaths.length === 0) return null
+      const file = result.filePaths[0]
+      return { file: basename(file), ...(await git.applyPatch(repoPath, file)) }
+    })
+  )
+
+  ipcMain.handle('git:clone', (_e, url: string) =>
+    wrap(async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Choose where to clone',
+        buttonLabel: 'Clone here',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) return null
+      return git.clone(url, result.filePaths[0])
+    })
+  )
+
   ipcMain.handle('git:search-commits', (_e, repoPath: string, query: string) =>
     wrap(() => git.searchCommits(repoPath, query))
   )
@@ -283,7 +318,7 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:push', (_e, repoPath: string) => wrap(() => git.push(repoPath)))
 
-  ipcMain.handle('git:pull', (_e, repoPath: string) => wrap(() => git.pull(repoPath)))
+  ipcMain.handle('git:pull', (_e, repoPath: string, mode?: PullMode) => wrap(() => git.pull(repoPath, mode)))
 
   ipcMain.handle('git:log', (_e, repoPath: string) => wrap(() => git.getLog(repoPath)))
 

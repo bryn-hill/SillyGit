@@ -1,5 +1,5 @@
-import { useState, type JSX } from 'react'
-import type { BranchInfo, RepoStatus } from '../../../shared/types'
+import { useState, type JSX, type ReactNode } from 'react'
+import type { BranchInfo, PullMode, RepoStatus } from '../../../shared/types'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
@@ -13,14 +13,25 @@ interface Props {
   recentRepos: string[]
   onOpenRecentRepo: (path: string) => void
   onPush: () => void
-  onPull: () => void
+  /** Pulls the way the Pull menu last chose, or `mode` when picked from the menu. */
+  onPull: (mode?: PullMode) => void
+  pullMode: PullMode
   onFetch: () => void
   fetching: boolean
+  hasRemotes: boolean
   /** What Undo would do, e.g. "Undo commit “x”"; null disables the button. */
   undoLabel: string | null
   onUndo: () => void
+  /** What Redo would do; null disables the button. */
+  redoLabel: string | null
+  onRedo: () => void
+  onCreateBranch: () => void
+  hasChanges: boolean
+  stashCount: number
   onStash: () => void
   onStashPop: () => void
+  actionsOpen: boolean
+  onToggleActions: () => void
   onCheckout: (branch: string) => void
   onOpenSettings: () => void
   terminalVisible: boolean
@@ -168,6 +179,74 @@ function GearIcon(): JSX.Element {
   )
 }
 
+
+function RedoIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path d="M11 3.5 13.5 6 11 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.5 6h-7a3.5 3.5 0 0 0 0 7H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function NewBranchIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <circle cx="4.5" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="4.5" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11.5" cy="6.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 5v6M4.5 10.5c0-2 1.6-3 3.5-3.3l2-.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ActionsIcon(): JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="1.5" y="5.5" width="13" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M8 1.5v2M8 12.5v2M6.8 2.3 8 3.5l1.2-1.2M6.8 13.7 8 12.5l1.2 1.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+const PULL_OPTIONS: { mode: PullMode; label: string }[] = [
+  { mode: 'ff', label: 'Pull (fast-forward if possible)' },
+  { mode: 'ff-only', label: 'Pull (fast-forward only)' },
+  { mode: 'rebase', label: 'Pull (rebase)' }
+]
+
+interface ToolButtonProps {
+  label: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  title: string
+  /** The accessible name, when it should differ from the visible label. */
+  ariaLabel?: string
+  active?: boolean
+  badge?: number
+}
+
+/** A GitKraken-style toolbar button: a small label above its icon. */
+function ToolButton({ label, icon, onClick, disabled, title, ariaLabel, active, badge }: ToolButtonProps): JSX.Element {
+  return (
+    <button
+      className={`tool-button ${active ? 'tool-button-active' : ''}`}
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      aria-label={ariaLabel ?? label}
+    >
+      <span className="tool-label">{label}</span>
+      <span className="tool-icon">
+        {icon}
+        {badge ? <span className="tool-badge">{badge}</span> : null}
+      </span>
+    </button>
+  )
+}
+
 export default function TopBar({
   repoPath,
   status,
@@ -178,12 +257,21 @@ export default function TopBar({
   onOpenRecentRepo,
   onPush,
   onPull,
+  pullMode,
   onFetch,
   fetching,
+  hasRemotes,
   undoLabel,
   onUndo,
+  redoLabel,
+  onRedo,
+  onCreateBranch,
+  hasChanges,
+  stashCount,
   onStash,
   onStashPop,
+  actionsOpen,
+  onToggleActions,
   onCheckout,
   onOpenSettings,
   terminalVisible,
@@ -195,9 +283,11 @@ export default function TopBar({
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [showRepoMenu, setShowRepoMenu] = useState(false)
+  const [showPullMenu, setShowPullMenu] = useState(false)
   const repoName = repoPath ? repoDisplayName(repoPath) : null
   const localBranches = branches.filter((b) => !b.remote)
-
+  const pullLabel = PULL_OPTIONS.find((o) => o.mode === pullMode)?.label ?? 'Pull'
+  const noRemote = 'This repository has no remotes'
   return (
     <div className="top-bar">
       <div className="top-bar-left">
@@ -288,50 +378,135 @@ export default function TopBar({
           )}
         </div>
       </div>
+      {repoPath && (
+        <div className="toolbar" role="toolbar" aria-label="Git actions">
+          <ToolButton
+            label="Undo"
+            icon={<UndoIcon />}
+            disabled={busy || !undoLabel}
+            onClick={onUndo}
+            title={undoLabel ? `${undoLabel} (${MOD}Z)` : 'Nothing to undo'}
+          />
+          <ToolButton
+            label="Redo"
+            icon={<RedoIcon />}
+            disabled={busy || !redoLabel}
+            onClick={onRedo}
+            title={redoLabel ? `${redoLabel} (${MOD}⇧Z)` : 'Nothing to redo'}
+          />
+          <div className="tool-split">
+            <ToolButton
+              label={fetching ? 'Fetching' : 'Pull'}
+              ariaLabel="Pull"
+              icon={<PullIcon />}
+              disabled={busy || !hasRemotes}
+              onClick={() => onPull()}
+              title={hasRemotes ? pullLabel : noRemote}
+              badge={status?.behind}
+            />
+            <button
+              className="tool-caret"
+              disabled={busy || !hasRemotes}
+              onClick={() => setShowPullMenu((v) => !v)}
+              title={hasRemotes ? 'Fetch or choose how to pull' : noRemote}
+              aria-label="Pull options"
+              aria-haspopup="menu"
+              aria-expanded={showPullMenu}
+            >
+              ▾
+            </button>
+            {showPullMenu && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setShowPullMenu(false)} />
+                <div className="branch-dropdown tool-menu" role="menu" aria-label="Pull options">
+                  <div
+                    role="menuitem"
+                    className="branch-dropdown-item"
+                    aria-disabled={fetching}
+                    onClick={() => {
+                      setShowPullMenu(false)
+                      if (!fetching) onFetch()
+                    }}
+                  >
+                    <FetchIcon /> Fetch
+                  </div>
+                  {PULL_OPTIONS.map((option) => (
+                    <div
+                      key={option.mode}
+                      role="menuitemradio"
+                      aria-checked={option.mode === pullMode}
+                      className="branch-dropdown-item"
+                      onClick={() => {
+                        setShowPullMenu(false)
+                        onPull(option.mode)
+                      }}
+                    >
+                      <span className="tool-menu-check">{option.mode === pullMode ? '✓' : ''}</span>
+                      {option.label}
+                    </div>
+                  ))}
+                  <div className="dropdown-separator" />
+                  <div className="tool-menu-hint">Picking a pull option makes it what the Pull button does.</div>
+                </div>
+              </>
+            )}
+          </div>
+          <ToolButton
+            label="Push"
+            icon={<PushIcon />}
+            disabled={busy || !hasRemotes}
+            onClick={onPush}
+            title={hasRemotes ? 'Push to remote' : noRemote}
+            badge={status?.ahead}
+          />
+          <ToolButton
+            label="Branch"
+            ariaLabel="Create branch"
+            icon={<NewBranchIcon />}
+            disabled={busy}
+            onClick={onCreateBranch}
+            title="Create a branch here and check it out"
+          />
+          <ToolButton
+            label="Stash"
+            icon={<StashIcon />}
+            disabled={busy || !hasChanges}
+            onClick={onStash}
+            title={hasChanges ? 'Stash working directory changes' : 'No changes to stash'}
+          />
+          <ToolButton
+            label="Pop"
+            icon={<PopIcon />}
+            disabled={busy || stashCount === 0}
+            onClick={onStashPop}
+            title={stashCount > 0 ? 'Pop the most recent stash' : 'No stashes'}
+          />
+          <div className="toolbar-divider" />
+          <ToolButton
+            label="Terminal"
+            icon={<TerminalIcon />}
+            active={terminalVisible}
+            onClick={onToggleTerminal}
+            title="Toggle terminal (Ctrl+`)"
+          />
+        </div>
+      )}
       <div className="top-bar-right">
+        <ToolButton
+          label="Actions"
+          icon={<ActionsIcon />}
+          active={actionsOpen}
+          onClick={onToggleActions}
+          title={`Search for commands and actions (${MOD}K)`}
+        />
         {repoPath && (
-          <>
-            <button
-              disabled={busy || !undoLabel}
-              onClick={onUndo}
-              title={undoLabel ? `${undoLabel} (${MOD}Z)` : 'Nothing to undo'}
-              aria-label="Undo"
-            >
-              <UndoIcon />
-              Undo
-            </button>
-            <div className="button-group">
-              <button disabled={busy || fetching} onClick={onFetch} title="Fetch all remotes">
-                <FetchIcon />
-                {fetching ? 'Fetching…' : 'Fetch'}
-              </button>
-              <button disabled={busy} onClick={onPull} title="Pull from remote">
-                <PullIcon />
-                Pull{status && status.behind > 0 ? ` (${status.behind})` : ''}
-              </button>
-              <button disabled={busy} onClick={onPush} title="Push to remote">
-                <PushIcon />
-                Push{status && status.ahead > 0 ? ` (${status.ahead})` : ''}
-              </button>
-            </div>
-            <div className="button-group">
-              <button disabled={busy} onClick={onStash} title="Stash working directory changes">
-                <StashIcon />
-                Stash
-              </button>
-              <button disabled={busy} onClick={onStashPop} title="Pop the most recent stash">
-                <PopIcon />
-                Pop
-              </button>
-            </div>
-            <button
-              className={`icon-button ${launchpadActive ? 'icon-button-active' : ''}`}
-              onClick={onToggleLaunchpad}
-              title="Launchpad — your open pull requests"
-            >
-              <LaunchpadIcon />
-            </button>
-          </>
+          <button
+            className={`icon-button ${launchpadActive ? 'icon-button-active' : ''}`}
+            onClick={onToggleLaunchpad}
+            title="Launchpad — your open pull requests"
+          >
+            <LaunchpadIcon />
+          </button>
         )}
         {repoPath && (
           <button
@@ -342,13 +517,15 @@ export default function TopBar({
             <SparkIcon />
           </button>
         )}
-        <button
-          className={`icon-button ${terminalVisible ? 'icon-button-active' : ''}`}
-          onClick={onToggleTerminal}
-          title="Toggle terminal (Ctrl+`)"
-        >
-          <TerminalIcon />
-        </button>
+        {!repoPath && (
+          <button
+            className={`icon-button ${terminalVisible ? 'icon-button-active' : ''}`}
+            onClick={onToggleTerminal}
+            title="Toggle terminal (Ctrl+`)"
+          >
+            <TerminalIcon />
+          </button>
+        )}
         <button className="icon-button" onClick={onOpenSettings} title="Settings">
           <GearIcon />
         </button>

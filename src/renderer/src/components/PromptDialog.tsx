@@ -4,6 +4,7 @@ export interface PromptRequest {
   title: string
   label: string
   defaultValue?: string
+  placeholder?: string
   submitLabel?: string
 }
 
@@ -17,6 +18,7 @@ export default function PromptDialog({
   title,
   label,
   defaultValue = '',
+  placeholder,
   submitLabel = 'OK',
   onSubmit,
   onCancel
@@ -40,6 +42,7 @@ export default function PromptDialog({
           <input
             autoFocus
             aria-label={label}
+            placeholder={placeholder}
             value={value}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setValue(e.target.value)}

@@ -286,6 +286,131 @@ input {
   color: var(--text-dim);
 }
 
+/* ---------- GitKraken-style toolbar (top bar, middle) ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.top-bar button.tool-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 46px;
+  padding: 3px 6px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.top-bar button.tool-button:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.top-bar button.tool-button:disabled {
+  opacity: 0.38;
+}
+
+.tool-label {
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.tool-icon {
+  position: relative;
+  display: flex;
+}
+
+.tool-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.tool-button-active .tool-icon,
+.tool-button-active .tool-label {
+  color: var(--accent);
+}
+
+.tool-badge {
+  position: absolute;
+  top: -4px;
+  left: calc(100% + 1px);
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+}
+
+.tool-split {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.top-bar button.tool-caret {
+  align-self: flex-end;
+  padding: 0 3px 4px;
+  margin-left: -4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.top-bar button.tool-caret:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.top-bar button.tool-caret:disabled {
+  opacity: 0.38;
+}
+
+.tool-menu .branch-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-menu .branch-dropdown-item[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tool-menu-check {
+  width: 13px;
+  color: var(--accent);
+}
+
+.tool-menu-hint {
+  padding: 4px 8px 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: normal;
+  max-width: 230px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
 .dropdown-backdrop {
   position: fixed;
   inset: 0;
@@ -3402,9 +3527,52 @@ button.link-button.danger {
   flex-direction: column;
 }
 
-.palette-input {
-  border: none;
+.palette-backdrop-dropdown {
+  background: transparent;
+  justify-content: flex-end;
+  padding: 54px 14px 0;
+}
+
+.palette-dropdown {
+  width: min(620px, calc(100vw - 28px));
+  border-color: var(--accent);
+}
+
+.palette-dropdown .palette-list {
+  max-height: min(60vh, 520px);
+}
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--border);
+}
+
+.palette-crumb {
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  border: none;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.palette-more {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.palette-shortcut + .palette-more {
+  margin-left: 6px;
+}
+
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
   border-radius: 0;
   padding: 12px 14px;
   font-size: 14px;
@@ -3605,4 +3773,98 @@ button.link-button.danger {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+/* --- Activity log --- */
+
+.activity-modal {
+  width: min(760px, calc(100vw - 48px));
+  max-height: 80vh;
+}
+
+.activity-modal .modal-body {
+  min-height: 0;
+  flex: 1;
+}
+
+.activity-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-toolbar .settings-checkbox {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 120px;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.activity-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-entry:last-child {
+  border-bottom: none;
+}
+
+.activity-time,
+.activity-meta {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-meta {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.activity-repo {
+  color: var(--text);
+}
+
+.activity-status.ok {
+  color: var(--green);
+}
+
+.activity-status.failed {
+  color: var(--red);
+}
+
+.activity-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.activity-command {
+  word-break: break-all;
+}
+
+.activity-error {
+  margin-top: 2px;
+  color: var(--red);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.activity-empty {
+  padding: 12px;
+  color: var(--text-dim);
 }

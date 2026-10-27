@@ -131,7 +131,7 @@ export async function getOperationState(repoPath: string): Promise<OperationStat
   return null
 }
 
-async function hasUnmergedPaths(repoPath: string): Promise<boolean> {
+export async function hasUnmergedPaths(repoPath: string): Promise<boolean> {
   const out = await runGit(repoPath, ['diff', '--name-only', '--diff-filter=U']).catch(() => '')
   return out.trim().length > 0
 }

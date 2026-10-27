@@ -1,4 +1,4 @@
-import { promises as fsp } from 'fs'
+import { existsSync, promises as fsp } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
@@ -10,6 +10,7 @@ import type {
   CommitInfo,
   ConflictableResult,
   FileStatus,
+  PullMode,
   GraphCommit,
   CommitSearchHit,
   RepoStatus,
@@ -17,7 +18,8 @@ import type {
 } from '../shared/types'
 import * as diffSplit from '../shared/diffSplit'
 import { planUndo, type UndoPlan } from '../shared/undo'
-import { getOperationState, runMayConflict } from './conflicts'
+import { getOperationState, hasUnmergedPaths, runMayConflict } from './conflicts'
+import { repoNameFromUrl } from '../shared/clone'
 import { GitError, remoteEnv, runGit } from './gitExec'
 
 export async function isGitRepo(repoPath: string): Promise<boolean> {
@@ -218,8 +220,39 @@ export async function push(repoPath: string): Promise<void> {
   await runGit(repoPath, ['push'], await remoteEnv())
 }
 
-export async function pull(repoPath: string): Promise<ConflictableResult> {
-  return runMayConflict(repoPath, ['pull'], await remoteEnv())
+const PULL_ARGS: Record<PullMode, string[]> = {
+  ff: ['pull', '--no-rebase', '--no-edit'],
+  'ff-only': ['pull', '--ff-only'],
+  rebase: ['pull', '--rebase']
+}
+
+export async function pull(repoPath: string, mode: PullMode = 'ff'): Promise<ConflictableResult> {
+  return runMayConflict(repoPath, PULL_ARGS[mode], { ...(await remoteEnv()), GIT_EDITOR: 'true' })
+}
+
+/**
+ * Applies a patch file (from `git format-patch` or `git diff`) to the working
+ * tree and index, falling back to a three-way merge that leaves conflicts to
+ * resolve when it doesn't apply cleanly.
+ */
+export async function applyPatch(repoPath: string, patchPath: string): Promise<ConflictableResult> {
+  try {
+    await runGit(repoPath, ['apply', '--3way', '--whitespace=nowarn', patchPath])
+    return { conflicts: false }
+  } catch (err) {
+    if (await hasUnmergedPaths(repoPath)) return { conflicts: true }
+    throw err
+  }
+}
+
+/** Clones `url` into a new folder named after it inside `parentDir`, returning the new repo's path. */
+export async function clone(url: string, parentDir: string): Promise<string> {
+  const name = repoNameFromUrl(url)
+  if (!name) throw new GitError(`Couldn't work out a folder name from "${url}".`)
+  const dest = join(parentDir, name)
+  if (existsSync(dest)) throw new GitError(`${dest} already exists. Pick another folder to clone into.`)
+  await runGit(parentDir, ['clone', '--', url.trim(), dest], await remoteEnv())
+  return dest
 }
 
 export async function getLog(repoPath: string, limit = 50): Promise<CommitInfo[]> {
@@ -601,6 +634,7 @@ export async function createPatchFromCommit(repoPath: string, hash: string): Pro
 }
 
 export { GitError }
+export { activityLog } from './gitExec'
 
 /**
  * Every commit whose subject, author name or email contains `query`, or whose
@@ -684,31 +718,114 @@ export async function undoLabel(repoPath: string): Promise<string | null> {
   return (await undoPlan(repoPath))?.plan.label ?? null
 }
 
+/**
+ * Moves the checked-out branch (or a detached HEAD) to `target` the way an
+ * undo plan's mode says to, refusing to throw uncommitted changes away.
+ */
+async function resetForPlan(
+  repoPath: string,
+  target: string,
+  mode: 'soft' | 'keep' | 'keep-or-mixed',
+  label: string
+): Promise<void> {
+  if (mode === 'soft') {
+    await runGit(repoPath, ['reset', '--soft', target])
+    return
+  }
+  try {
+    await runGit(repoPath, ['reset', '--keep', target])
+  } catch {
+    if (mode !== 'keep-or-mixed') {
+      throw new GitError(
+        `Couldn't ${label.toLowerCase()} without touching your uncommitted changes. Commit or stash them first.`
+      )
+    }
+    // A soft or mixed reset left the undone commits' changes in the working
+    // tree; a mixed reset back takes them up again without touching files.
+    await runGit(repoPath, ['reset', '--mixed', '--quiet', target])
+  }
+}
+
+/**
+ * What Redo would put back: the last undo, as long as nothing has moved HEAD
+ * since. Kept in memory only, like an editor's redo stack.
+ */
+interface RedoState {
+  plan: UndoPlan
+  label: string
+  /** The branch (or commit, when detached) to check out, or the commit to reset to. */
+  target: string
+  /** Where HEAD was, and on which branch, straight after the undo. */
+  head: string
+  branch: string | null
+}
+
+const redoStates = new Map<string, RedoState>()
+
+async function currentBranch(repoPath: string): Promise<string | null> {
+  try {
+    return (await runGit(repoPath, ['symbolic-ref', '-q', '--short', 'HEAD'])).trim() || null
+  } catch {
+    return null
+  }
+}
+
+async function headHash(repoPath: string): Promise<string> {
+  return (await runGit(repoPath, ['rev-parse', 'HEAD'])).trim()
+}
+
 /** Undoes the last commit, amend, checkout, merge, pull, rebase, reset, cherry-pick or revert. */
 export async function undo(repoPath: string): Promise<string> {
   const found = await undoPlan(repoPath)
   if (!found) throw new GitError('There is nothing SillyGit can undo.')
   const { plan, ref } = found
+  const branchBefore = await currentBranch(repoPath)
+  const headBefore = await headHash(repoPath)
   if (plan.kind === 'checkout') {
     await runGit(repoPath, ['checkout', plan.target])
-    return plan.label
-  }
-  const previous = `${ref}@{1}`
-  if (plan.mode === 'soft') {
-    await runGit(repoPath, ['reset', '--soft', previous])
   } else {
-    try {
-      await runGit(repoPath, ['reset', '--keep', previous])
-    } catch {
-      if (plan.mode !== 'keep-or-mixed') {
-        throw new GitError(
-          `Couldn't ${plan.label.toLowerCase()} without touching your uncommitted changes. Commit or stash them first.`
-        )
-      }
-      // A soft or mixed reset left the undone commits' changes in the working
-      // tree; a mixed reset back takes them up again without touching files.
-      await runGit(repoPath, ['reset', '--mixed', '--quiet', previous])
-    }
+    await resetForPlan(repoPath, `${ref}@{1}`, plan.mode, plan.label)
   }
+  redoStates.set(repoPath, {
+    plan,
+    label: plan.label.replace(/^Undo/, 'Redo'),
+    target: plan.kind === 'checkout' ? (branchBefore ?? headBefore) : headBefore,
+    head: await headHash(repoPath),
+    branch: await currentBranch(repoPath)
+  })
   return plan.label
+}
+
+async function validRedo(repoPath: string): Promise<RedoState | null> {
+  const state = redoStates.get(repoPath)
+  if (!state) return null
+  try {
+    const moved =
+      (await getOperationState(repoPath)) !== null ||
+      (await headHash(repoPath)) !== state.head ||
+      (await currentBranch(repoPath)) !== state.branch
+    if (!moved) return state
+  } catch {
+    // An unborn or broken HEAD: nothing sensible to redo.
+  }
+  redoStates.delete(repoPath)
+  return null
+}
+
+/** What Redo would do right now, e.g. "Redo commit “x”", or null when there's nothing to redo. */
+export async function redoLabel(repoPath: string): Promise<string | null> {
+  return (await validRedo(repoPath))?.label ?? null
+}
+
+/** Puts back what the last Undo took away. */
+export async function redo(repoPath: string): Promise<string> {
+  const state = await validRedo(repoPath)
+  if (!state) throw new GitError('There is nothing to redo.')
+  if (state.plan.kind === 'checkout') {
+    await runGit(repoPath, ['checkout', state.target])
+  } else {
+    await resetForPlan(repoPath, state.target, state.plan.mode, state.label)
+  }
+  redoStates.delete(repoPath)
+  return state.label
 }

@@ -101,7 +101,7 @@ test('fetches from a remote and shows its new branch', async ({ sillygit, repo }
     upstream.git('checkout', '-q', '-b', 'shared')
     upstream.commitFile('shared.txt', 'shared\n', 'Shared work')
 
-    await sillygit.page.getByRole('button', { name: 'Fetch' }).click()
+    await sillygit.pullMenu('Fetch')
 
     await expect(sillygit.graph.badge('origin/shared')).toBeVisible()
   } finally {

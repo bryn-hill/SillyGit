@@ -1,26 +1,54 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { formatCommand, isLoggedCommand, type ActivityEntry } from '../shared/activity'
 
 const execFileAsync = promisify(execFile)
 
 export class GitError extends Error {}
+
+const ACTIVITY_LIMIT = 300
+const activity: ActivityEntry[] = []
+let nextActivityId = 1
+
+/** The commands that changed something, newest first. */
+export function activityLog(): ActivityEntry[] {
+  return [...activity].reverse()
+}
 
 export async function runGit(
   repoPath: string,
   args: string[],
   env?: Record<string, string>
 ): Promise<string> {
+  const logged = isLoggedCommand(args)
+  const started = Date.now()
+  const record = (ok: boolean, error?: string): void => {
+    if (!logged) return
+    activity.push({
+      id: nextActivityId++,
+      time: started,
+      repoPath,
+      command: formatCommand(args),
+      durationMs: Date.now() - started,
+      ok,
+      error
+    })
+    if (activity.length > ACTIVITY_LIMIT) activity.shift()
+  }
   try {
     const { stdout } = await execFileAsync('git', args, {
       cwd: repoPath,
       maxBuffer: 1024 * 1024 * 64,
       env: env ? { ...process.env, ...env } : undefined
     })
+    record(true)
     return stdout
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     const stderr = (err as { stderr?: string }).stderr
-    throw new GitError(stderr?.trim() || message)
+    const error = new GitError(stderr?.trim() || message)
+    record(false, error.message)
+    throw error
   }
 }
 

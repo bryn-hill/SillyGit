@@ -28,6 +28,11 @@ export class SillyGitApp {
   readonly notice: Locator
   readonly claudeButton: Locator
   readonly terminalButton: Locator
+  /** The GitKraken-style toolbar: Undo, Redo, Pull, Push, Branch, Stash, Pop, Terminal. */
+  readonly toolbar: Locator
+  readonly actionsButton: Locator
+  /** The Actions dropdown opened by actionsButton. */
+  readonly actions: Locator
 
   constructor(
     readonly electronApp: ElectronApplication,
@@ -50,6 +55,20 @@ export class SillyGitApp {
     this.notice = page.locator('.notice-banner')
     this.claudeButton = page.getByTitle('Claude Code (Ctrl+Esc)')
     this.terminalButton = page.getByTitle('Toggle terminal (Ctrl+`)')
+    this.toolbar = page.getByRole('toolbar', { name: 'Git actions' })
+    this.actionsButton = page.getByRole('button', { name: 'Actions', exact: true })
+    this.actions = page.getByRole('dialog', { name: 'Actions' })
+  }
+
+  /** A toolbar button by its accessible name, e.g. "Undo" or "Create branch". */
+  toolbarButton(name: string): Locator {
+    return this.toolbar.getByRole('button', { name, exact: true })
+  }
+
+  /** Opens the Pull button's menu and picks `item`, e.g. "Fetch" or "Pull (rebase)". */
+  async pullMenu(item: string): Promise<void> {
+    await this.toolbarButton('Pull options').click()
+    await this.page.getByRole('menu', { name: 'Pull options' }).getByText(item, { exact: true }).click()
   }
 
   /** Opens `repoPath` through the "Open Repository" button, with the folder picker stubbed. */

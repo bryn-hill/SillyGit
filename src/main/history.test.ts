@@ -87,6 +87,103 @@ describe('undo', () => {
   })
 })
 
+describe('redo', () => {
+  it('puts an undone commit back', async () => {
+    commitFile('b.txt', 'b\n', 'Add b')
+    const hash = run('rev-parse', 'HEAD')
+    expect(await git.redoLabel(dir)).toBeNull()
+    await git.undo(dir)
+    expect(await git.redoLabel(dir)).toBe('Redo commit “Add b”')
+    await git.redo(dir)
+    expect(run('rev-parse', 'HEAD')).toBe(hash)
+    expect(run('status', '--porcelain')).toBe('')
+    expect(await git.redoLabel(dir)).toBeNull()
+  })
+
+  it('checks the branch out again after undoing a checkout', async () => {
+    run('branch', 'feature')
+    run('checkout', '-q', 'feature')
+    await git.undo(dir)
+    expect(run('branch', '--show-current')).toBe('main')
+    expect(await git.redoLabel(dir)).toBe('Redo checkout of feature')
+    await git.redo(dir)
+    expect(run('branch', '--show-current')).toBe('feature')
+  })
+
+  it('forgets the redo once HEAD moves on', async () => {
+    commitFile('b.txt', 'b\n', 'Add b')
+    await git.undo(dir)
+    run('commit', '-q', '-m', 'Different')
+    expect(await git.redoLabel(dir)).toBeNull()
+    await expect(git.redo(dir)).rejects.toThrow(/nothing to redo/)
+  })
+})
+
+describe('pull modes', () => {
+  let remote: string
+
+  beforeEach(() => {
+    remote = mkdtempSync(join(tmpdir(), 'sillygit-remote-'))
+    execFileSync('git', ['clone', '-q', '--bare', dir, remote])
+    run('remote', 'add', 'origin', remote)
+    run('fetch', '-q', 'origin')
+    run('branch', '-q', '--set-upstream-to=origin/main')
+    // Someone else pushes a commit while we make our own.
+    const other = mkdtempSync(join(tmpdir(), 'sillygit-other-'))
+    execFileSync('git', ['clone', '-q', remote, other])
+    writeFileSync(join(other, 'theirs.txt'), 'theirs\n')
+    for (const args of [
+      ['add', 'theirs.txt'],
+      ['-c', 'user.name=Other', '-c', 'user.email=o@example.com', 'commit', '-q', '-m', 'Theirs'],
+      ['push', '-q']
+    ]) {
+      execFileSync('git', args, { cwd: other })
+    }
+    rmSync(other, { recursive: true, force: true })
+    commitFile('mine.txt', 'mine\n', 'Mine')
+  })
+
+  afterEach(() => rmSync(remote, { recursive: true, force: true }))
+
+  it('refuses to merge diverged branches when fast-forward only', async () => {
+    await expect(git.pull(dir, 'ff-only')).rejects.toThrow()
+    expect(run('log', '-1', '--format=%s')).toBe('Mine')
+  })
+
+  it('rebases local commits on top', async () => {
+    await git.pull(dir, 'rebase')
+    expect(run('log', '--format=%s', '-3').split('\n')).toEqual(['Mine', 'Theirs', 'Second'])
+  })
+
+  it('merges by default without opening an editor', async () => {
+    await git.pull(dir)
+    expect(run('log', '-1', '--format=%P').split(' ')).toHaveLength(2)
+  })
+})
+
+describe('apply patch', () => {
+  it('applies a patch made from a commit', async () => {
+    commitFile('b.txt', 'b\n', 'Add b')
+    const patchFile = join(tmpdir(), `sillygit-${Date.now()}.patch`)
+    writeFileSync(patchFile, await git.createPatchFromCommit(dir, 'HEAD'))
+    run('reset', '-q', '--hard', 'HEAD~1')
+    expect(await git.applyPatch(dir, patchFile)).toEqual({ conflicts: false })
+    expect(readFileSync(join(dir, 'b.txt'), 'utf8')).toBe('b\n')
+    rmSync(patchFile)
+  })
+})
+
+describe('activity log', () => {
+  it('records commands that change the repo, not reads', async () => {
+    await git.getStatus(dir)
+    await git.createBranch(dir, 'logged-branch')
+    const [latest] = git.activityLog()
+    expect(latest.command).toBe('git checkout -b logged-branch')
+    expect(latest.ok).toBe(true)
+    expect(latest.repoPath).toBe(dir)
+  })
+})
+
 describe('stashes', () => {
   it('lists, applies and drops stashes, including untracked files', async () => {
     writeFileSync(join(dir, 'new.txt'), 'new\n')
