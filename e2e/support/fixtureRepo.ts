@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 const GIT_IDENTITY = {
   GIT_AUTHOR_NAME: 'E2E Tester',
@@ -28,11 +28,13 @@ export class FixtureRepo {
     return basename(this.path)
   }
 
-  writeFile(relativePath: string, content: string): void {
-    writeFileSync(join(this.path, relativePath), content)
+  writeFile(relativePath: string, content: string | Buffer): void {
+    const path = join(this.path, relativePath)
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, content)
   }
 
-  commitFile(relativePath: string, content: string, message: string): void {
+  commitFile(relativePath: string, content: string | Buffer, message: string): void {
     this.writeFile(relativePath, content)
     this.git('add', relativePath)
     this.git('commit', '-q', '-m', message)

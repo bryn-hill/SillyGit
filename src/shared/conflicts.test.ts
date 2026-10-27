@@ -119,3 +119,66 @@ describe('picking and building the output', () => {
     expect(buildOutput(s, setSideTaken(s, {}, 'ours', true))).toBe('a\r\nb\r\nd\r\n')
   })
 })
+
+describe('hard conflict shapes', () => {
+  it('parses longer markers, so content that looks like a default-size marker stays content', () => {
+    const text = [
+      '<<<<<<<<< main\n',
+      'Title\n',
+      '=======\n',
+      '||||||||| base\n',
+      'Old\n',
+      '=========\n',
+      '<<<<<<< quoted\n',
+      '>>>>>>>>> feature\n'
+    ].join('')
+    expect(conflictHunks(parseConflictMarkers(text, 9))).toEqual([
+      { kind: 'conflict', id: 0, ours: ['Title\n', '=======\n'], base: ['Old\n'], theirs: ['<<<<<<< quoted\n'] }
+    ])
+  })
+
+  it('writes unresolved hunks with the marker size it is given', () => {
+    const s = parseConflictMarkers('<<<<<<<<< a\nx\n=========\ny\n>>>>>>>>> b\n', 9)
+    expect(buildOutput(s, {}, { unresolved: 'markers', currentLabel: 'a', incomingLabel: 'b', markerSize: 9 })).toBe(
+      '<<<<<<<<< a\nx\n=========\ny\n>>>>>>>>> b\n'
+    )
+  })
+
+  it('keeps an empty side empty: taking a deletion removes the lines', () => {
+    const s = parseConflictMarkers('a\n<<<<<<< x\n||||||| base\nold\n=======\nnew\n>>>>>>> y\nb\n')
+    expect(buildOutput(s, toggleHunkSide(conflictHunks(s)[0], {}, 'theirs'))).toBe('a\nnew\nb\n')
+    // An empty side can't be "taken", so the hunk stays unresolved.
+    expect(isHunkSideTaken(conflictHunks(s)[0], {}, 'ours')).toBe(false)
+    expect(unresolvedCount(s, toggleHunkSide(conflictHunks(s)[0], {}, 'ours'))).toBe(1)
+  })
+
+  it('a hunk at the very start and one at the very end, with nothing common around them', () => {
+    const s = parseConflictMarkers('<<<<<<< x\nA\n=======\nB\n>>>>>>> y\nmid\n<<<<<<< x\nC\n=======\nD\n>>>>>>> y\n')
+    expect(s.map((seg) => seg.kind)).toEqual(['conflict', 'common', 'conflict'])
+    expect(buildOutput(s, setSideTaken(s, {}, 'theirs', true))).toBe('B\nmid\nD\n')
+  })
+
+  it('mixed line endings: every picked line keeps its own terminator', () => {
+    const s = parseConflictMarkers('a\r\n<<<<<<< x\r\nb\r\n=======\nc\n>>>>>>> y\r\nd')
+    // Each picked line keeps its own terminator; nothing is rewritten.
+    expect(buildOutput(s, setSideTaken(s, setSideTaken(s, {}, 'ours', true), 'theirs', true))).toBe('a\r\nb\r\nc\nd')
+  })
+
+  it('unicode lines are kept byte for byte, including combining marks and ZWJ sequences', () => {
+    const s = parseConflictMarkers('<<<<<<< x\né 👩‍💻\n=======\n🇳🇿 中文\n>>>>>>> y\n')
+    expect(buildOutput(s, setSideTaken(s, {}, 'ours', true))).toBe('é 👩‍💻\n')
+  })
+
+  it('hundreds of hunks resolve independently', () => {
+    const text = Array.from({ length: 300 }, (_, i) => `c${i}\n<<<<<<< x\no${i}\n=======\nt${i}\n>>>>>>> y\n`).join('')
+    const s = parseConflictMarkers(text)
+    const hunks = conflictHunks(s)
+    expect(hunks).toHaveLength(300)
+    let picks: ConflictPicks = {}
+    for (const h of hunks) picks = toggleHunkSide(h, picks, h.id % 3 === 0 ? 'theirs' : 'ours')
+    expect(unresolvedCount(s, picks)).toBe(0)
+    const out = buildOutput(s, picks).split('\n')
+    expect(out.slice(0, 4)).toEqual(['c0', 't0', 'c1', 'o1'])
+    expect(out).toHaveLength(601)
+  })
+})
