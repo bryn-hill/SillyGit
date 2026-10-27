@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:e2e": "electron-vite build && playwright test",
     "lint:commits": "node scripts/commit-msg.mjs --range origin/main..HEAD",
-    "postinstall": "node scripts/fix-native-permissions.js && node scripts/brand-dev-electron.js",
+    "postinstall": "install-electron && node scripts/fix-native-permissions.js && node scripts/brand-dev-electron.js",
     "prepare": "git config core.hooksPath .githooks || true",
     "dist": "electron-vite build && electron-builder",
     "dist:dir": "electron-vite build && electron-builder --dir"
