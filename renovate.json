@@ -1,6 +1,31 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "group:allNonMajor",
+    ":dependencyDashboard"
+  ],
+  "schedule": ["* 0-5 * * *"],
+  "prConcurrentLimit": 2,
+  "prHourlyLimit": 1,
+  "minimumReleaseAge": "3 days",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 0-5 * * 1"]
+  },
+  "packageRules": [
+    {
+      "description": "Keep commit types consistent: every dependency update is chore(deps)",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "chore"
+    },
+    {
+      "description": "Major updates wait for approval on the Dependency Dashboard",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
   ]
 }
