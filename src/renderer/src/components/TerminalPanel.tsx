@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { CanvasAddon } from '@xterm/addon-canvas'
+import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 
 const MIN_HEIGHT = 120
@@ -85,10 +85,18 @@ function TerminalInstance({ cwd, shown, onExit }: TerminalInstanceProps): JSX.El
     term.open(container)
     // The default DOM renderer draws every glyph from the loaded font, so it
     // can't render Powerline/box-drawing separators the font doesn't have
-    // (they show as flat color blocks with no shape). The canvas renderer
+    // (they show as flat color blocks with no shape). The WebGL renderer
     // draws those as vector shapes instead, matching what most real
     // terminals (incl. VS Code's) show regardless of the font installed.
-    term.loadAddon(new CanvasAddon())
+    // xterm 6 dropped the canvas renderer, so WebGL is the only one that
+    // does this; without a GPU context it falls back to the DOM renderer.
+    try {
+      const webgl = new WebglAddon()
+      webgl.onContextLoss(() => webgl.dispose())
+      term.loadAddon(webgl)
+    } catch (err) {
+      console.warn('[terminal] WebGL renderer unavailable, using the DOM renderer', err)
+    }
     termRef.current = term
     fitRef.current = fit
 
