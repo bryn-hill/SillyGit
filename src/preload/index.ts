@@ -145,6 +145,14 @@ const api = {
     ipcRenderer.invoke('accounts:add', input),
   removeAccount: (id: string): Wrapped<import('../shared/accounts').ProviderAccount[]> =>
     ipcRenderer.invoke('accounts:remove', id),
+  getNotificationSettings: (): Promise<import('../shared/notifications').NotificationSettings> =>
+    ipcRenderer.invoke('notifications:get-settings'),
+  setNotificationSettings: (
+    next: import('../shared/notifications').NotificationSettings
+  ): Wrapped<import('../shared/notifications').NotificationSettings> =>
+    ipcRenderer.invoke('notifications:set-settings', next),
+  /** Shows a sample notification so the user can check the system lets SillyGit notify. */
+  testNotification: (): Wrapped<void> => ipcRenderer.invoke('notifications:test'),
   getShowAvatars: (): Promise<boolean> => ipcRenderer.invoke('settings:get-show-avatars'),
   setShowAvatars: (show: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-show-avatars', show),
   /** Avatar images (data: URLs) by lower-cased email; null or missing means show initials. */

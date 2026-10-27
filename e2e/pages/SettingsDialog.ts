@@ -9,6 +9,10 @@ export class SettingsDialog {
   readonly tokenInput: Locator
   readonly hostInput: Locator
   readonly showAvatars: Locator
+  readonly notifications: Locator
+  readonly notificationsEnabled: Locator
+  readonly notificationInterval: Locator
+  readonly testNotificationButton: Locator
 
   constructor(private readonly page: Page) {
     this.root = page.getByRole('dialog', { name: 'Settings' })
@@ -18,6 +22,19 @@ export class SettingsDialog {
     this.tokenInput = this.addAccountForm.getByLabel('Personal access token')
     this.hostInput = this.addAccountForm.getByLabel('Server')
     this.showAvatars = this.root.getByRole('checkbox', { name: 'Show author avatars' })
+    this.notifications = this.root.getByRole('region', { name: 'Notifications' })
+    this.notificationsEnabled = this.notifications.getByRole('checkbox', { name: 'Pull request notifications' })
+    this.notificationInterval = this.notifications.getByLabel('Check')
+    this.testNotificationButton = this.notifications.getByRole('button', { name: 'Send a test notification' })
+  }
+
+  notificationKind(label: string): Locator {
+    return this.notifications.getByRole('checkbox', { name: label })
+  }
+
+  async close(): Promise<void> {
+    await this.root.getByRole('button', { name: 'Close', exact: true }).last().click()
+    await expect(this.root).toHaveCount(0)
   }
 
   async open(): Promise<void> {

@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { join } from 'path'
 import { promises as fs } from 'fs'
 import type { SavedLayout } from '../shared/types'
+import { normalizeNotificationSettings, type NotificationSettings } from '../shared/notifications'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -13,6 +14,8 @@ interface StoredSettings {
   autoFetchMinutes?: number
   /** Look up author avatars online (GitHub, GitLab, Gravatar); off shows initials only. */
   showAvatars?: boolean
+  /** Desktop notifications about pull requests. */
+  notifications?: Partial<NotificationSettings>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -88,6 +91,19 @@ export async function setShowAvatars(show: boolean): Promise<void> {
   current.showAvatars = show
   await fs.mkdir(app.getPath('userData'), { recursive: true })
   await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  return normalizeNotificationSettings((await readSettings()).notifications)
+}
+
+export async function setNotificationSettings(next: NotificationSettings): Promise<NotificationSettings> {
+  const current = await readSettings()
+  const normalized = normalizeNotificationSettings(next)
+  current.notifications = normalized
+  await fs.mkdir(app.getPath('userData'), { recursive: true })
+  await fs.writeFile(settingsPath(), JSON.stringify(current, null, 2), 'utf-8')
+  return normalized
 }
 
 export async function getWorkspaceRepos(): Promise<string[]> {

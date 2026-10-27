@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, net } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, net, Notification } from 'electron'
 import { basename, dirname, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
@@ -20,10 +20,13 @@ import * as diffSplit from '../shared/diffSplit'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
 import { watchRepo, stopWatching } from './watcher'
+import { PrNotifier, type ShownNotification } from './prNotifications'
+import type { NotificationSettings } from '../shared/notifications'
 import icon from '../../resources/icon.png?asset'
 import type { AvatarRequest, CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
+let prNotifier: PrNotifier | null = null
 
 // When set, the window is never shown (still fully rendered, just not mapped
 // to the screen) so a Playwright driver can automate it without disturbing
@@ -146,6 +149,50 @@ async function avatarSources(repoPath: string): Promise<AvatarSources> {
         : undefined,
     gravatar: true
   }
+}
+
+// Electron drops a notification's click handler if the object is garbage
+// collected while it's still on screen, so each one is held until it goes.
+const shownNotifications = new Set<Notification>()
+
+function showNotification({ title, body, url }: ShownNotification): void {
+  if (!Notification.isSupported()) return
+  const notification = new Notification({ title, body, icon })
+  shownNotifications.add(notification)
+  notification.on('click', () => {
+    shownNotifications.delete(notification)
+    if (url?.startsWith('https://')) void shell.openExternal(url)
+    else if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+  notification.on('close', () => shownNotifications.delete(notification))
+  notification.show()
+}
+
+/** GitHub repositories (owner/name) open in SillyGit whose remote is on `host`. */
+async function watchedGithubRepos(host: string): Promise<string[]> {
+  const [workspace, session] = await Promise.all([settings.getWorkspaceRepos(), settings.getLastSession()])
+  const paths = [...new Set([...workspace, ...session.recentRepos])]
+  const slugs: string[] = []
+  for (const repoPath of paths) {
+    for (const loc of await remoteLocations(repoPath)) {
+      if (loc.host === host && loc.path.split('/').length === 2) slugs.push(loc.path)
+    }
+  }
+  return slugs
+}
+
+function startPrNotifications(): void {
+  prNotifier = new PrNotifier({
+    settings: () => settings.getNotificationSettings(),
+    accounts: () => accounts.accountsWithCredentials('github'),
+    watchedRepos: watchedGithubRepos,
+    show: showNotification,
+    statePath: join(app.getPath('userData'), 'sillygit-notifications.json')
+  })
+  void prNotifier.restart()
 }
 
 function registerIpcHandlers(): void {
@@ -483,11 +530,33 @@ function registerIpcHandlers(): void {
     wrap(async () => {
       const account = await accounts.addAccount(input)
       await avatarResolver?.forgetMisses()
+      void prNotifier?.restart()
       return account
     })
   )
 
   ipcMain.handle('accounts:remove', (_e, id: string) => wrap(() => accounts.removeAccount(id)))
+
+  ipcMain.handle('notifications:get-settings', () => settings.getNotificationSettings())
+
+  ipcMain.handle('notifications:set-settings', (_e, next: NotificationSettings) =>
+    wrap(async () => {
+      const saved = await settings.setNotificationSettings(next)
+      await prNotifier?.restart()
+      return saved
+    })
+  )
+
+  ipcMain.handle('notifications:test', () =>
+    wrap(async () => {
+      if (!Notification.isSupported()) throw new Error('This system doesn\'t support desktop notifications.')
+      showNotification({
+        title: 'SillyGit notifications are working',
+        body: 'You\'ll see pull request updates like this one.',
+        url: null
+      })
+    })
+  )
 
   ipcMain.handle('settings:get-show-avatars', () => settings.getShowAvatars())
 
@@ -617,6 +686,7 @@ app.whenReady().then(() => {
   // Packaged macOS builds take the icon from the bundle; dev runs need it set here.
   if (!app.isPackaged) app.dock?.setIcon(icon)
   createWindow()
+  if (!isE2E) startPrNotifications()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

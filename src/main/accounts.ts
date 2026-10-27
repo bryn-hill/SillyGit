@@ -148,6 +148,23 @@ export async function credentialsFor(
   }
 }
 
+/** Every signed-in account for a service, with its token. Accounts whose token can't be read are left out. */
+export async function accountsWithCredentials(
+  provider: GitProvider
+): Promise<{ account: ProviderAccount; creds: Credentials }[]> {
+  const found: { account: ProviderAccount; creds: Credentials }[] = []
+  for (const account of await readAccounts()) {
+    if (account.provider !== provider) continue
+    const token = decrypt(account)
+    if (!token) continue
+    found.push({
+      account: toPublic(account),
+      creds: { provider: account.provider, host: account.host, token, username: account.enteredUsername }
+    })
+  }
+  return found
+}
+
 /**
  * Git configuration, passed through the environment so tokens never show up
  * in a process list, that makes git send each account's token to its host

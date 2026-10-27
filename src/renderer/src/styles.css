@@ -3525,6 +3525,22 @@ button.link-button.danger {
   width: auto;
 }
 
+.settings-suboptions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.settings-suboptions .settings-inline {
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.settings-suboptions select {
+  width: auto;
+}
+
 .account-list {
   list-style: none;
   margin: 0;
