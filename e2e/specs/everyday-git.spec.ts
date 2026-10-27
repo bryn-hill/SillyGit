@@ -40,6 +40,8 @@ test.describe('undo', () => {
   test('Cmd/Ctrl+Z undoes a checkout', async ({ sillygit, repo }) => {
     repo.git('branch', 'feature')
     await sillygit.openRepository(repo.path)
+    // The checked-out main comes first, so feature is in the row's "+1" list.
+    await sillygit.graph.moreRefs('Add hello.txt').hover()
     await sillygit.graph.badge('feature').dblclick()
     await expect(sillygit.branchCrumb).toContainText('feature')
 

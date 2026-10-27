@@ -15,9 +15,22 @@ export class CommitGraph {
     return this.rows.filter({ hasText: subject })
   }
 
-  /** A branch or tag label on a commit row. */
+  /**
+   * A branch or tag in the Branch / Tag column, by its full name. A remote
+   * branch that shares a pill with its local branch is the pill's cloud icon.
+   */
   badge(label: string): Locator {
-    return this.root.locator('.ref-badge').filter({ hasText: new RegExp(`^${label}$`) })
+    return this.root.locator(`[data-ref="${label}"]`)
+  }
+
+  /** The "+N" chip on a commit row with more refs than fit. */
+  moreRefs(subject: string): Locator {
+    return this.row(subject).getByRole('button', { name: /more branches and tags/ })
+  }
+
+  /** The Branch / Tag column's resize handle. */
+  get refColumnResizer(): Locator {
+    return this.root.page().getByRole('separator', { name: 'Resize branch and tag column' })
   }
 
   workingChangesRow(): Locator {

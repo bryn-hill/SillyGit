@@ -264,6 +264,8 @@ export interface SavedLayout {
   terminalHeight: number
   showClaude: boolean
   claudeWidth: number
+  /** Width of the commit graph's Branch / Tag column. */
+  refColumnWidth: number
 }
 
 /** What the window restores on launch. */

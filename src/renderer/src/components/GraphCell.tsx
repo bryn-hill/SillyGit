@@ -15,11 +15,27 @@ export function graphWidth(maxLanes: number): number {
   return maxLanes * LANE_W + 8
 }
 
-export default function GraphCell({ row, repoPath }: { row: GraphRow; repoPath: string }): JSX.Element {
+export default function GraphCell({
+  row,
+  repoPath,
+  connector = false
+}: {
+  row: GraphRow
+  repoPath: string
+  /** Continues the line from the row's branch / tag pill over to the commit. */
+  connector?: boolean
+}): JSX.Element {
   const maxLanes = Math.max(row.before.length, row.after.length, row.lane + 1)
   const width = graphWidth(maxLanes)
   const cy = ROW_HEIGHT / 2
   const elements: JSX.Element[] = []
+
+  // Drawn first so the lanes it crosses stay on top.
+  if (connector) {
+    elements.push(
+      <line key="ref" x1={0} y1={cy} x2={laneX(row.lane)} y2={cy} stroke={row.color} strokeWidth={2} />
+    )
+  }
 
   for (let k = 0; k < maxLanes; k++) {
     if (k === row.lane) continue

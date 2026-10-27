@@ -33,6 +33,8 @@ test.describe('branch right-click menu', () => {
     repo.git('branch', 'claude/thing', 'feature')
     await sillygit.openRepository(repo.path)
 
+    // It shares a commit with feature, so it sits in the row's "+1" list.
+    await sillygit.graph.moreRefs('Add feature.txt on feature').hover()
     await sillygit.graph.badge('claude/thing').click({ button: 'right' })
     await expect(sillygit.page.getByRole('menuitem', { name: 'Delete claude/thing', exact: true })).toBeVisible()
   })
