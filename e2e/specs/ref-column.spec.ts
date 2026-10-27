@@ -61,3 +61,17 @@ test.describe('Branch / Tag column', () => {
     await expect.poll(async () => (await reopenedCell.boundingBox())?.width).toBeCloseTo(before + 80, 0)
   })
 })
+
+test('a dashed line joins the WIP node to the checked-out commit', async ({ sillygit, repo }) => {
+  // A branch tip above the checked-out commit, so the line has to pass it.
+  repo.git('checkout', '-q', '-b', 'other')
+  repo.commitFile('other.txt', 'other\n', 'Add other.txt')
+  repo.git('checkout', '-q', 'main')
+  repo.writeFile('hello.txt', 'changed\n')
+  await sillygit.openRepository(repo.path)
+
+  await expect(sillygit.graph.workingChangesRow().getByTestId('wip-link')).toHaveCount(1)
+  await expect(sillygit.graph.row('Add other.txt').getByTestId('wip-link')).toHaveCount(1)
+  await expect(sillygit.graph.row('Add hello.txt').getByTestId('wip-link')).toHaveCount(1)
+  await expect(sillygit.graph.row('Initial commit').getByTestId('wip-link')).toHaveCount(0)
+})

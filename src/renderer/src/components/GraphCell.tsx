@@ -18,17 +18,40 @@ export function graphWidth(maxLanes: number): number {
 export default function GraphCell({
   row,
   repoPath,
-  connector = false
+  connector = false,
+  wipLink
 }: {
   row: GraphRow
   repoPath: string
   /** Continues the line from the row's branch / tag pill over to the commit. */
   connector?: boolean
+  /**
+   * The dashed line from the WIP node down to the checked-out commit: 'pass'
+   * crosses this row in the checked-out commit's lane, 'end' stops at this
+   * row's node because it is the checked-out commit.
+   */
+  wipLink?: { kind: 'pass' | 'end'; lane: number; color: string }
 }): JSX.Element {
-  const maxLanes = Math.max(row.before.length, row.after.length, row.lane + 1)
+  const maxLanes = Math.max(row.before.length, row.after.length, row.lane + 1, (wipLink?.lane ?? 0) + 1)
   const width = graphWidth(maxLanes)
   const cy = ROW_HEIGHT / 2
   const elements: JSX.Element[] = []
+
+  if (wipLink) {
+    elements.push(
+      <line
+        key="wip"
+        data-testid="wip-link"
+        x1={laneX(wipLink.lane)}
+        y1={0}
+        x2={laneX(wipLink.lane)}
+        y2={wipLink.kind === 'end' ? cy : ROW_HEIGHT}
+        stroke={wipLink.color}
+        strokeWidth={2}
+        strokeDasharray="3,3"
+      />
+    )
+  }
 
   // Drawn first so the lanes it crosses stay on top.
   if (connector) {
@@ -149,7 +172,16 @@ export function WipGraphCell({ lane, color }: { lane: number; color: string }): 
   const cy = ROW_HEIGHT / 2
   return (
     <svg width={width} height={ROW_HEIGHT} className="graph-svg">
-      <line x1={laneX(lane)} y1={cy} x2={laneX(lane)} y2={ROW_HEIGHT} stroke={color} strokeWidth={2} />
+      <line
+        data-testid="wip-link"
+        x1={laneX(lane)}
+        y1={cy + 6}
+        x2={laneX(lane)}
+        y2={ROW_HEIGHT}
+        stroke={color}
+        strokeWidth={2}
+        strokeDasharray="3,3"
+      />
       <circle
         cx={laneX(lane)}
         cy={cy}

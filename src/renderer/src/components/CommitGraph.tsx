@@ -98,8 +98,12 @@ export default function CommitGraph({
   refColumnWidth,
   onRefColumnWidthChange
 }: Props): JSX.Element {
-  const topLane = rows[0]?.lane ?? 0
-  const topColor = rows[0]?.color ?? '#bd93f9'
+  // The WIP node sits above the checked-out commit's lane and a dashed line
+  // joins them, even when other branch tips come between.
+  const headIndex = headHash ? rows.findIndex((r) => r.commit.hash === headHash) : -1
+  const wipRow = headIndex === -1 ? rows[0] : rows[headIndex]
+  const topLane = wipRow?.lane ?? 0
+  const topColor = wipRow?.color ?? '#bd93f9'
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget | null } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -251,7 +255,12 @@ export default function CommitGraph({
     document.body.classList.add('col-resizing')
   }
 
-  const renderRow = (row: GraphRow): JSX.Element => {
+  const wipLinkFor = (index: number): { kind: 'pass' | 'end'; lane: number; color: string } | undefined => {
+    if (!hasWorkingChanges || headIndex === -1 || index > headIndex) return undefined
+    return { kind: index === headIndex ? 'end' : 'pass', lane: topLane, color: topColor }
+  }
+
+  const renderRow = (row: GraphRow, index: number): JSX.Element => {
     const badges = parseRefs(row.commit.refs, localBranches, remoteBranches)
     const isSelected = selected.has(row.commit.hash)
     const isContextTarget = menu?.hash === row.commit.hash
@@ -280,7 +289,7 @@ export default function CommitGraph({
           width={refColumnWidth}
           handlers={refHandlers(row.commit.hash, isSelected)}
         />
-        <GraphCell row={row} repoPath={repoPath} connector={badges.length > 0} />
+        <GraphCell row={row} repoPath={repoPath} connector={badges.length > 0} wipLink={wipLinkFor(index)} />
         <div className="graph-row-message">
           <span className="graph-row-subject" style={{ color: row.color }}>
             {row.commit.subject}
@@ -322,7 +331,7 @@ export default function CommitGraph({
         </div>
       )
     } else {
-      visible.push(renderRow(rows[i - wipOffset]))
+      visible.push(renderRow(rows[i - wipOffset], i - wipOffset))
     }
   }
 
