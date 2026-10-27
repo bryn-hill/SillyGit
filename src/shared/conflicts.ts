@@ -169,6 +169,8 @@ export interface OutputOptions {
   unresolved?: 'base' | 'markers'
   currentLabel?: string
   incomingLabel?: string
+  /** Length of the markers written for unresolved hunks (default 7). */
+  markerSize?: number
 }
 
 /**
@@ -193,11 +195,12 @@ export function buildOutputLines(
       const marker = (text: string): void => {
         out.push({ text, origin: 'marker', hunkId: s.id })
       }
-      marker(`<<<<<<< ${options.currentLabel ?? 'current'}\n`)
+      const size = options.markerSize ?? 7
+      marker(`${'<'.repeat(size)} ${options.currentLabel ?? 'current'}\n`)
       s.ours.forEach((text, index) => out.push({ text, origin: 'ours', hunkId: s.id, index }))
-      marker('=======\n')
+      marker(`${'='.repeat(size)}\n`)
       s.theirs.forEach((text, index) => out.push({ text, origin: 'theirs', hunkId: s.id, index }))
-      marker(`>>>>>>> ${options.incomingLabel ?? 'incoming'}\n`)
+      marker(`${'>'.repeat(size)} ${options.incomingLabel ?? 'incoming'}\n`)
     } else {
       s.base.forEach((text) => out.push({ text, origin: 'base', hunkId: s.id }))
     }

@@ -59,6 +59,16 @@ function cleanMessage(raw: string | null): string | undefined {
   return text || undefined
 }
 
+/**
+ * The branches named by git's merge message: "feature" from "Merge branch
+ * 'feature'", or "alpha, beta and gamma" from an octopus merge's "Merge
+ * branches 'alpha', 'beta' and 'gamma'".
+ */
+function mergedBranchesLabel(message: string | undefined): string | undefined {
+  const names = message?.match(/^Merge (?:remote-tracking )?branch(?:es)? ('[^']+'(?:(?:, | and )'[^']+')*)/)?.[1]
+  return names?.replace(/'([^']+)'/g, '$1')
+}
+
 export async function getOperationState(repoPath: string): Promise<OperationState | null> {
   const dir = await gitDir(repoPath)
 
@@ -90,11 +100,10 @@ export async function getOperationState(repoPath: string): Promise<OperationStat
 
   const mergeHead = await readTrimmed(join(dir, 'MERGE_HEAD'))
   if (mergeHead) {
-    const fromMessage = message?.match(/^Merge (?:remote-tracking )?branch '([^']+)'/)?.[1]
     return {
       kind: 'merge',
       currentLabel: await currentBranch(repoPath),
-      incomingLabel: fromMessage ?? (await branchAt(repoPath, mergeHead.split('\n')[0])),
+      incomingLabel: mergedBranchesLabel(message) ?? (await branchAt(repoPath, mergeHead.split('\n')[0])),
       message
     }
   }
@@ -212,6 +221,22 @@ function mergeFile(repoPath: string, args: string[]): Promise<string> {
   })
 }
 
+const DEFAULT_MARKER_SIZE = 7
+
+/**
+ * The conflict marker length to use for these texts: the default, or one
+ * longer than any run of marker characters that starts a line in them (a
+ * Markdown or reStructuredText heading underline, say), so content can never
+ * be read as a marker.
+ */
+export function markerSizeFor(texts: string[]): number {
+  let size = DEFAULT_MARKER_SIZE
+  for (const text of texts) {
+    for (const m of text.matchAll(/^(<+|=+|>+|\|+)/gm)) size = Math.max(size, m[1].length + 1)
+  }
+  return size
+}
+
 export async function getConflictFile(repoPath: string, path: string): Promise<ConflictFileContent> {
   const state = await getOperationState(repoPath)
   const currentLabel = state?.currentLabel ?? 'Current'
@@ -228,6 +253,7 @@ export async function getConflictFile(repoPath: string, path: string): Promise<C
   const [ancestor, ours, theirs] = await Promise.all([blob(1), blob(2), blob(3)])
   if ([ancestor, ours, theirs].some((s) => s.includes('\0'))) return { ...base, kind: 'binary' }
 
+  const markerSize = markerSizeFor([ancestor, ours, theirs])
   const dir = await fsp.mkdtemp(join(tmpdir(), 'sillygit-merge-'))
   try {
     const files = { ours: join(dir, 'ours'), base: join(dir, 'base'), theirs: join(dir, 'theirs') }
@@ -236,9 +262,12 @@ export async function getConflictFile(repoPath: string, path: string): Promise<C
       fsp.writeFile(files.base, ancestor),
       fsp.writeFile(files.theirs, theirs)
     ])
+    // With no common ancestor (both sides added the file) there is no base
+    // to show, and leaving out --diff3 lets git trim the lines both sides share.
     const marked = await mergeFile(repoPath, [
       '-p',
-      '--diff3',
+      ...(stages.has(1) ? ['--diff3'] : []),
+      `--marker-size=${markerSize}`,
       '-L',
       currentLabel,
       '-L',
@@ -249,7 +278,7 @@ export async function getConflictFile(repoPath: string, path: string): Promise<C
       files.base,
       files.theirs
     ])
-    return { ...base, marked }
+    return { ...base, marked, markerSize }
   } finally {
     await fsp.rm(dir, { recursive: true, force: true }).catch(() => {})
   }

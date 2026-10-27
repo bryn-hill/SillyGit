@@ -216,7 +216,7 @@ export default function MergeResolver({ repoPath, path, onClose, onResolved, onE
   const output = useRef<HTMLDivElement>(null)
   const syncing = useRef(false)
 
-  const segments = useMemo(() => (file?.kind === 'text' ? parseConflictMarkers(file.marked) : []), [file])
+  const segments = useMemo(() => (file?.kind === 'text' ? parseConflictMarkers(file.marked, file.markerSize) : []), [file])
   const hunks = useMemo(() => conflictHunks(segments), [segments])
   const unresolved = unresolvedCount(segments, picks)
   const outputLines = useMemo(() => buildOutputLines(segments, picks), [segments, picks])
@@ -247,7 +247,7 @@ export default function MergeResolver({ repoPath, path, onClose, onResolved, onE
         return
       }
       // When the 3-way merge comes out clean, there is nothing to pick.
-      if (res.data.kind === 'text' && conflictHunks(parseConflictMarkers(res.data.marked)).length === 0) {
+      if (res.data.kind === 'text' && conflictHunks(parseConflictMarkers(res.data.marked, res.data.markerSize)).length === 0) {
         save(res.data.marked, 'Merge tool automatically resolved your conflict')
         return
       }
@@ -476,7 +476,8 @@ export default function MergeResolver({ repoPath, path, onClose, onResolved, onE
                     buildOutput(segments, picks, {
                       unresolved: 'markers',
                       currentLabel: file.currentLabel,
-                      incomingLabel: file.incomingLabel
+                      incomingLabel: file.incomingLabel,
+                      markerSize: file.markerSize
                     }),
                     'Saved with conflict markers; the file is still listed as conflicted',
                     false

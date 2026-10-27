@@ -199,6 +199,11 @@ export interface ConflictFileContent {
    */
   kind: 'text' | 'deleted-current' | 'deleted-incoming' | 'binary'
   marked: string
+  /**
+   * Length of the conflict markers in `marked`: 7, or longer when the file's
+   * own lines start with a run of marker characters that long.
+   */
+  markerSize?: number
   currentLabel: string
   incomingLabel: string
 }
