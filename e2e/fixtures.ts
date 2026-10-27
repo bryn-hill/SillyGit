@@ -53,11 +53,13 @@ export const test = base.extend<Fixtures>({
   // eslint-disable-next-line no-empty-pattern
   userData: async ({}, use) => {
     // Fresh settings for every test, so saved workspace repos, recent repos
-    // or API keys from a developer's own install never leak in. The empty
+    // or API keys from a developer's own install never leak in. The
     // settings file also stops the one-time copy from the old gitdesk
     // settings location.
     const userData = mkdtempSync(join(tmpdir(), 'sillygit-e2e-userdata-'))
-    writeFileSync(join(userData, 'sillygit-settings.json'), '{}')
+    // Background fetches are off so nothing reaches the network or prunes a
+    // test's fake remote branches.
+    writeFileSync(join(userData, 'sillygit-settings.json'), JSON.stringify({ autoFetchMinutes: 0 }))
     await use(userData)
     rmSync(userData, { recursive: true, force: true })
   },

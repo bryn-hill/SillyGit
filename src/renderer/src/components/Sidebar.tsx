@@ -1,6 +1,7 @@
 import { useMemo, useState, type JSX } from 'react'
-import type { BranchInfo } from '../../../shared/types'
+import type { BranchInfo, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
+import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 interface TreeNode {
   name: string
@@ -37,12 +38,30 @@ function buildTree(branches: BranchInfo[]): TreeNode {
   return root
 }
 
+export interface StashActions {
+  apply: (stash: StashEntry) => void
+  pop: (stash: StashEntry) => void
+  drop: (stash: StashEntry) => void
+}
+
 interface Props {
   branches: BranchInfo[]
   headHash: string | null
   onCheckout: (branch: string) => void
   onCreateBranch: (branch: string) => void
+  /** A single click on a branch selects the commit it points at. */
+  onSelectCommit: (hash: string) => void
   actions: RefActions
+  stashes: StashEntry[]
+  stashActions: StashActions
+}
+
+/** "WIP on main: 1a2b3c4 Subject" -> "Subject"; "On main: my note" -> "my note". */
+function stashTitle(message: string): string {
+  const wip = message.match(/^WIP on [^:]+: [0-9a-f]+ (.*)$/)
+  if (wip) return wip[1]
+  const named = message.match(/^On [^:]+: (.*)$/)
+  return named ? named[1] : message
 }
 
 type BranchMenu = (e: React.MouseEvent, branch: BranchInfo) => void
@@ -52,6 +71,7 @@ function TreeView({
   depth,
   collapsed,
   onToggle,
+  onSelect,
   onCheckout,
   onContextMenu
 }: {
@@ -59,6 +79,7 @@ function TreeView({
   depth: number
   collapsed: Set<string>
   onToggle: (path: string) => void
+  onSelect: (branch: BranchInfo) => void
   onCheckout: (branch: BranchInfo) => void
   onContextMenu: BranchMenu
 }): JSX.Element {
@@ -92,6 +113,7 @@ function TreeView({
                   depth={depth + 1}
                   collapsed={collapsed}
                   onToggle={onToggle}
+                  onSelect={onSelect}
                   onCheckout={onCheckout}
                   onContextMenu={onContextMenu}
                 />
@@ -104,7 +126,9 @@ function TreeView({
             key={child.path}
             className={`tree-row branch-row ${child.current ? 'current' : ''}`}
             style={{ paddingLeft: 8 + depth * 14 }}
-            onClick={() => !child.current && child.info && onCheckout(child.info)}
+            title={child.current ? child.fullName : `${child.fullName} (double-click to check out)`}
+            onClick={(e) => e.detail === 1 && child.info && onSelect(child.info)}
+            onDoubleClick={() => !child.current && child.info && onCheckout(child.info)}
             onContextMenu={(e) => child.info && onContextMenu(e, child.info)}
           >
             {child.current ? <span className="current-dot">●</span> : <span className="tree-caret-spacer" />}
@@ -116,8 +140,18 @@ function TreeView({
   )
 }
 
-export default function Sidebar({ branches, headHash, onCheckout, onCreateBranch, actions }: Props): JSX.Element {
+export default function Sidebar({
+  branches,
+  headHash,
+  onCheckout,
+  onCreateBranch,
+  onSelectCommit,
+  actions,
+  stashes,
+  stashActions
+}: Props): JSX.Element {
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget } | null>(null)
+  const [stashMenu, setStashMenu] = useState<{ x: number; y: number; stash: StashEntry } | null>(null)
   const [filter, setFilter] = useState('')
   const [newBranch, setNewBranch] = useState('')
   const [showNewBranch, setShowNewBranch] = useState(false)
@@ -141,9 +175,30 @@ export default function Sidebar({ branches, headHash, onCheckout, onCreateBranch
 
   const currentBranch = branches.find((b) => b.current)?.name ?? null
 
-  // A remote branch checks out as a local tracking branch rather than a detached HEAD.
-  const checkoutBranch = (branch: BranchInfo): void =>
-    branch.remote ? actions.checkoutRemote(branch.name) : onCheckout(branch.name)
+  // A remote branch checks out the local branch that tracks it, or else a new
+  // tracking branch, rather than a detached HEAD.
+  const checkoutBranch = (branch: BranchInfo): void => {
+    if (!branch.remote) {
+      onCheckout(branch.name)
+      return
+    }
+    const tracking = branches.find((b) => !b.remote && b.upstream === branch.name)
+    if (tracking) {
+      if (!tracking.current) onCheckout(tracking.name)
+    } else actions.checkoutRemote(branch.name)
+  }
+
+  const selectBranch = (branch: BranchInfo): void => {
+    if (branch.hash) onSelectCommit(branch.hash)
+  }
+
+  const stashMenuSections = (stash: StashEntry): ContextMenuItem[][] => [
+    [
+      { id: 'apply', label: 'Apply stash', onSelect: () => stashActions.apply(stash) },
+      { id: 'pop', label: 'Pop stash', onSelect: () => stashActions.pop(stash) }
+    ],
+    [{ id: 'drop', label: 'Delete stash', danger: true, onSelect: () => stashActions.drop(stash) }]
+  ]
 
   const openMenu: BranchMenu = (e, branch) => {
     e.preventDefault()
@@ -194,7 +249,7 @@ export default function Sidebar({ branches, headHash, onCheckout, onCreateBranch
           LOCAL
         </div>
         {!collapsed.has('local-root') && (
-          <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={checkoutBranch} onContextMenu={openMenu} />
+          <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onSelect={selectBranch} onCheckout={checkoutBranch} onContextMenu={openMenu} />
         )}
 
         <div className="tree-group-header" onClick={() => toggle('remote-root')}>
@@ -202,9 +257,53 @@ export default function Sidebar({ branches, headHash, onCheckout, onCreateBranch
           REMOTE
         </div>
         {!collapsed.has('remote-root') && (
-          <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onCheckout={checkoutBranch} onContextMenu={openMenu} />
+          <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onSelect={selectBranch} onCheckout={checkoutBranch} onContextMenu={openMenu} />
+        )}
+
+        <div className="tree-group-header" onClick={() => toggle('stash-root')}>
+          <span className="tree-caret">{collapsed.has('stash-root') ? '▸' : '▾'}</span>
+          STASHES
+          {stashes.length > 0 && <span className="tree-group-count">{stashes.length}</span>}
+        </div>
+        {!collapsed.has('stash-root') && (
+          <ul className="stash-list" aria-label="Stashes">
+            {stashes.length === 0 && <li className="stash-empty">No stashes</li>}
+            {stashes.map((stash) => (
+              <li
+                key={stash.ref}
+                className="tree-row stash-row"
+                title={`${stash.ref}: ${stash.message}\nDouble-click to apply, right-click for more`}
+                onDoubleClick={() => stashActions.apply(stash)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setStashMenu({ x: e.clientX, y: e.clientY, stash })
+                }}
+              >
+                <span className="stash-title">{stashTitle(stash.message)}</span>
+                <span className="stash-actions">
+                  <button className="link-button" onClick={() => stashActions.apply(stash)}>
+                    Apply
+                  </button>
+                  <button className="link-button" onClick={() => stashActions.pop(stash)}>
+                    Pop
+                  </button>
+                  <button className="link-button danger" onClick={() => stashActions.drop(stash)}>
+                    Delete
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
+      {stashMenu && (
+        <ContextMenu
+          x={stashMenu.x}
+          y={stashMenu.y}
+          sections={stashMenuSections(stashMenu.stash)}
+          onClose={() => setStashMenu(null)}
+        />
+      )}
       {menu && (
         <RefContextMenu
           x={menu.x}

@@ -1,8 +1,9 @@
 import { useEffect, useState, type JSX } from 'react'
-import type { CommitDetail, FileStatus, OperationState, RepoStatus } from '../../../shared/types'
+import type { CommitDetail, FileStatus, GraphCommit, OperationState, RepoStatus } from '../../../shared/types'
 import type { Selection } from '../App'
 import DiffBlock from './DiffBlock'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+import { isPrimary, MOD } from '../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
 
 const OPERATION_NAMES: Record<OperationState['kind'], string> = {
@@ -50,6 +51,8 @@ interface WorkingProps {
   onUnstage: (paths: string[]) => void
   onDiscard: (file: FileStatus) => void
   onCommit: () => void
+  amend: boolean
+  onAmendChange: (amend: boolean) => void
   operation: OperationState | null
   conflictActions: ConflictActions
 }
@@ -63,6 +66,8 @@ function WorkingDirectoryView({
   onUnstage,
   onDiscard,
   onCommit,
+  amend,
+  onAmendChange,
   operation,
   conflictActions
 }: WorkingProps): JSX.Element {
@@ -79,6 +84,8 @@ function WorkingDirectoryView({
   const unstaged = status?.unstaged ?? []
   const conflicted = status?.conflicted ?? []
   const totalChanges = staged.length + unstaged.length + conflicted.length
+  // Amending can just reword the last commit, with nothing staged.
+  const canCommit = !!commitMessage.trim() && (amend || staged.length > 0)
 
   // Rule-based suggestions are cheap (no AI), so recompute whenever the index changes.
   const stagedKey = staged.map((f) => `${f.index}${f.path}`).join('\n')
@@ -357,16 +364,23 @@ function WorkingDirectoryView({
             </button>
           )}
           <textarea
-            placeholder="Commit message"
+            placeholder={amend ? 'Amended commit message' : 'Commit message'}
+            aria-label="Commit message"
             value={commitMessage}
             onChange={(e) => onCommitMessageChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && isPrimary(e.nativeEvent) && canCommit) {
+                e.preventDefault()
+                onCommit()
+              }
+            }}
           />
-          <button
-            className="commit-button"
-            disabled={!commitMessage.trim() || staged.length === 0}
-            onClick={onCommit}
-          >
-            Commit {staged.length > 0 ? `(${staged.length})` : ''}
+          <label className="amend-toggle" title="Replace the last commit with these changes and this message">
+            <input type="checkbox" checked={amend} onChange={(e) => onAmendChange(e.target.checked)} />
+            Amend previous commit
+          </label>
+          <button className="commit-button" disabled={!canCommit} onClick={onCommit} title={`${MOD}Enter`}>
+            {amend ? 'Amend Commit' : 'Commit'} {staged.length > 0 ? `(${staged.length})` : ''}
           </button>
         </div>
       )}
@@ -524,9 +538,60 @@ function CommitDetailView({
   )
 }
 
+export interface MultiCommitActions {
+  /** Picks the commits onto the current branch, oldest first. */
+  cherryPick: (hashes: string[]) => void
+  /** Reverts the commits, newest first. */
+  revert: (hashes: string[]) => void
+  copyText: (text: string) => void
+  select: (hash: string) => void
+}
+
+/** The side bar when several commits are selected. `hashes` is newest first. */
+function MultiCommitView({
+  hashes,
+  lookup,
+  actions
+}: {
+  hashes: string[]
+  lookup: (hash: string) => GraphCommit | undefined
+  actions: MultiCommitActions
+}): JSX.Element {
+  const oldestFirst = [...hashes].reverse()
+  return (
+    <div className="detail-panel-content">
+      <div className="detail-header-row">
+        <span>{hashes.length} commits selected</span>
+      </div>
+      <div className="multi-commit-actions">
+        <button onClick={() => actions.cherryPick(oldestFirst)}>Cherry-pick {hashes.length} commits</button>
+        <button onClick={() => actions.revert(hashes)}>Revert {hashes.length} commits</button>
+        <button onClick={() => actions.copyText(hashes.join('\n'))}>Copy SHAs</button>
+      </div>
+      <ul className="file-list multi-commit-list" aria-label="Selected commits">
+        {hashes.map((hash) => {
+          const commit = lookup(hash)
+          return (
+            <li key={hash}>
+              <div className="file-row" title="Show only this commit" onClick={() => actions.select(hash)}>
+                <span className="multi-commit-sha">{hash.slice(0, 7)}</span>
+                <span className="file-path">{commit?.subject ?? ''}</span>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 interface Props {
   repoPath: string
   selection: Selection
+  lookupCommit: (hash: string) => GraphCommit | undefined
+  multiActions: MultiCommitActions
+  amend: boolean
+  onAmendChange: (amend: boolean) => void
   status: RepoStatus | null
   commitMessage: string
   onCommitMessageChange: (value: string) => void
@@ -540,6 +605,9 @@ interface Props {
 }
 
 export default function DetailPanel(props: Props): JSX.Element {
+  if (props.selection.type === 'commits') {
+    return <MultiCommitView hashes={props.selection.hashes} lookup={props.lookupCommit} actions={props.multiActions} />
+  }
   if (props.selection.type === 'commit') {
     const { hash } = props.selection
     return (
@@ -560,6 +628,8 @@ export default function DetailPanel(props: Props): JSX.Element {
       onUnstage={props.onUnstage}
       onDiscard={props.onDiscard}
       onCommit={props.onCommit}
+      amend={props.amend}
+      onAmendChange={props.onAmendChange}
       operation={props.operation}
       conflictActions={props.conflictActions}
     />

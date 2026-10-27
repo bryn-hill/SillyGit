@@ -84,6 +84,23 @@ export class FixtureRepo {
     }
   }
 
+  /** Adds `count` empty commits on top of main, "Bulk commit 1" (oldest) to "Bulk commit <count>", in one fast-import. */
+  addManyCommits(count: number): void {
+    const head = this.git('rev-parse', 'HEAD').trim()
+    const start = Math.floor(Date.now() / 1000) - count * 60
+    let stream = ''
+    for (let i = 1; i <= count; i++) {
+      const message = `Bulk commit ${i}\n`
+      stream += `commit refs/heads/main\n`
+      stream += `committer E2E Tester <e2e@example.com> ${start + i * 60} +0000\n`
+      stream += `data ${Buffer.byteLength(message)}\n${message}`
+      if (i === 1) stream += `from ${head}\n`
+      stream += '\n'
+    }
+    execFileSync('git', ['fast-import', '--quiet'], { cwd: this.path, input: stream })
+    this.git('reset', '-q', '--hard', 'main')
+  }
+
   readFile(relativePath: string): string {
     return readFileSync(join(this.path, relativePath), 'utf8')
   }

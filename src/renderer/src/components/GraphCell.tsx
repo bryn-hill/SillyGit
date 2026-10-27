@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 
-const ROW_HEIGHT = 32
+export const ROW_HEIGHT = 32
 const LANE_W = 16
 
 export function laneX(i: number): number {

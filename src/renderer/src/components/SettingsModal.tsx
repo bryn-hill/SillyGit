@@ -2,9 +2,13 @@ import { useState, type JSX } from 'react'
 
 interface Props {
   onClose: () => void
+  autoFetchMinutes: number
+  onAutoFetchChange: (minutes: number) => void
 }
 
-export default function SettingsModal({ onClose }: Props): JSX.Element {
+const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
+
+export default function SettingsModal({ onClose, autoFetchMinutes, onAutoFetchChange }: Props): JSX.Element {
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -49,6 +53,20 @@ export default function SettingsModal({ onClose }: Props): JSX.Element {
             anywhere besides Anthropic&apos;s API.
           </div>
           {error && <div className="modal-error">{error}</div>}
+          <label className="modal-label" htmlFor="auto-fetch">
+            Fetch in the background
+          </label>
+          <select
+            id="auto-fetch"
+            value={autoFetchMinutes}
+            onChange={(e) => onAutoFetchChange(Number(e.target.value))}
+          >
+            {AUTO_FETCH_CHOICES.map((m) => (
+              <option key={m} value={m}>
+                {m === 0 ? 'Never' : m === 1 ? 'Every minute' : `Every ${m} minutes`}
+              </option>
+            ))}
+          </select>
           {saved && <div className="modal-saved">Saved.</div>}
         </div>
         <div className="modal-footer">

@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react'
 import type { BranchInfo, RepoStatus } from '../../../shared/types'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
+import { MOD } from '../lib/shortcuts'
 
 interface Props {
   repoPath: string | null
@@ -13,6 +14,11 @@ interface Props {
   onOpenRecentRepo: (path: string) => void
   onPush: () => void
   onPull: () => void
+  onFetch: () => void
+  fetching: boolean
+  /** What Undo would do, e.g. "Undo commit “x”"; null disables the button. */
+  undoLabel: string | null
+  onUndo: () => void
   onStash: () => void
   onStashPop: () => void
   onCheckout: (branch: string) => void
@@ -76,6 +82,29 @@ function PushIcon(): JSX.Element {
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
       <path d="M8 13.5v-8M4.5 9 8 5.5 11.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M3 2.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function FetchIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M13 8a5 5 0 1 1-1.5-3.55M13 2.5v2.5h-2.5"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function UndoIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path d="M5 3.5 2.5 6 5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 6h7a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   )
 }
@@ -149,6 +178,10 @@ export default function TopBar({
   onOpenRecentRepo,
   onPush,
   onPull,
+  onFetch,
+  fetching,
+  undoLabel,
+  onUndo,
   onStash,
   onStashPop,
   onCheckout,
@@ -258,7 +291,20 @@ export default function TopBar({
       <div className="top-bar-right">
         {repoPath && (
           <>
+            <button
+              disabled={busy || !undoLabel}
+              onClick={onUndo}
+              title={undoLabel ? `${undoLabel} (${MOD}Z)` : 'Nothing to undo'}
+              aria-label="Undo"
+            >
+              <UndoIcon />
+              Undo
+            </button>
             <div className="button-group">
+              <button disabled={busy || fetching} onClick={onFetch} title="Fetch all remotes">
+                <FetchIcon />
+                {fetching ? 'Fetching…' : 'Fetch'}
+              </button>
               <button disabled={busy} onClick={onPull} title="Pull from remote">
                 <PullIcon />
                 Pull{status && status.behind > 0 ? ` (${status.behind})` : ''}
