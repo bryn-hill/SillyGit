@@ -49,10 +49,31 @@ export function githubNoreplyAvatarUrl(email: string): string | null {
   return `https://github.com/${m[2]}.png?size=${AVATAR_SIZE}`
 }
 
+/** Bots whose commits get their official logo, bundled with the app. */
+export type Bot = 'claude' | 'renovate'
+
+const BOT_EMAILS: [RegExp, Bot][] = [
+  // Claude Code commits, and the Claude GitHub app.
+  [/^noreply@anthropic\.com$/, 'claude'],
+  [/^(?:\d+\+)?claude\[bot\]@users\.noreply\.github\.com$/, 'claude'],
+  // The Renovate GitHub app, and the addresses self-hosted Renovate commits as.
+  [/^(?:\d+\+)?renovate(?:-bot)?(?:\[bot\])?@users\.noreply\.github\.com$/, 'renovate'],
+  [/^bot@renovateapp\.com$/, 'renovate'],
+  [/^renovate@whitesourcesoftware\.com$/, 'renovate']
+]
+
+/** The bot behind a commit email, if it's one with a bundled logo. */
+export function botFor(email: string): Bot | null {
+  const e = email.trim().toLowerCase()
+  return BOT_EMAILS.find(([re]) => re.test(e))?.[1] ?? null
+}
+
 /** What the resolver may use for one repository. */
 export interface AvatarSources {
   /** Signed-in accounts: commits made with their own emails get their avatar. */
   accounts: ProviderAccount[]
+  /** Bundled bot logos as data: URLs; these win over any lookup (GitHub only has identicons for bot users). */
+  bots?: Partial<Record<Bot, string>>
   /** Looks up the GitHub users behind commits, when the repo is on GitHub and an account is signed in there. */
   githubLookup?: (commits: AvatarRequest[]) => Promise<Map<string, string>>
   /** GitLab hosts to ask for an email's avatar, from the repo's remotes. */
@@ -74,7 +95,7 @@ const DOWNLOAD_CONCURRENCY = 6
 
 /**
  * Turns commit emails into avatar images (as data: URLs, so the renderer
- * needs no network access), trying the signed-in accounts, GitHub's noreply
+ * needs no network access), trying the signed-in accounts, bundled bot logos, GitHub's noreply
  * addresses, GitHub commit authors, GitLab and Gravatar in that order. Images
  * and misses are cached on disk; misses are retried after a day.
  */
@@ -168,6 +189,12 @@ export class AvatarResolver {
       const own = sources.accounts.find((a) => a.avatar && a.emails.includes(email))
       if (own) {
         result[email] = own.avatar
+        continue
+      }
+      const bot = botFor(email)
+      const logo = bot && sources.bots?.[bot]
+      if (logo) {
+        result[email] = logo
         continue
       }
       const hit = await this.cached(email)

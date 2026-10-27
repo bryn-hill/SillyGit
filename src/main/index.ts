@@ -23,6 +23,8 @@ import { watchRepo, stopWatching } from './watcher'
 import { PrNotifier, type ShownNotification } from './prNotifications'
 import type { NotificationSettings } from '../shared/notifications'
 import icon from '../../resources/icon.png?asset'
+import claudeLogo from '../../resources/bots/claude.png?asset'
+import renovateLogo from '../../resources/bots/renovate.png?asset'
 import type { AvatarRequest, CommitSplitProposal, RenameKeep, SavedLayout, SavedSession, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -122,6 +124,17 @@ async function fetchReviewFileContexts(
 }
 
 let avatarResolver: AvatarResolver | null = null
+let botLogos: Promise<AvatarSources['bots']> | null = null
+
+/** The bundled Claude and Renovate logos, read once. */
+function loadBotLogos(): Promise<AvatarSources['bots']> {
+  const read = (file: string): Promise<string> =>
+    fsp.readFile(file).then((data) => `data:image/png;base64,${data.toString('base64')}`)
+  botLogos ??= Promise.all([read(claudeLogo), read(renovateLogo)])
+    .then(([claude, renovate]) => ({ claude, renovate }))
+    .catch(() => ({}))
+  return botLogos
+}
 
 /** What the avatar lookup may use for a repo: signed-in accounts, its GitHub or GitLab remotes, Gravatar. */
 async function avatarSources(repoPath: string): Promise<AvatarSources> {
@@ -135,6 +148,7 @@ async function avatarSources(repoPath: string): Promise<AvatarSources> {
   const gitlabHosts = [...new Set((await remoteLocations(repoPath)).map((l) => l.host).filter(isGitlab))]
   return {
     accounts: signedIn,
+    bots: await loadBotLogos(),
     githubLookup: access ? (commits) => github.commitAuthorAvatars(access.creds, access.repo, commits) : undefined,
     gitlabLookup:
       gitlabHosts.length > 0

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setFetch } from './http'
 import { apiBase, gitUsername, gitlabAvatarUrl, verifyAccount } from './providerApi'
 import { commitAuthorAvatars, launchpadPullRequests, toGhStyle } from './github'
-import { AvatarResolver, githubNoreplyAvatarUrl, gravatarUrl } from './avatars'
+import { AvatarResolver, botFor, githubNoreplyAvatarUrl, gravatarUrl } from './avatars'
 import { normalizeHost, parseRemoteUrl } from '../shared/accounts'
 import type { ProviderAccount } from '../shared/accounts'
 
@@ -222,6 +222,32 @@ describe('avatars', () => {
     )
     expect(githubNoreplyAvatarUrl('octocat@users.noreply.github.com')).toBe('https://github.com/octocat.png?size=64')
     expect(githubNoreplyAvatarUrl('octocat@example.com')).toBeNull()
+  })
+
+  it('recognises Claude and Renovate commits', () => {
+    expect(botFor('noreply@anthropic.com')).toBe('claude')
+    expect(botFor('209825114+claude[bot]@users.noreply.github.com')).toBe('claude')
+    expect(botFor('29139614+renovate[bot]@users.noreply.github.com')).toBe('renovate')
+    expect(botFor('bot@renovateapp.com')).toBe('renovate')
+    expect(botFor('claude@example.com')).toBeNull()
+    expect(botFor('583231+octocat@users.noreply.github.com')).toBeNull()
+  })
+
+  it('gives bots their bundled logo without asking anyone', async () => {
+    fakeFetch(() => png())
+    const resolver = new AvatarResolver(dir, () => clock)
+    const result = await resolver.resolve(
+      [
+        { email: 'noreply@anthropic.com', hash: 'c0' },
+        { email: '29139614+renovate[bot]@users.noreply.github.com', hash: 'c1' }
+      ],
+      { accounts: [], bots: { claude: 'data:claude', renovate: 'data:renovate' }, gravatar: true }
+    )
+    expect(result).toEqual({
+      'noreply@anthropic.com': 'data:claude',
+      '29139614+renovate[bot]@users.noreply.github.com': 'data:renovate'
+    })
+    expect(calls).toEqual([])
   })
 
   it('tries the account, noreply, GitHub and Gravatar in turn', async () => {
