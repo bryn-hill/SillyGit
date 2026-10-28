@@ -80,11 +80,13 @@ test('starred branches are pinned to the top and remembered per repo', async ({ 
   const rows = sidebar.root.locator('.branch-row')
   await expect(rows.first()).toHaveAttribute('data-branch', 'zeta')
 
-  const saved = await page.evaluate(
-    (path) => (globalThis as unknown as { api: { getFavouriteBranches(p: string): Promise<string[]> } }).api.getFavouriteBranches(path),
-    repo.path
-  )
-  expect(saved).toEqual(['zeta', 'feature/login'])
+  // Saved in the background, after the list has already updated.
+  const saved = (): Promise<string[]> =>
+    page.evaluate(
+      (path) => (globalThis as unknown as { api: { getFavouriteBranches(p: string): Promise<string[]> } }).api.getFavouriteBranches(path),
+      repo.path
+    )
+  await expect.poll(saved).toEqual(['zeta', 'feature/login'])
 
   await sidebar.toggleStar('zeta')
   await expect(sidebar.favourites.locator('.branch-name')).toHaveText(['feature/login'])
