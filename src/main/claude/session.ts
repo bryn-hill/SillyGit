@@ -1,8 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
-import { execFile } from 'child_process'
-import { promises as fsp } from 'fs'
-import { tmpdir } from 'os'
-import { join, isAbsolute, resolve } from 'path'
+import { resolve } from 'path'
 import { randomUUID } from 'crypto'
 import type {
   PermissionResult,
@@ -11,66 +7,25 @@ import type {
   SDKMessage,
   SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
-import { getApiKey } from './settings'
+import { getApiKey } from '../settings'
 import type {
   ClaudeEvent,
   ClaudePermissionDecision,
   ClaudePermissionMode,
   ClaudeQuestion,
-  ClaudeSessionSummary,
   ClaudeStartOptions
-} from '../shared/claude'
+} from '../../shared/claude'
+import { proposedDiff, structuredPatchText, toolResultText } from './diffs'
+import { InputQueue } from './inputQueue'
 
-// Long-lived Claude Code sessions for the chat panel. Each chat owns one
-// Agent SDK query() fed by a streaming input queue, so the underlying Claude
-// Code process stays up between turns (same model as the IDE extensions):
-// prompts are pushed into the queue, and every SDK message is normalized
-// into a ClaudeEvent and forwarded to the renderer.
-
-const MAX_TOOL_RESULT_CHARS = 20000
-const MAX_DIFF_FILE_BYTES = 2 * 1024 * 1024
+// One chat: an Agent SDK query fed by an input queue, its permission prompts and events.
 
 export interface ClaudeImage {
   mediaType: string
   data: string
 }
 
-type Emit = (event: ClaudeEvent) => void
-
-class InputQueue implements AsyncIterable<SDKUserMessage> {
-  private items: SDKUserMessage[] = []
-  private waiting: ((result: IteratorResult<SDKUserMessage>) => void) | null = null
-  private ended = false
-
-  push(message: SDKUserMessage): void {
-    if (this.waiting) {
-      const w = this.waiting
-      this.waiting = null
-      w({ value: message, done: false })
-    } else {
-      this.items.push(message)
-    }
-  }
-
-  end(): void {
-    this.ended = true
-    if (this.waiting) {
-      this.waiting({ value: undefined, done: true })
-      this.waiting = null
-    }
-  }
-
-  [Symbol.asyncIterator](): AsyncIterator<SDKUserMessage> {
-    return {
-      next: () => {
-        const item = this.items.shift()
-        if (item) return Promise.resolve({ value: item, done: false })
-        if (this.ended) return Promise.resolve({ value: undefined, done: true })
-        return new Promise((r) => (this.waiting = r))
-      }
-    }
-  }
-}
+export type Emit = (event: ClaudeEvent) => void
 
 interface PendingPermission {
   resolve: (result: PermissionResult) => void
@@ -80,107 +35,6 @@ interface PendingPermission {
 
 function asPermissionMode(mode: string | undefined): ClaudePermissionMode {
   return mode === 'acceptEdits' || mode === 'plan' || mode === 'bypassPermissions' ? mode : 'default'
-}
-
-function toolResultText(content: unknown): string {
-  let text: string
-  if (typeof content === 'string') text = content
-  else if (Array.isArray(content)) {
-    text = content
-      .map((c) => {
-        if (c && typeof c === 'object' && 'type' in c) {
-          if (c.type === 'text' && 'text' in c) return String(c.text)
-          if (c.type === 'image') return '[image]'
-        }
-        return ''
-      })
-      .filter(Boolean)
-      .join('\n')
-  } else text = ''
-  return text.length > MAX_TOOL_RESULT_CHARS ? text.slice(0, MAX_TOOL_RESULT_CHARS) + '\n[truncated]' : text
-}
-
-interface StructuredHunk {
-  oldStart: number
-  oldLines: number
-  newStart: number
-  newLines: number
-  lines: string[]
-}
-
-function structuredPatchText(result: unknown): string | undefined {
-  if (!result || typeof result !== 'object' || !('structuredPatch' in result)) return undefined
-  const hunks = (result as { structuredPatch: unknown }).structuredPatch
-  if (!Array.isArray(hunks) || hunks.length === 0) return undefined
-  return (hunks as StructuredHunk[])
-    .map((h) => [`@@ -${h.oldStart},${h.oldLines} +${h.newStart},${h.newLines} @@`, ...h.lines].join('\n'))
-    .join('\n')
-}
-
-// `git diff --no-index` exits 1 when the files differ, which execFile reports
-// as an error, so read stdout off the error in that case.
-function gitDiffNoIndex(a: string, b: string): Promise<string> {
-  return new Promise((res) => {
-    execFile(
-      'git',
-      ['diff', '--no-index', '--no-color', '-U3', '--', a, b],
-      { maxBuffer: 1024 * 1024 * 16 },
-      (err, stdout) => {
-        if (err && (err as { code?: number }).code !== 1) res('')
-        else res(stdout)
-      }
-    )
-  })
-}
-
-/** Unified diff (hunks only) of what an Edit/Write tool call would change, for the permission card. */
-async function proposedDiff(
-  cwd: string,
-  toolName: string,
-  input: Record<string, unknown>
-): Promise<string | undefined> {
-  const filePath = typeof input.file_path === 'string' ? input.file_path : null
-  if (!filePath) return undefined
-  const abs = isAbsolute(filePath) ? filePath : resolve(cwd, filePath)
-
-  let before = ''
-  try {
-    const stat = await fsp.stat(abs)
-    if (stat.size > MAX_DIFF_FILE_BYTES) return undefined
-    before = await fsp.readFile(abs, 'utf-8')
-  } catch {
-    // new file
-  }
-
-  let after: string
-  if (toolName === 'Write') {
-    if (typeof input.content !== 'string') return undefined
-    after = input.content
-  } else if (toolName === 'Edit') {
-    const oldStr = typeof input.old_string === 'string' ? input.old_string : null
-    const newStr = typeof input.new_string === 'string' ? input.new_string : null
-    if (oldStr == null || newStr == null) return undefined
-    const at = before.indexOf(oldStr)
-    if (oldStr === '' || at < 0) return undefined
-    after = input.replace_all
-      ? before.split(oldStr).join(newStr)
-      : before.slice(0, at) + newStr + before.slice(at + oldStr.length)
-  } else {
-    return undefined
-  }
-
-  const dir = join(tmpdir(), `sillygit-claude-${randomUUID()}`)
-  await fsp.mkdir(dir, { recursive: true })
-  try {
-    const a = join(dir, 'before')
-    const b = join(dir, 'after')
-    await Promise.all([fsp.writeFile(a, before), fsp.writeFile(b, after)])
-    const out = await gitDiffNoIndex(a, b)
-    const start = out.indexOf('\n@@')
-    return start >= 0 ? out.slice(start + 1).replace(/\n$/, '') : undefined
-  } finally {
-    await fsp.rm(dir, { recursive: true, force: true })
-  }
 }
 
 // Slash commands and local command output are stored in the transcript as
@@ -195,7 +49,7 @@ function displayUserText(text: string): string | null {
   return text
 }
 
-class ChatSession {
+export class ChatSession {
   private queue = new InputQueue()
   private query: Query | null = null
   private pending = new Map<string, PendingPermission>()
@@ -591,88 +445,4 @@ class ChatSession {
       }
     }
   }
-}
-
-const chats = new Map<number, ChatSession>()
-let nextChatId = 1
-
-function listRepoFiles(cwd: string): Promise<string[]> {
-  return new Promise((res) => {
-    execFile(
-      'git',
-      ['ls-files', '--cached', '--others', '--exclude-standard'],
-      { cwd, maxBuffer: 1024 * 1024 * 64 },
-      (err, stdout) => res(err ? [] : stdout.split('\n').filter(Boolean))
-    )
-  })
-}
-
-async function listSessions(cwd: string): Promise<ClaudeSessionSummary[]> {
-  const { listSessions } = await import('@anthropic-ai/claude-agent-sdk')
-  const sessions = await listSessions({ dir: cwd, limit: 50 })
-  return sessions.map((s) => ({
-    sessionId: s.sessionId,
-    title: s.customTitle || s.summary || s.firstPrompt || 'Untitled conversation',
-    lastModified: s.lastModified,
-    gitBranch: s.gitBranch
-  }))
-}
-
-type Wrapped<T> = { ok: true; data: T } | { ok: false; error: string }
-
-function wrap<T>(fn: () => Promise<T> | T): Promise<Wrapped<T>> {
-  return Promise.resolve()
-    .then(fn)
-    .then((data) => ({ ok: true as const, data }))
-    .catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : String(err) }))
-}
-
-function chat(id: number): ChatSession {
-  const session = chats.get(id)
-  if (!session) throw new Error('This conversation has ended.')
-  return session
-}
-
-export function registerClaudeHandlers(getWindow: () => BrowserWindow | null): void {
-  ipcMain.handle('claude:start', (_e, opts: ClaudeStartOptions) =>
-    wrap(async () => {
-      const id = nextChatId++
-      const emit: Emit = (event) => getWindow()?.webContents.send('claude:event', id, event)
-      const session = new ChatSession(opts.cwd, emit, opts)
-      chats.set(id, session)
-      // The panel subscribes to claude:event before calling start, so events
-      // emitted while the transcript replays aren't lost.
-      session
-        .start(!!opts.resume)
-        .catch((err) =>
-          emit({ kind: 'notice', level: 'error', text: err instanceof Error ? err.message : String(err) })
-        )
-      return id
-    })
-  )
-
-  ipcMain.handle('claude:send', (_e, id: number, text: string, images?: ClaudeImage[]) =>
-    wrap(() => chat(id).send(text, images))
-  )
-  ipcMain.handle('claude:interrupt', (_e, id: number) => wrap(() => chat(id).interrupt()))
-  ipcMain.handle('claude:respond', (_e, id: number, requestId: string, decision: ClaudePermissionDecision) =>
-    wrap(() => chat(id).respond(requestId, decision))
-  )
-  ipcMain.handle('claude:set-mode', (_e, id: number, mode: ClaudePermissionMode) =>
-    wrap(() => chat(id).setMode(mode))
-  )
-  ipcMain.handle('claude:set-model', (_e, id: number, model: string) => wrap(() => chat(id).setModel(model)))
-  ipcMain.handle('claude:close', (_e, id: number) =>
-    wrap(() => {
-      chats.get(id)?.close()
-      chats.delete(id)
-    })
-  )
-  ipcMain.handle('claude:list-sessions', (_e, cwd: string) => wrap(() => listSessions(cwd)))
-  ipcMain.handle('claude:list-files', (_e, cwd: string) => wrap(() => listRepoFiles(cwd)))
-}
-
-export function closeAllClaudeChats(): void {
-  for (const session of chats.values()) session.close()
-  chats.clear()
 }
