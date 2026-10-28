@@ -40,6 +40,8 @@ export interface RefActions {
   revertCommit: (hash: string) => void
   deleteBranch: (target: RefTarget) => void
   renameBranch: (name: string) => void
+  /** Pulls the current branch, or fast-forwards another local branch from its upstream without checking it out. */
+  pull: (target: RefTarget) => void
   createTag: (hash: string) => void
   createAnnotatedTag: (hash: string) => void
   createPatch: (hash: string) => void
@@ -91,6 +93,17 @@ export default function RefContextMenu({
   const shortInto = shortRef(into)
   const isHeadCommit = hash === headHash
   const sections: ContextMenuItem[][] = []
+
+  // Local branches that track a remote can be pulled, checked out or not.
+  if (target && !target.remote && info?.remoteBranch) {
+    sections.push([
+      {
+        id: 'pull',
+        label: target.current ? 'Pull' : `Pull ${name} (fast-forward)`,
+        onSelect: () => actions.pull(target)
+      }
+    ])
+  }
 
   if (target && !target.current) {
     sections.push([

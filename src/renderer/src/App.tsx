@@ -1346,6 +1346,21 @@ export default function App(): JSX.Element {
     })
   }
 
+  /** Pulls the current branch as usual; any other local branch is fast-forwarded in place. */
+  const handlePullBranch = (target: RefTarget): void => {
+    if (!repoPath) return
+    if (target.current) {
+      handlePull()
+      return
+    }
+    withBusy(async () => {
+      const res = await window.api.pullBranch(repoPath, target.name)
+      if (!res.ok) showError(res.error)
+      else setNotice(res.data.updated ? `Pulled ${target.name}.` : `${target.name} is already up to date.`)
+      await refresh(repoPath)
+    })
+  }
+
   const refActions: RefActions = {
     checkout: handleCheckout,
     checkoutRemote: handleCheckoutRemote,
@@ -1360,6 +1375,7 @@ export default function App(): JSX.Element {
     revertCommit: handleRevertCommit,
     deleteBranch: handleDeleteBranch,
     renameBranch: handleRenameBranch,
+    pull: handlePullBranch,
     createTag: handleCreateTag,
     createAnnotatedTag: handleCreateAnnotatedTag,
     createPatch: handleCreatePatch,

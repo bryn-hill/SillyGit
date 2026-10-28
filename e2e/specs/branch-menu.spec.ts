@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { expect, test } from '../fixtures'
 import { stubIpc } from '../support/ipc'
 
@@ -172,4 +175,59 @@ test.describe('branch right-click menu', () => {
       expect(copied).toBe('https://github.com/owner/repo/pull/16')
     })
   })
+
+  test.describe('pulling a branch that is not checked out', () => {
+    let remoteDir: string
+
+    // feature tracks a real (local, bare) origin that is one commit ahead of it.
+    test.beforeEach(async ({ repo }) => {
+      remoteDir = mkdtempSync(join(tmpdir(), 'sillygit-e2e-remote-'))
+      repo.git('init', '-q', '--bare', remoteDir)
+      repo.git('remote', 'add', 'origin', remoteDir)
+      repo.git('checkout', '-q', 'feature')
+      repo.commitFile('pulled.txt', 'pulled\n', 'Add pulled.txt on origin')
+      repo.git('push', '-q', '-u', 'origin', 'main', 'feature')
+      repo.git('reset', '-q', '--hard', 'HEAD~1')
+      repo.git('checkout', '-q', 'main')
+    })
+
+    test.afterEach(() => rmSync(remoteDir, { recursive: true, force: true }))
+
+    test('fast-forwards it without leaving main', async ({ sillygit, repo }) => {
+      await sillygit.openRepository(repo.path)
+
+      await sillygit.sidebar.branchMenu('feature', 'Pull feature (fast-forward)')
+
+      await expect(sillygit.notice).toContainText('Pulled feature.')
+      expect(repo.git('rev-parse', 'feature').trim()).toBe(repo.git('rev-parse', 'origin/feature').trim())
+      expect(repo.git('branch', '--show-current').trim()).toBe('main')
+    })
+
+    test('explains why a diverged branch has to be checked out', async ({ sillygit, repo }) => {
+      repo.git('checkout', '-q', 'feature')
+      repo.commitFile('local.txt', 'local\n', 'Local only')
+      repo.git('checkout', '-q', 'main')
+      const before = repo.git('rev-parse', 'feature').trim()
+      await sillygit.openRepository(repo.path)
+
+      await sillygit.sidebar.branchMenu('feature', 'Pull feature (fast-forward)')
+
+      await expect(sillygit.page.getByText(/Can't pull feature without checking it out/)).toBeVisible()
+      expect(repo.git('rev-parse', 'feature').trim()).toBe(before)
+    })
+
+    test('the checked-out branch offers a plain Pull, untracked branches none', async ({ sillygit, repo }) => {
+      repo.git('branch', 'loner')
+      await sillygit.openRepository(repo.path)
+
+      await sillygit.sidebar.branch('main').click({ button: 'right' })
+      await expect(sillygit.page.getByRole('menuitem', { name: 'Pull', exact: true })).toBeVisible()
+      await sillygit.page.keyboard.press('Escape')
+
+      await sillygit.sidebar.branch('loner').click({ button: 'right' })
+      await expect(sillygit.page.getByRole('menuitem', { name: 'Checkout loner' })).toBeVisible()
+      await expect(sillygit.page.getByRole('menuitem', { name: /^Pull/ })).toHaveCount(0)
+    })
+  })
+
 })

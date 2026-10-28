@@ -104,6 +104,61 @@ describe('branch commands', () => {
   })
 })
 
+describe('pullBranch', () => {
+  // A second clone that pushes a new commit to `feature` on the remote.
+  const pushFromElsewhere = (branch: string, file: string): void => {
+    const other = join(root, `other-${file}`)
+    execFileSync('git', ['clone', '-q', '-b', branch, remote, other])
+    git(other, 'config', 'user.name', 'Bo')
+    git(other, 'config', 'user.email', 'bo@example.com')
+    writeFileSync(join(other, file), 'x\n')
+    git(other, 'add', '.')
+    git(other, 'commit', '-q', '-m', `Add ${file}`)
+    git(other, 'push', '-q', 'origin', branch)
+  }
+
+  beforeEach(() => {
+    run('push', '-q', 'origin', 'main:feature')
+    run('fetch', '-q')
+    run('branch', '--track', 'feature', 'origin/feature')
+  })
+
+  it('fast-forwards a branch that is not checked out, leaving HEAD alone', async () => {
+    pushFromElsewhere('feature', 'f.txt')
+    const remoteTip = git(remote, 'rev-parse', 'feature')
+
+    expect(await branches.pullBranch(dir, 'feature')).toEqual({ updated: true })
+    expect(run('rev-parse', 'feature')).toBe(remoteTip)
+    expect(run('rev-parse', 'origin/feature')).toBe(remoteTip)
+    expect(run('branch', '--show-current')).toBe('main')
+    expect(await branches.pullBranch(dir, 'feature')).toEqual({ updated: false })
+  })
+
+  it('refuses a branch that has diverged from its upstream', async () => {
+    pushFromElsewhere('feature', 'f.txt')
+    run('checkout', '-q', 'feature')
+    writeFileSync(join(dir, 'mine.txt'), 'mine\n')
+    run('add', '.')
+    run('commit', '-q', '-m', 'Mine')
+    run('checkout', '-q', 'main')
+    const before = run('rev-parse', 'feature')
+
+    await expect(branches.pullBranch(dir, 'feature')).rejects.toThrow(
+      /Can't pull feature without checking it out: it has commits that aren't on origin\/feature/
+    )
+    expect(run('rev-parse', 'feature')).toBe(before)
+  })
+
+  it('explains branches without an upstream or checked out in another worktree', async () => {
+    run('branch', 'loner')
+    await expect(branches.pullBranch(dir, 'loner')).rejects.toThrow(/doesn't track a remote branch/)
+
+    pushFromElsewhere('feature', 'f.txt')
+    run('worktree', 'add', '-q', join(root, 'wt'), 'feature')
+    await expect(branches.pullBranch(dir, 'feature')).rejects.toThrow(/checked out in the worktree at/)
+  })
+})
+
 describe('addWorktree', () => {
   it('checks out a local branch, a remote branch and a commit', async () => {
     run('branch', 'side')

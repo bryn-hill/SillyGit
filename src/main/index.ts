@@ -555,6 +555,10 @@ function registerIpcHandlers(): void {
     wrap(() => branches.deleteRemoteBranch(repoPath, name))
   )
 
+  ipcMain.handle('git:pull-branch', (_e, repoPath: string, name: string) =>
+    wrap(() => branches.pullBranch(repoPath, name))
+  )
+
   ipcMain.handle('git:rename-branch', (_e, repoPath: string, from: string, to: string) =>
     wrap(() => branches.renameBranch(repoPath, from, to))
   )

@@ -183,6 +183,8 @@ const api = {
     ipcRenderer.invoke('git:delete-branch', repoPath, name, force),
   deleteRemoteBranch: (repoPath: string, name: string): Wrapped<void> =>
     ipcRenderer.invoke('git:delete-remote-branch', repoPath, name),
+  pullBranch: (repoPath: string, name: string): Wrapped<{ updated: boolean }> =>
+    ipcRenderer.invoke('git:pull-branch', repoPath, name),
   renameBranch: (repoPath: string, from: string, to: string): Wrapped<void> =>
     ipcRenderer.invoke('git:rename-branch', repoPath, from, to),
   addWorktree: (repoPath: string, ref: string, kind: 'local' | 'remote' | 'commit'): Wrapped<string | null> =>

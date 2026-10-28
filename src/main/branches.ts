@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { OpenPullRequest, RepoRemote } from '../shared/types'
-import { remoteEnv, runGit } from './gitExec'
+import { GitError, remoteEnv, runGit } from './gitExec'
 import * as github from './github'
 import { githubAccess } from './hosting'
 
@@ -109,6 +109,39 @@ export async function deleteRemoteBranch(repoPath: string, name: string): Promis
   const target = await splitRemoteBranch(repoPath, name)
   if (!target) throw new Error(`"${name}" isn't on a known remote`)
   await runGit(repoPath, ['push', target.remote, '--delete', target.branch], await remoteEnv())
+}
+
+/**
+ * Pulls a local branch without checking it out: fetches its upstream straight
+ * into it, which git only allows as a fast-forward. Resolves to whether the
+ * branch moved. Branches that have diverged from their upstream need a merge
+ * or rebase, so they have to be checked out first.
+ */
+export async function pullBranch(repoPath: string, name: string): Promise<{ updated: boolean }> {
+  const ref = `refs/heads/${name}`
+  const out = await runGit(repoPath, [
+    'for-each-ref',
+    '--format=%(upstream:remotename)%09%(upstream:remoteref)%09%(upstream:short)',
+    ref
+  ])
+  const [remote, remoteRef, upstream] = out.trim().split('\t')
+  if (!remote || !remoteRef) throw new GitError(`${name} doesn't track a remote branch, so there's nothing to pull.`)
+  const before = (await runGit(repoPath, ['rev-parse', ref])).trim()
+  try {
+    await runGit(repoPath, ['fetch', '--no-write-fetch-head', remote, `${remoteRef}:${ref}`], await remoteEnv())
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (/non-fast-forward|\(rejected\)|\[rejected\]/i.test(message)) {
+      throw new GitError(
+        `Can't pull ${name} without checking it out: it has commits that aren't on ${upstream}. Check it out and pull to merge or rebase them.`
+      )
+    }
+    const worktree = /checked out at '([^']+)'/.exec(message)
+    if (worktree) throw new GitError(`${name} is checked out in the worktree at ${worktree[1]}. Pull it from there.`)
+    throw err
+  }
+  const after = (await runGit(repoPath, ['rev-parse', ref])).trim()
+  return { updated: before !== after }
 }
 
 export async function renameBranch(repoPath: string, from: string, to: string): Promise<void> {
