@@ -1,9 +1,20 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, type BrowserWindow, type WebContents } from 'electron'
 import os from 'os'
 import * as pty from 'node-pty'
 
 const sessions = new Map<number, pty.IPty>()
 let nextId = 1
+const pagesHooked = new WeakSet<WebContents>()
+
+// A reload leaves the shells it started with no view and nothing to stop
+// them (a Run's server, say), so they end with the page.
+function endWithPage(contents: WebContents): void {
+  if (pagesHooked.has(contents)) return
+  pagesHooked.add(contents)
+  contents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) killAllTerminals()
+  })
+}
 
 function defaultShell(): string {
   if (process.platform === 'win32') return process.env.COMSPEC || 'powershell.exe'
@@ -19,7 +30,8 @@ function commandShell(command: string): { file: string; args: string[] } {
 export function registerTerminalHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(
     'terminal:create',
-    (_e, cwd: string | undefined, cols: number, rows: number, command?: string): number => {
+    (e, cwd: string | undefined, cols: number, rows: number, command?: string): number => {
+      endWithPage(e.sender)
       const id = nextId++
       const { file, args } = command ? commandShell(command) : { file: defaultShell(), args: [] }
       const ptyProcess = pty.spawn(file, args, {
