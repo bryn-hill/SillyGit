@@ -5,6 +5,7 @@ import * as git from './git'
 import * as conflicts from './conflicts'
 import * as editFile from './editFile'
 import * as branches from './branches'
+import * as refDrop from './refDrop'
 import * as ai from './ai'
 import * as settings from './settings'
 import * as launchpad from './launchpad'
@@ -396,6 +397,26 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:rebase-onto', (_e, repoPath: string, branch: string) =>
     wrap(() => conflicts.rebaseOnto(repoPath, branch))
+  )
+
+  ipcMain.handle('git:drop-relation', (_e, repoPath: string, source: string, target: string) =>
+    wrap(() => refDrop.dropRelation(repoPath, source, target))
+  )
+
+  ipcMain.handle('git:merge-into', (_e, repoPath: string, source: string, target: string) =>
+    wrap(() => refDrop.mergeInto(repoPath, source, target))
+  )
+
+  ipcMain.handle('git:rebase-branch-onto', (_e, repoPath: string, branch: string, onto: string) =>
+    wrap(() => refDrop.rebaseBranchOnto(repoPath, branch, onto))
+  )
+
+  ipcMain.handle('git:fast-forward', (_e, repoPath: string, target: string, source: string) =>
+    wrap(() => refDrop.fastForward(repoPath, target, source))
+  )
+
+  ipcMain.handle('git:cherry-pick-onto', (_e, repoPath: string, hashes: string[], target: string) =>
+    wrap(() => refDrop.cherryPickOnto(repoPath, hashes, target))
   )
 
   ipcMain.handle('git:continue-operation', (_e, repoPath: string, message?: string) =>

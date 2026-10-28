@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { dragOnto } from '../support/drag'
 
 export class CommitGraph {
   readonly root: Locator
@@ -41,6 +42,21 @@ export class CommitGraph {
   /** The sprint label above a commit's row, when it's the newest commit of its sprint. */
   sprintMarker(subject: string): Locator {
     return this.row(subject).getByTestId('sprint-marker')
+  }
+
+  /** The menu that opens after dropping something on a branch. */
+  get dropMenu(): Locator {
+    return this.root.page().getByRole('menu')
+  }
+
+  /** Drags a branch label onto another branch's label. */
+  async dragBranch(label: string, onto: string): Promise<void> {
+    await dragOnto(this.badge(label), this.badge(onto))
+  }
+
+  /** Drags a commit row (by subject) onto a branch label. */
+  async dragCommit(subject: string, onto: string): Promise<void> {
+    await dragOnto(this.row(subject).locator('.graph-row-message'), this.badge(onto))
   }
 
   workingChangesRow(): Locator {

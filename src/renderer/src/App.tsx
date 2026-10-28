@@ -32,6 +32,10 @@ import { withPullRequestText } from '../../shared/quickActions'
 import { DEFAULT_SPRINT_SETTINGS, type SprintSettings } from '../../shared/sprints'
 import CommandPalette, { type Command } from './components/CommandPalette'
 import ActivityLog from './components/ActivityLog'
+import ContextMenu from './components/ContextMenu'
+import RefDragLayer from './components/RefDrag'
+import { shortRef } from './components/RefContextMenu'
+import { dropOptions, type DragSource, type DropOption } from './lib/refDrag'
 import type { ClickModifiers } from './components/CommitGraph'
 import { clickCommit } from './lib/selection'
 import { isPrimary, isTyping, MOD } from './lib/shortcuts'
@@ -898,6 +902,43 @@ export default function App(): JSX.Element {
   const handleRevertCommit = (hash: string | string[]): void =>
     runConflictable((path) => window.api.revertCommit(path, hash))
 
+  // --- Drag and drop on the graph and sidebar --------------------------------
+  const [dropMenu, setDropMenu] = useState<{
+    x: number
+    y: number
+    source: DragSource
+    target: string
+    options: DropOption[]
+  } | null>(null)
+
+  const handleDrop = async (source: DragSource, target: string, x: number, y: number): Promise<void> => {
+    if (!repoPath) return
+    // For several commits, the newest decides whether the branch already has them.
+    const from = source.kind === 'branch' ? source.name : source.hashes[source.hashes.length - 1]
+    const res = await window.api.dropRelation(repoPath, from, target)
+    if (!res.ok) {
+      showError(res.error)
+      return
+    }
+    setDropMenu({ x, y, source, target, options: dropOptions(source, target, res.data, shortRef) })
+  }
+
+  const runDropAction = (source: DragSource, target: string, option: DropOption): void => {
+    if (source.kind === 'commits') {
+      runConflictable((path) => window.api.cherryPickOnto(path, source.hashes, target))
+    } else if (option.action === 'merge') {
+      runConflictable((path) => window.api.mergeInto(path, source.name, target))
+    } else if (option.action === 'rebase') {
+      runConflictable((path) => window.api.rebaseBranchOnto(path, source.name, target))
+    } else if (option.action === 'fast-forward' && repoPath) {
+      withBusy(async () => {
+        const res = await window.api.fastForward(repoPath, target, source.name)
+        if (!res.ok) showError(res.error)
+        await refresh(repoPath)
+      })
+    }
+  }
+
   const graphOrder = useMemo(() => graphRows.map((r) => r.commit.hash), [graphRows])
 
   const handleClickCommit = (hash: string, modifiers: ClickModifiers): void =>
@@ -1528,6 +1569,23 @@ export default function App(): JSX.Element {
             setPrompt(null)
             prompt.resolve(null)
           }}
+        />
+      )}
+      <RefDragLayer onDrop={handleDrop} />
+      {dropMenu && (
+        <ContextMenu
+          x={dropMenu.x}
+          y={dropMenu.y}
+          sections={[
+            dropMenu.options.map((option) => ({
+              id: option.action,
+              label: option.label,
+              title: option.title,
+              disabled: option.disabled,
+              onSelect: () => runDropAction(dropMenu.source, dropMenu.target, option)
+            }))
+          ]}
+          onClose={() => setDropMenu(null)}
         />
       )}
     </div>

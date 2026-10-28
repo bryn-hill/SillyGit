@@ -298,3 +298,13 @@ export type EditableFile =
   | { kind: 'text'; absolutePath: string; content: string }
   | { kind: 'binary' | 'too-large'; absolutePath: string; size: number }
   | { kind: 'missing'; absolutePath: string }
+
+/** How a dragged ref and the branch it's dropped on relate (see main/refDrop.ts). */
+export interface DropRelation {
+  sourceHash: string
+  targetHash: string
+  /** The target already has the source: nothing to merge or pick. */
+  targetContainsSource: boolean
+  /** The source is ahead of the target, so the target can fast-forward to it. */
+  sourceContainsTarget: boolean
+}

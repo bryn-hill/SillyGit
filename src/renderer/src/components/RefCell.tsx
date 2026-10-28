@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX, type MouseEvent, type ReactNode } from 'react'
 import type { RefBadge, RefPill } from '../lib/refs'
+import { dropTarget, useRefDrag } from './RefDrag'
 
 export interface RefHandlers {
   onClick: (e: MouseEvent) => void
@@ -46,17 +47,25 @@ function describe(pill: RefPill): string {
   const lines = [pill.primary.kind === 'tag' ? `Tag ${pill.name}` : pill.local ? pill.local.label : pill.primary.label]
   for (const r of pill.remotes) if (r !== pill.primary) lines.push(r.label)
   if (pill.primary.kind === 'local' || pill.primary.kind === 'remote') lines.push('Double-click to check out')
+  if (pill.primary.kind !== 'tag') lines.push('Drag onto another branch to merge or rebase')
   return lines.join('\n')
 }
 
 function Pill({ pill, color, handlers }: { pill: RefPill; color: string; handlers: RefHandlers }): JSX.Element {
   const { primary } = pill
+  const drag = useRefDrag()
   return (
     <span
       className={`ref-badge ref-pill ref-${primary.kind}`}
       style={{ ['--lane' as string]: color }}
       data-ref={primary.label}
       title={describe(pill)}
+      {...dropTarget(pill.local?.label)}
+      onPointerDown={(e) => {
+        // The label drags its branch, not the row's commit.
+        e.stopPropagation()
+        if (primary.kind !== 'tag') drag.begin(e, { kind: 'branch', name: primary.label, remote: primary.kind === 'remote' })
+      }}
       onClick={handlers.onClick}
       onDoubleClick={(e) => {
         e.stopPropagation()
@@ -87,6 +96,10 @@ function Pill({ pill, color, handlers }: { pill: RefPill; color: string; handler
             className="ref-pill-icon ref-pill-remote"
             data-ref={r.label}
             title={`${r.label}\nDouble-click to check out`}
+            onPointerDown={(e) => {
+              e.stopPropagation()
+              drag.begin(e, { kind: 'branch', name: r.label, remote: true })
+            }}
             onDoubleClick={(e) => {
               e.stopPropagation()
               handlers.onDoubleClick(r)
