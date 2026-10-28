@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { expect, test } from '../fixtures'
 import { multiFileConflict, numbered } from '../support/mergeScenarios'
 import { stubIpc } from '../support/ipc'
+import { chooseOption } from '../pages/Select'
 
 // Conflict extras: bulk actions on several conflicted files (with Undo), AI
 // auto-resolve previewed per conflict, and an external merge tool.
@@ -63,7 +64,7 @@ test.describe('several conflicted files', () => {
     chmodSync(tool, 0o755)
 
     await sillygit.settings.open()
-    await sillygit.settings.mergeTool.selectOption({ label: 'Custom command' })
+    await chooseOption(sillygit.settings.mergeTool, 'Custom command')
     await sillygit.settings.mergeToolCommand.fill(`${tool} $REMOTE $MERGED`)
     await sillygit.settings.mergeToolCommand.blur()
     await sillygit.settings.close()

@@ -22,6 +22,7 @@ import {
   type SprintSettings
 } from '../../../shared/sprints'
 import Avatar from './Avatar'
+import Select from './Select'
 import { MERGE_TOOL_PRESETS, mergeToolPreset, type MergeToolId, type MergeToolSettings } from '../../../shared/mergeTools'
 import { resetAvatars } from '../lib/avatars'
 
@@ -294,18 +295,16 @@ function NotificationsSection(): JSX.Element {
           </label>
           <div className="settings-inline">
             <label htmlFor="notification-interval">Check</label>
-            <select
+            <Select
               id="notification-interval"
               value={prefs.intervalMinutes}
               disabled={off}
-              onChange={(e) => void update({ ...prefs, intervalMinutes: Number(e.target.value) })}
-            >
-              {NOTIFICATION_INTERVAL_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m === 1 ? 'Every minute' : `Every ${m} minutes`}
-                </option>
-              ))}
-            </select>
+              onChange={(intervalMinutes) => void update({ ...prefs, intervalMinutes })}
+              options={NOTIFICATION_INTERVAL_CHOICES.map((m) => ({
+                value: m,
+                label: m === 1 ? 'Every minute' : `Every ${m} minutes`
+              }))}
+            />
             <button type="button" className="subtle" disabled={off} onClick={() => void test()}>
               Send a test notification
             </button>
@@ -333,17 +332,12 @@ function MergeToolSection({
       <label className="modal-label" htmlFor="merge-tool">
         External merge tool
       </label>
-      <select
+      <Select<MergeToolId>
         id="merge-tool"
         value={mergeTool.tool}
-        onChange={(e) => onChange({ ...mergeTool, tool: e.target.value as MergeToolId })}
-      >
-        {MERGE_TOOL_PRESETS.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+        onChange={(tool) => onChange({ ...mergeTool, tool })}
+        options={MERGE_TOOL_PRESETS.map((p) => ({ value: p.id, label: p.name }))}
+      />
       {mergeTool.tool === 'custom' && (
         <input
           aria-label="Merge tool command"
@@ -404,17 +398,12 @@ function SprintsSection({
         <div className="settings-suboptions">
           <div className="settings-inline">
             <label htmlFor="sprint-length">Sprints last</label>
-            <select
+            <Select
               id="sprint-length"
               value={sprints.lengthWeeks}
-              onChange={(e) => onChange({ ...sprints, lengthWeeks: Number(e.target.value) })}
-            >
-              {SPRINT_LENGTH_CHOICES.map((w) => (
-                <option key={w} value={w}>
-                  {w === 1 ? '1 week' : `${w} weeks`}
-                </option>
-              ))}
-            </select>
+              onChange={(lengthWeeks) => onChange({ ...sprints, lengthWeeks })}
+              options={SPRINT_LENGTH_CHOICES.map((w) => ({ value: w, label: w === 1 ? '1 week' : `${w} weeks` }))}
+            />
           </div>
           <div className="settings-inline sprint-start-row">
             <label htmlFor="sprint-start">A sprint started on</label>
@@ -528,17 +517,15 @@ export default function SettingsModal({
             <label className="modal-label" htmlFor="auto-fetch">
               Fetch in the background
             </label>
-            <select
+            <Select
               id="auto-fetch"
               value={autoFetchMinutes}
-              onChange={(e) => onAutoFetchChange(Number(e.target.value))}
-            >
-              {AUTO_FETCH_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m === 0 ? 'Never' : m === 1 ? 'Every minute' : `Every ${m} minutes`}
-                </option>
-              ))}
-            </select>
+              onChange={onAutoFetchChange}
+              options={AUTO_FETCH_CHOICES.map((m) => ({
+                value: m,
+                label: m === 0 ? 'Never' : m === 1 ? 'Every minute' : `Every ${m} minutes`
+              }))}
+            />
           </section>
 
           <section className="settings-section">

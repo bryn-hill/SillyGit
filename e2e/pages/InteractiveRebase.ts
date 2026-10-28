@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { chooseOption } from './Select'
 
 /** The interactive rebase editor that replaces the graph: commits newest first, an action each. */
 export class InteractiveRebase {
@@ -27,7 +28,7 @@ export class InteractiveRebase {
   }
 
   async setAction(subject: string, action: 'Pick' | 'Reword' | 'Squash' | 'Fixup' | 'Drop'): Promise<void> {
-    await this.row(subject).getByRole('combobox').selectOption({ label: action })
+    await chooseOption(this.row(subject).getByRole('combobox'), action)
   }
 
   /** Drags a commit onto the top half of another, landing it just above that one. */

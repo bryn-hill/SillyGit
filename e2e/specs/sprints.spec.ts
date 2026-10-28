@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures'
+import { chooseOption } from '../pages/Select'
 
 // Dated in 2030 so they sort above the fixture's own commits whenever the suite runs.
 const commits = [
@@ -19,7 +20,7 @@ test('sprint markers are off by default and divide the graph by sprint once turn
   await settings.open()
   await expect(settings.sprintsEnabled).not.toBeChecked()
   await settings.sprintsEnabled.check()
-  await settings.sprintLength.selectOption({ label: '2 weeks' })
+  await chooseOption(settings.sprintLength, '2 weeks')
   await settings.sprintStart.fill('2030-01-07')
   await settings.sprintNumber.fill('1')
   await settings.close()
@@ -33,7 +34,7 @@ test('sprint markers are off by default and divide the graph by sprint once turn
 
   // One-week sprints split the old sprint 1 in two.
   await settings.open()
-  await settings.sprintLength.selectOption({ label: '1 week' })
+  await chooseOption(settings.sprintLength, '1 week')
   await settings.close()
   await expect(graph.sprintMarker('Sprint one work')).toHaveText(/^Sprint 1 · 7 Jan – 13 Jan/)
   await expect(graph.sprintMarker('More sprint one')).toHaveText(/^Sprint 2 · 14 Jan – 20 Jan/)

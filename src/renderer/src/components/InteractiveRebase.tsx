@@ -13,6 +13,7 @@ import {
   type RebaseStep
 } from '../../../shared/rebase'
 import Avatar from './Avatar'
+import Select from './Select'
 
 interface Row {
   commit: RebaseCommit
@@ -108,7 +109,7 @@ export default function InteractiveRebase({ repoPath, base, onClose, onStart }: 
   }
 
   const onRowKeyDown = (e: React.KeyboardEvent, index: number, hash: string): void => {
-    if (e.target instanceof HTMLSelectElement) return
+    if (e.target instanceof HTMLElement && e.target.closest('[role="combobox"]')) return
     const key = e.key.toLowerCase()
     if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault()
@@ -263,19 +264,13 @@ export default function InteractiveRebase({ repoPath, base, onClose, onStart }: 
                   <span className="rebase-grip" aria-hidden="true">
                     ⋮⋮
                   </span>
-                  <select
+                  <Select<RebaseAction>
                     className="rebase-action"
                     aria-label={`Action for ${commit.shortHash}`}
                     value={action}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setAction(commit.hash, e.target.value as RebaseAction)}
-                  >
-                    {REBASE_ACTIONS.map((a) => (
-                      <option key={a} value={a}>
-                        {ACTION_LABELS[a]}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(a) => setAction(commit.hash, a)}
+                    options={REBASE_ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] }))}
+                  />
                   <Avatar name={commit.author} email={commit.authorEmail} hash={commit.hash} repoPath={repoPath} size={18} />
                   <span className="rebase-hash">{commit.shortHash}</span>
                   <span className="rebase-subject" title={commit.message}>

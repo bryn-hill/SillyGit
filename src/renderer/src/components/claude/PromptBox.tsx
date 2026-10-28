@@ -5,6 +5,7 @@ import {
   type ClaudeModelOption,
   type ClaudePermissionMode
 } from '../../../../shared/claude'
+import Select from '../Select'
 
 export interface PromptImage {
   mediaType: string
@@ -322,21 +323,19 @@ const PromptBox = forwardRef<PromptBoxHandle, Props>(function PromptBox(
             )}
           </div>
           {models.length > 0 && (
-            <select
+            <Select
               className="claude-model-select"
+              variant="ghost"
+              aria-label="Model"
               value={modelValue}
-              onChange={(e) => onModelChange(e.target.value)}
-              title="Model"
-            >
-              {!models.some((m) => m.value === modelValue) && modelValue && (
-                <option value={modelValue}>{modelValue}</option>
-              )}
-              {models.map((m) => (
-                <option key={m.value} value={m.value} title={m.description}>
-                  {m.displayName}
-                </option>
-              ))}
-            </select>
+              onChange={onModelChange}
+              options={[
+                ...(!models.some((m) => m.value === modelValue) && modelValue
+                  ? [{ value: modelValue, label: modelValue }]
+                  : []),
+                ...models.map((m) => ({ value: m.value, label: m.displayName, title: m.description }))
+              ]}
+            />
           )}
           <div className="claude-prompt-spacer" />
           {busy ? (
