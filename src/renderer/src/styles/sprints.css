@@ -33,6 +33,11 @@
   font-size: 10.5px;
   line-height: 15px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Stays clear of the branch column in a narrow graph, where that column is
+     capped at 35% (see commit-graph.css). */
+  max-width: calc(65% - 24px);
   pointer-events: none;
 }
 

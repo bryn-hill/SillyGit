@@ -20,6 +20,8 @@ export function createWindow(): void {
   const window = new BrowserWindow({
     width: 1280,
     height: 800,
+    minWidth: 640,
+    minHeight: 480,
     show: false,
     titleBarStyle: 'hiddenInset',
     icon,

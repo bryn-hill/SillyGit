@@ -267,3 +267,61 @@
   margin: 4px 2px;
   background: var(--border);
 }
+
+/* ---------- narrow windows ----------
+   The top bar is a size container, so these steps follow its own width:
+   first the toolbar drops its labels (each button keeps its tooltip and
+   accessible name), then the repository segment goes (the repo tab above
+   names it), then Redo, Stash and Pop move into the More menu. */
+
+.top-bar {
+  container: top-bar / inline-size;
+}
+
+.top-bar .tool-more {
+  display: none;
+}
+
+@container top-bar (max-width: 1060px) {
+  .top-bar .tool-label {
+    display: none;
+  }
+
+  .top-bar button.tool-button {
+    min-width: 32px;
+    padding: 6px 7px;
+  }
+
+  .top-bar .toolbar-divider {
+    margin: 4px 3px;
+  }
+
+  .breadcrumb-value {
+    max-width: 150px;
+  }
+}
+
+@container top-bar (max-width: 860px) {
+  .breadcrumb:has(.breadcrumb-chevron) .breadcrumb-repo,
+  .breadcrumb-chevron {
+    display: none;
+  }
+
+  .breadcrumb-value {
+    max-width: 120px;
+  }
+}
+
+@container top-bar (max-width: 720px) {
+  .top-bar button.tool-overflowable {
+    display: none;
+  }
+
+  .top-bar .tool-more {
+    display: flex;
+  }
+
+  .breadcrumb-label {
+    display: none;
+  }
+}

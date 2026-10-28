@@ -12,6 +12,8 @@
 
 .claude-panel {
   flex-shrink: 0;
+  /* A width dragged out on a big screen still leaves half a narrow window. */
+  max-width: 50vw;
   position: relative;
   flex-direction: column;
   min-height: 0;
