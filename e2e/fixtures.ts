@@ -15,6 +15,8 @@ const APP_DIR = resolve(__dirname, '..')
 const SHOW_WINDOW = !!process.env['CI'] || process.env['E2E_SHOW_WINDOW'] === '1'
 
 type Fixtures = {
+  /** Extra environment for the app, e.g. `test.use({ appEnv: { … } })`. */
+  appEnv: Record<string, string>
   repo: FixtureRepo
   userData: string
   electronApp: ElectronApplication
@@ -23,12 +25,12 @@ type Fixtures = {
   relaunch: () => Promise<SillyGitApp>
 }
 
-function launchApp(userData: string): Promise<ElectronApplication> {
+function launchApp(userData: string, appEnv: Record<string, string> = {}): Promise<ElectronApplication> {
   // SILLYGIT_E2E keeps the window hidden (see src/main/index.ts). Some
   // shells set ELECTRON_RUN_AS_NODE globally, which would start Electron as
   // plain Node; the CLAUDE* vars would make the Claude panel reuse the
   // parent Claude Code session.
-  const env: Record<string, string> = { ...(process.env as Record<string, string>), SILLYGIT_E2E: '1' }
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), ...appEnv, SILLYGIT_E2E: '1' }
   for (const key of ['ELECTRON_RUN_AS_NODE', 'CLAUDECODE', 'CLAUDE_CODE_SESSION_ID']) delete env[key]
   return electron.launch({ args: [APP_DIR, `--user-data-dir=${userData}`], env, timeout: 30_000 })
 }
@@ -43,6 +45,8 @@ async function openWindow(electronApp: ElectronApplication): Promise<SillyGitApp
 }
 
 export const test = base.extend<Fixtures>({
+  appEnv: [{}, { option: true }],
+
   // eslint-disable-next-line no-empty-pattern
   repo: async ({}, use) => {
     const repo = new FixtureRepo()
@@ -64,8 +68,8 @@ export const test = base.extend<Fixtures>({
     rmSync(userData, { recursive: true, force: true })
   },
 
-  electronApp: async ({ userData }, use, testInfo) => {
-    const app = await launchApp(userData)
+  electronApp: async ({ userData, appEnv }, use, testInfo) => {
+    const app = await launchApp(userData, appEnv)
 
     // The config's `trace` option only covers the built-in browser page, so
     // record one here and keep it when a test fails.
@@ -92,11 +96,11 @@ export const test = base.extend<Fixtures>({
     }
   },
 
-  relaunch: async ({ electronApp, userData }, use) => {
+  relaunch: async ({ electronApp, userData, appEnv }, use) => {
     const relaunched: ElectronApplication[] = []
     await use(async () => {
       await (relaunched.at(-1) ?? electronApp).close()
-      const app = await launchApp(userData)
+      const app = await launchApp(userData, appEnv)
       relaunched.push(app)
       return openWindow(app)
     })

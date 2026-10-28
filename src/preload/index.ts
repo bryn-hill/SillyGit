@@ -25,6 +25,29 @@ const api = {
   undo: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:undo', repoPath),
   redoLabel: (repoPath: string): Wrapped<string | null> => ipcRenderer.invoke('git:redo-label', repoPath),
   redo: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:redo', repoPath),
+  /** Where SillyGit's own checkout stands against origin/main, and the update step running, if any. */
+  selfUpdateStatus: (): Promise<{
+    status: import('../shared/selfUpdate').SelfUpdateStatus
+    step: import('../shared/selfUpdate').SelfUpdateStep | null
+  }> => ipcRenderer.invoke('self-update:status'),
+  /** Fetches origin/main for SillyGit's own checkout. */
+  checkSelfUpdate: (): Wrapped<import('../shared/selfUpdate').SelfUpdateStatus> => ipcRenderer.invoke('self-update:check'),
+  /** Pulls the latest main into SillyGit's checkout, installs, rebuilds and restarts the app. */
+  applySelfUpdate: (): Wrapped<import('../shared/selfUpdate').SelfUpdateResult> => ipcRenderer.invoke('self-update:apply'),
+  onSelfUpdateChanged: (
+    callback: (
+      status: import('../shared/selfUpdate').SelfUpdateStatus,
+      step: import('../shared/selfUpdate').SelfUpdateStep | null
+    ) => void
+  ): (() => void) => {
+    const listener = (
+      _e: unknown,
+      status: import('../shared/selfUpdate').SelfUpdateStatus,
+      step: import('../shared/selfUpdate').SelfUpdateStep | null
+    ): void => callback(status, step)
+    ipcRenderer.on('self-update:changed', listener)
+    return () => ipcRenderer.removeListener('self-update:changed', listener)
+  },
   activityLog: (): Promise<import('../shared/activity').ActivityEntry[]> => ipcRenderer.invoke('activity:list'),
   /** Asks for a patch file and applies it; null when the dialog was cancelled. */
   applyPatch: (
