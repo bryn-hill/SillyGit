@@ -7,6 +7,8 @@ import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMen
 import { selectedHashes } from '../lib/selection'
 import { groupRefs, parseRefs, type RefBadge } from '../lib/refs'
 import RefCell, { type RefHandlers } from './RefCell'
+import { dropTarget, useRefDrag } from './RefDrag'
+import { commitsLabel } from '../lib/refDrag'
 import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
@@ -128,6 +130,11 @@ export default function CommitGraph({
   )
 
   const selected = useMemo(() => selectedHashes(selection), [selection])
+  const drag = useRefDrag()
+
+  /** Dragging a row cherry-picks its commit, or the whole selection when the row is part of it. */
+  const dragCommits = (hash: string): string[] =>
+    selection.type === 'commits' && selection.hashes.includes(hash) ? selection.hashes : [hash]
 
   const marks = useMemo(
     () => (sprints.enabled ? sprintMarks(rows.map((r) => r.commit.committedAt || r.commit.date), sprints) : null),
@@ -274,6 +281,7 @@ export default function CommitGraph({
 
   const renderRow = (row: GraphRow, index: number): JSX.Element => {
     const badges = parseRefs(row.commit.refs, localBranches, remoteBranches)
+    const pills = groupRefs(badges, upstreams)
     const isSelected = selected.has(row.commit.hash)
     const isContextTarget = menu?.hash === row.commit.hash
     const dimmed = hitSet !== null && !hitSet.has(row.commit.hash)
@@ -290,6 +298,12 @@ export default function CommitGraph({
         role="option"
         aria-selected={isSelected}
         data-hash={row.commit.hash}
+        {...dropTarget(pills[0]?.local?.label)}
+        onPointerDown={(e) => {
+          const hashes = dragCommits(row.commit.hash)
+          // Oldest first, the order they're picked in.
+          drag.begin(e, { kind: 'commits', hashes: [...hashes].reverse(), label: commitsLabel(hashes) })
+        }}
         onClick={(e) => {
           // The second click of a double-click would undo the first one's toggle.
           if (e.button !== 0 || e.detail > 1) return
@@ -302,7 +316,7 @@ export default function CommitGraph({
         }}
       >
         <RefCell
-          pills={groupRefs(badges, upstreams)}
+          pills={pills}
           color={row.color}
           width={refColumnWidth}
           handlers={refHandlers(row.commit.hash, isSelected)}
@@ -421,6 +435,7 @@ export default function CommitGraph({
         role="listbox"
         aria-label="Commits"
         aria-multiselectable="true"
+        data-drag-scroll=""
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       >
         <div style={{ height: first * ROW_HEIGHT }} aria-hidden="true" />

@@ -116,6 +116,16 @@ const api = {
     steps: import('../shared/rebase').RebaseStep[]
   ): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:start-interactive-rebase', repoPath, base, expectedHead, steps),
+  dropRelation: (repoPath: string, source: string, target: string): Wrapped<import('../shared/types').DropRelation> =>
+    ipcRenderer.invoke('git:drop-relation', repoPath, source, target),
+  mergeInto: (repoPath: string, source: string, target: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:merge-into', repoPath, source, target),
+  rebaseBranchOnto: (repoPath: string, branch: string, onto: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:rebase-branch-onto', repoPath, branch, onto),
+  fastForward: (repoPath: string, target: string, source: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:fast-forward', repoPath, target, source),
+  cherryPickOnto: (repoPath: string, hashes: string[], target: string): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:cherry-pick-onto', repoPath, hashes, target),
   continueOperation: (repoPath: string, message?: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:continue-operation', repoPath, message),
   abortOperation: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:abort-operation', repoPath),

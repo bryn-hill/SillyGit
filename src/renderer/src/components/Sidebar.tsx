@@ -2,6 +2,7 @@ import { useMemo, useState, type JSX } from 'react'
 import type { BranchInfo, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+import { dropTarget, useRefDrag } from './RefDrag'
 
 interface TreeNode {
   name: string
@@ -83,6 +84,7 @@ function TreeView({
   onCheckout: (branch: BranchInfo) => void
   onContextMenu: BranchMenu
 }): JSX.Element {
+  const drag = useRefDrag()
   const entries = Array.from(node.children.values()).sort((a, b) => {
     const aFolder = a.children.size > 0 && !a.fullName
     const bFolder = b.children.size > 0 && !b.fullName
@@ -130,6 +132,10 @@ function TreeView({
             onClick={(e) => e.detail === 1 && child.info && onSelect(child.info)}
             onDoubleClick={() => !child.current && child.info && onCheckout(child.info)}
             onContextMenu={(e) => child.info && onContextMenu(e, child.info)}
+            {...dropTarget(child.remote ? null : child.fullName)}
+            onPointerDown={(e) =>
+              child.fullName && drag.begin(e, { kind: 'branch', name: child.fullName, remote: !!child.remote })
+            }
           >
             {child.current ? <span className="current-dot">●</span> : <span className="tree-caret-spacer" />}
             <span>{child.name}</span>
@@ -243,7 +249,7 @@ export default function Sidebar({
           <button onClick={submitNewBranch}>Create</button>
         </div>
       )}
-      <div className="sidebar-scroll">
+      <div className="sidebar-scroll" data-drag-scroll="">
         <div className="tree-group-header" onClick={() => toggle('local-root')}>
           <span className="tree-caret">{collapsed.has('local-root') ? '▸' : '▾'}</span>
           LOCAL
