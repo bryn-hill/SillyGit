@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
-import { BranchIcon, FolderIcon, LaunchpadIcon } from './TopBar'
+import { BranchIcon, FolderIcon, LaunchpadIcon } from './topBar/icons'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
 
