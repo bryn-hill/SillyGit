@@ -1,6 +1,5 @@
 import type { CSSProperties, JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
-import { sparks } from '../lib/mergeBurst'
 import Avatar from './Avatar'
 
 export const ROW_HEIGHT = 32
@@ -98,11 +97,15 @@ export default function GraphCell({
     )
   }
 
+  // While the merge animation plays, its own lines draw the joins.
+  const joinClass = burst !== undefined ? 'merge-burst-join' : undefined
+
   const hasBelowOwn = row.lane < row.after.length && row.after[row.lane] !== null
   if (hasBelowOwn) {
     elements.push(
       <line
         key="own-bottom"
+        className={joinClass}
         x1={laneX(row.lane)}
         y1={cy}
         x2={laneX(row.lane)}
@@ -134,6 +137,7 @@ export default function GraphCell({
       <path
         key={`out-${k}`}
         data-testid="merge-line"
+        className={joinClass}
         d={`M ${x0} ${cy} C ${x0} ${cy}, ${x1} ${cy}, ${x1} ${ROW_HEIGHT}`}
         stroke={row.afterColors[k]}
         strokeWidth={2}
@@ -181,32 +185,33 @@ export default function GraphCell({
   )
 }
 
-// How far below the merge the colliding lanes start, in rows.
+// How far below the merge the lines start growing from, in rows.
 const BURST_REACH = 2.5
 
 /**
- * The merge animation: each parent's lane races up into the merge node, they
- * collide, and sparks fly. Drawn over the rows below, so it can't take clicks.
+ * The merge animation, in the style of Mini Metro: each parent's line grows
+ * up into the merge like a new metro line, a clean station pops in where they
+ * join, and everything settles into the normal graph. Drawn over the rows
+ * below, so it can't take clicks.
  */
 function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
   const cy = ROW_HEIGHT / 2
   const x0 = laneX(row.lane)
   const startY = cy + ROW_HEIGHT * BURST_REACH
-  const lanes: { key: string; d: string; color: string }[] = []
+  const lines: { key: string; d: string; color: string }[] = []
   if (row.lane < row.after.length && row.after[row.lane] !== null) {
-    lanes.push({ key: 'own', d: `M ${x0} ${startY} L ${x0} ${cy}`, color: row.color })
+    lines.push({ key: 'own', d: `M ${x0} ${startY} L ${x0} ${cy}`, color: row.color })
   }
   for (const k of row.mergeParentLanes) {
     const x1 = laneX(k)
-    lanes.push({
+    lines.push({
       key: `in-${k}`,
       d: `M ${x1} ${startY} L ${x1} ${ROW_HEIGHT} C ${x1} ${cy}, ${x0} ${cy}, ${x0} ${cy}`,
       color: row.afterColors[k]
     })
   }
-  const colors = lanes.map((l) => l.color)
-  // Room for the lanes below and the sparks above and to the sides.
-  const pad = 48
+  // Room for the station's pulse ring around the node.
+  const pad = 24
   const width = graphWidth(Math.max(row.after.length, row.lane + 1)) + pad * 2
   const height = startY + pad
   return (
@@ -219,24 +224,19 @@ function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
       viewBox={`${-pad} ${-pad} ${width} ${height}`}
       style={{ left: -pad, top: -pad }}
     >
-      {lanes.map((l) => (
-        <g key={l.key} style={{ color: l.color }}>
-          <path className="merge-burst-trail" d={l.d} pathLength={1} />
-          <path className="merge-burst-comet" d={l.d} pathLength={1} />
-        </g>
-      ))}
-      <circle className="merge-burst-ring" cx={x0} cy={cy} r={7} style={{ color: row.color }} />
-      <circle className="merge-burst-core" cx={x0} cy={cy} r={10} />
-      {sparks(colors).map((s, i) => (
-        <circle
-          key={i}
-          className="merge-burst-spark"
-          cx={x0}
-          cy={cy}
-          r={i % 4 === 3 ? 1.6 : 2.2}
-          style={{ color: s.color, '--dx': `${s.dx}px`, '--dy': `${s.dy}px`, animationDelay: `${520 + s.delay}ms` } as CSSProperties}
+      {lines.map((l, i) => (
+        <path
+          key={l.key}
+          className="merge-burst-line"
+          d={l.d}
+          pathLength={1}
+          stroke={l.color}
+          // The second parent's line follows a beat behind the first.
+          style={{ '--line-delay': `${i * 70}ms` } as CSSProperties}
         />
       ))}
+      <circle className="merge-burst-pulse" cx={x0} cy={cy} r={7} stroke={row.color} />
+      <circle className="merge-burst-station" cx={x0} cy={cy} r={6} stroke={row.color} />
     </svg>
   )
 }

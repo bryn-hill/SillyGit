@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GraphCommit } from '../../../shared/types'
 import { layoutGraph } from './graphLayout'
-import { newMergeAtHead, sparks } from './mergeBurst'
+import { newMergeAtHead } from './mergeBurst'
 
 const commit = (hash: string, parents: string[]): GraphCommit =>
   ({ hash, parents, author: 'a', authorEmail: 'a@example.com', date: '', committedAt: '', subject: hash, refs: [] })
@@ -37,14 +37,5 @@ describe('newMergeAtHead', () => {
   it('ignores a merge that is not checked out', () => {
     expect(newMergeAtHead(before, merged, 'main1')).toBeNull()
     expect(newMergeAtHead(before, merged, null)).toBeNull()
-  })
-})
-
-describe('sparks', () => {
-  it('is the same every time and uses the given colours', () => {
-    const a = sparks(['#111111', '#222222'])
-    expect(a).toEqual(sparks(['#111111', '#222222']))
-    expect(a).toHaveLength(22)
-    expect(new Set(a.map((s) => s.color))).toEqual(new Set(['#111111', '#222222', '#ffffff']))
   })
 })

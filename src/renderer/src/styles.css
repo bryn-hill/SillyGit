@@ -5775,175 +5775,120 @@ button.rebase-action {
   outline-offset: -1px;
 }
 
-/* ---------- merge animation: lanes race into the new merge node and spark ---------- */
+/* ---------- merge animation, Mini Metro style: flat lines grow into a station ---------- */
 
 .merge-burst {
+  /* No z-index: later rows' commit avatars sit on top, like stations on a line. */
   position: absolute;
-  z-index: 3;
   pointer-events: none;
   overflow: visible;
 }
 
-.merge-burst-trail,
-.merge-burst-comet {
+/* Thick, flat, round-capped like a metro line, then thins to the graph's 2px. */
+.merge-burst-line {
   fill: none;
+  stroke-width: 5;
   stroke-linecap: round;
-}
-
-.merge-burst-trail {
-  stroke: currentColor;
-  stroke-width: 3;
+  stroke-linejoin: round;
   stroke-dasharray: 1 1;
-  filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor);
-  animation: merge-trail 1000ms ease-in both;
+  animation:
+    merge-line-grow 460ms cubic-bezier(0.65, 0, 0.35, 1) var(--line-delay, 0ms) both,
+    merge-line-settle 300ms ease-in-out 720ms forwards;
 }
 
-.merge-burst-comet {
-  stroke: #fff;
+/* A white station with a thick ring in the branch's colour. */
+.merge-burst-station {
+  fill: #fff;
   stroke-width: 3.5;
-  stroke-dasharray: 0.22 2;
-  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 5px currentColor);
-  animation: merge-comet 540ms cubic-bezier(0.55, 0, 0.9, 0.6) both;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    merge-station-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) 400ms both,
+    merge-fade-out 260ms ease-in 800ms forwards;
 }
 
-.merge-burst-ring {
+.merge-burst-pulse {
   fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
+  stroke-width: 2;
   vector-effect: non-scaling-stroke;
   transform-box: fill-box;
   transform-origin: center;
-  filter: drop-shadow(0 0 4px currentColor);
-  animation: merge-ring 520ms ease-out 500ms both;
-}
-
-.merge-burst-core {
-  fill: #fff;
-  transform-box: fill-box;
-  transform-origin: center;
-  filter: drop-shadow(0 0 6px #ff79c6) drop-shadow(0 0 10px #bd93f9);
-  animation: merge-core 460ms ease-out 500ms both;
-}
-
-.merge-burst-spark {
-  fill: currentColor;
-  filter: drop-shadow(0 0 3px currentColor);
-  animation: merge-spark 600ms cubic-bezier(0.15, 0.6, 0.35, 1) both;
+  opacity: 0;
+  animation: merge-pulse 420ms ease-out 480ms forwards;
 }
 
 .merge-burst-node {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: merge-node 760ms ease-out both;
+  opacity: 0;
+  animation: merge-fade-in 1ms linear 1050ms forwards;
 }
 
-@keyframes merge-trail {
-  0% {
+.merge-burst-join {
+  opacity: 0;
+  animation: merge-fade-in 1ms linear 460ms forwards;
+}
+
+@keyframes merge-line-grow {
+  from {
     stroke-dashoffset: 1;
-    opacity: 0.9;
   }
-  52% {
+  to {
     stroke-dashoffset: 0;
-    opacity: 0.9;
   }
-  100% {
-    stroke-dashoffset: 0;
+}
+
+@keyframes merge-line-settle {
+  to {
+    stroke-width: 2;
     opacity: 0;
   }
 }
 
-@keyframes merge-comet {
-  0% {
-    stroke-dashoffset: 0.22;
-    opacity: 1;
-  }
-  92% {
-    stroke-dashoffset: -0.78;
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: -0.78;
-    opacity: 0;
-  }
-}
-
-@keyframes merge-ring {
-  0% {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
-@keyframes merge-core {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  25% {
-    transform: scale(1);
-    opacity: 0.95;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-}
-
-@keyframes merge-spark {
-  0% {
-    transform: translate(0, 0) scale(1.2);
-    opacity: 1;
-  }
-  55% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--dx), var(--dy)) scale(0.6);
-    opacity: 0;
-  }
-}
-
-@keyframes merge-node {
-  0%,
-  66% {
+@keyframes merge-station-pop {
+  from {
     transform: scale(0);
   }
-  84% {
-    transform: scale(1.5);
-  }
-  100% {
+  to {
     transform: scale(1);
   }
 }
 
-@keyframes merge-fade {
-  0% {
-    opacity: 0.8;
+@keyframes merge-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
   }
-  100% {
+  to {
+    transform: scale(2.4);
     opacity: 0;
   }
 }
 
-/* No movement: the lanes and the node just glow and fade. */
+@keyframes merge-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes merge-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* No movement: the station shows straight away and fades into the graph. */
 @media (prefers-reduced-motion: reduce) {
-  .merge-burst-comet,
-  .merge-burst-spark,
-  .merge-burst-ring {
+  .merge-burst-line,
+  .merge-burst-pulse {
     display: none;
   }
-  .merge-burst-trail {
-    stroke-dasharray: none;
-    animation: merge-fade 1000ms ease-out both;
-  }
-  .merge-burst-core {
-    animation: merge-fade 700ms ease-out both;
+  .merge-burst-station {
+    animation: merge-fade-out 600ms ease-in 300ms forwards;
   }
   .merge-burst-node {
+    animation: merge-fade-in 1ms linear 900ms forwards;
+  }
+  .merge-burst-join {
     animation: none;
+    opacity: 1;
   }
 }

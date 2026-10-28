@@ -587,8 +587,8 @@ export default function SettingsModal({
               Animate merges on the graph
             </label>
             <div className="modal-hint">
-              When a merge lands on the checked-out branch, its lanes race into the new commit and spark. If your system
-              asks for reduced motion, it's just a short glow.
+              When a merge lands on the checked-out branch, its lines grow into the new commit like a metro map. If your
+              system asks for reduced motion, the new commit just fades in.
             </div>
           </section>
 
