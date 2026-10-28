@@ -1,0 +1,222 @@
+import { ipcMain, dialog } from 'electron'
+import { basename, join } from 'path'
+import { promises as fsp } from 'fs'
+import * as git from '../git'
+import * as editFile from '../editFile'
+import { activityLog } from '../gitExec'
+import { watchRepo, stopWatching } from '../watcher'
+import type { PullMode } from '../../shared/types'
+import { wrap } from './wrap'
+
+/** Working tree, commits, history, stashes, remotes sync, tags and patches. */
+export function registerGitHandlers(): void {
+  ipcMain.handle('repo:open-dialog', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('repo:is-git-repo', (_e, repoPath: string) => git.isGitRepo(repoPath))
+
+  ipcMain.handle('repo:init', (_e, repoPath: string) => wrap(() => git.initRepo(repoPath)))
+
+  ipcMain.handle('git:status', (_e, repoPath: string) => wrap(() => git.getStatus(repoPath)))
+
+  ipcMain.handle('git:stage', (_e, repoPath: string, paths: string[]) =>
+    wrap(() => git.stageFiles(repoPath, paths))
+  )
+
+  ipcMain.handle('git:unstage', (_e, repoPath: string, paths: string[]) =>
+    wrap(() => git.unstageFiles(repoPath, paths))
+  )
+
+  ipcMain.handle('git:stage-all', (_e, repoPath: string) => wrap(() => git.stageAll(repoPath)))
+
+  ipcMain.handle('git:unstage-all', (_e, repoPath: string) => wrap(() => git.unstageAll(repoPath)))
+
+  ipcMain.handle(
+    'git:discard',
+    (_e, repoPath: string, path: string, untracked: boolean) =>
+      wrap(() => git.discardFile(repoPath, path, untracked))
+  )
+
+  ipcMain.handle('git:commit', (_e, repoPath: string, message: string, amend?: boolean) =>
+    wrap(() => git.commit(repoPath, message, !!amend))
+  )
+
+  ipcMain.handle('git:last-commit-message', (_e, repoPath: string) =>
+    wrap(() => git.lastCommitMessage(repoPath))
+  )
+
+  ipcMain.handle('git:fetch', (_e, repoPath: string) => wrap(() => git.fetchAll(repoPath)))
+
+  ipcMain.handle('git:undo-label', (_e, repoPath: string) => wrap(() => git.undoLabel(repoPath)))
+
+  ipcMain.handle('git:undo', (_e, repoPath: string) => wrap(() => git.undo(repoPath)))
+
+  ipcMain.handle('git:redo-label', (_e, repoPath: string) => wrap(() => git.redoLabel(repoPath)))
+
+  ipcMain.handle('git:redo', (_e, repoPath: string) => wrap(() => git.redo(repoPath)))
+
+  ipcMain.handle('activity:list', () => activityLog())
+
+  ipcMain.handle('git:apply-patch', (_e, repoPath: string) =>
+    wrap(async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Apply patch',
+        defaultPath: repoPath,
+        properties: ['openFile'],
+        filters: [
+          { name: 'Patches', extensions: ['patch', 'diff'] },
+          { name: 'All files', extensions: ['*'] }
+        ]
+      })
+      if (result.canceled || result.filePaths.length === 0) return null
+      const file = result.filePaths[0]
+      return { file: basename(file), ...(await git.applyPatch(repoPath, file)) }
+    })
+  )
+
+  ipcMain.handle('git:clone', (_e, url: string) =>
+    wrap(async () => {
+      const result = await dialog.showOpenDialog({
+        title: 'Choose where to clone',
+        buttonLabel: 'Clone here',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (result.canceled || result.filePaths.length === 0) return null
+      return git.clone(url, result.filePaths[0])
+    })
+  )
+
+  ipcMain.handle('git:search-commits', (_e, repoPath: string, query: string) =>
+    wrap(() => git.searchCommits(repoPath, query))
+  )
+
+  ipcMain.handle('repo:watch', (e, repoPath: string | null) => {
+    if (repoPath) watchRepo(e.sender, repoPath)
+    else stopWatching(e.sender)
+  })
+
+  ipcMain.handle(
+    'git:diff',
+    (_e, repoPath: string, path: string, staged: boolean, untracked: boolean, ignoreWhitespace?: boolean) =>
+      wrap(() => git.getDiff(repoPath, path, staged, untracked, ignoreWhitespace))
+  )
+
+  ipcMain.handle('git:branches', (_e, repoPath: string) => wrap(() => git.listBranches(repoPath)))
+
+  ipcMain.handle('git:checkout', (_e, repoPath: string, branch: string) =>
+    wrap(() => git.checkoutBranch(repoPath, branch))
+  )
+
+  ipcMain.handle('git:create-branch', (_e, repoPath: string, branch: string) =>
+    wrap(() => git.createBranch(repoPath, branch))
+  )
+
+  ipcMain.handle('git:push', (_e, repoPath: string) => wrap(() => git.push(repoPath)))
+
+  ipcMain.handle('git:pull', (_e, repoPath: string, mode?: PullMode) => wrap(() => git.pull(repoPath, mode)))
+
+  ipcMain.handle('git:log', (_e, repoPath: string) => wrap(() => git.getLog(repoPath)))
+
+  ipcMain.handle('git:graph-log', (_e, repoPath: string, limit?: number) =>
+    wrap(() => git.getGraphLog(repoPath, limit))
+  )
+
+  ipcMain.handle('git:commit-detail', (_e, repoPath: string, hash: string) =>
+    wrap(() => git.getCommitDetail(repoPath, hash))
+  )
+
+  ipcMain.handle(
+    'git:commit-file-diff',
+    (_e, repoPath: string, hash: string, path: string, ignoreWhitespace?: boolean, oldPath?: string) =>
+      wrap(() => git.getCommitFileDiff(repoPath, hash, path, ignoreWhitespace, oldPath))
+  )
+
+  ipcMain.handle('git:stash', (_e, repoPath: string, message?: string) => wrap(() => git.stash(repoPath, message)))
+
+  ipcMain.handle('git:stash-pop', (_e, repoPath: string, ref?: string) => wrap(() => git.stashPop(repoPath, ref)))
+
+  ipcMain.handle('git:stash-apply', (_e, repoPath: string, ref: string) => wrap(() => git.stashApply(repoPath, ref)))
+
+  ipcMain.handle('git:stash-drop', (_e, repoPath: string, ref: string) => wrap(() => git.stashDrop(repoPath, ref)))
+
+  ipcMain.handle('git:stashes', (_e, repoPath: string) => wrap(() => git.listStashes(repoPath)))
+
+  ipcMain.handle('git:file-at-ref', (_e, repoPath: string, ref: string, path: string) =>
+    wrap(() => git.getFileAtRef(repoPath, ref, path))
+  )
+
+  ipcMain.handle('git:working-file', (_e, repoPath: string, path: string) =>
+    wrap(() => git.getWorkingFileContent(repoPath, path))
+  )
+
+  ipcMain.handle('file:read-editable', (_e, repoPath: string, path: string) =>
+    wrap(() => editFile.readEditableFile(repoPath, path))
+  )
+
+  ipcMain.handle('file:write', (_e, repoPath: string, path: string, content: string) =>
+    wrap(() => editFile.writeEditableFile(repoPath, path, content))
+  )
+
+  ipcMain.handle('git:blame', (_e, repoPath: string, ref: string | null, path: string) =>
+    wrap(() => git.getBlame(repoPath, ref, path))
+  )
+
+  ipcMain.handle('git:tracked-files', (_e, repoPath: string) => wrap(() => git.listTrackedFiles(repoPath)))
+
+  ipcMain.handle(
+    'git:file-history',
+    (_e, repoPath: string, path: string, fromRef: string, limit?: number) =>
+      wrap(() => git.getFileHistory(repoPath, path, fromRef, limit))
+  )
+
+  ipcMain.handle('git:revert-hunk', (_e, repoPath: string, diffText: string, unitId: string) =>
+    wrap(() => git.revertHunk(repoPath, diffText, unitId))
+  )
+
+  ipcMain.handle('git:cherry-pick', (_e, repoPath: string, hash: string | string[]) =>
+    wrap(() => git.cherryPick(repoPath, hash))
+  )
+
+  ipcMain.handle('git:revert-commit', (_e, repoPath: string, hash: string | string[]) =>
+    wrap(() => git.revertCommit(repoPath, hash))
+  )
+
+
+  ipcMain.handle(
+    'git:reset-to',
+    (_e, repoPath: string, hash: string, mode: 'soft' | 'mixed' | 'hard') =>
+      wrap(() => git.resetTo(repoPath, hash, mode))
+  )
+
+  ipcMain.handle(
+    'git:create-branch-at',
+    (_e, repoPath: string, branch: string, startPoint: string, checkout?: boolean) =>
+      wrap(() => git.createBranchAt(repoPath, branch, startPoint, checkout))
+  )
+
+  ipcMain.handle('git:create-tag', (_e, repoPath: string, name: string, hash: string) =>
+    wrap(() => git.createTag(repoPath, name, hash))
+  )
+
+  ipcMain.handle(
+    'git:create-annotated-tag',
+    (_e, repoPath: string, name: string, message: string, hash: string) =>
+      wrap(() => git.createAnnotatedTag(repoPath, name, message, hash))
+  )
+
+  ipcMain.handle('git:create-patch-file', (_e, repoPath: string, hash: string) =>
+    wrap(async () => {
+      const patch = await git.createPatchFromCommit(repoPath, hash)
+      const result = await dialog.showSaveDialog({
+        defaultPath: join(repoPath, `${hash.slice(0, 7)}.patch`)
+      })
+      if (result.canceled || !result.filePath) return
+      await fsp.writeFile(result.filePath, patch, 'utf-8')
+    })
+  )
+}
