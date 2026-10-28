@@ -3,7 +3,15 @@ import { existsSync, promises as fs } from 'fs'
 import { basename, join } from 'path'
 import { runGit } from './gitExec'
 import { getRunCommand } from './settings'
-import { buildRunScript, installCommandFor, lockfileFor, suggestRunCommand, type RunPlan } from '../shared/run'
+import {
+  buildRunScript,
+  installCommandFor,
+  lockfileFor,
+  shellQuote,
+  splitLeadingCd,
+  suggestRunCommand,
+  type RunPlan
+} from '../shared/run'
 
 // Where dependencies were installed from, inside node_modules so a fresh
 // install (or deleting node_modules) clears it.
@@ -28,13 +36,30 @@ async function listFiles(dir: string): Promise<string[]> {
   }
 }
 
-/** The run command suggested for a repo that has none saved yet. */
-export async function suggestCommand(repoPath: string): Promise<string> {
-  const files = await listFiles(repoPath)
+async function suggestIn(dir: string): Promise<string> {
+  const files = await listFiles(dir)
   const packageJson = files.includes('package.json')
-    ? await fs.readFile(join(repoPath, 'package.json'), 'utf-8').catch(() => null)
+    ? await fs.readFile(join(dir, 'package.json'), 'utf-8').catch(() => null)
     : null
   return suggestRunCommand(packageJson, files)
+}
+
+/**
+ * The run command suggested for a repo that has none saved yet. When the repo
+ * root has nothing to run but a subfolder does (an app next to its API, say),
+ * the suggestion changes into that folder first.
+ */
+export async function suggestCommand(repoPath: string): Promise<string> {
+  const atRoot = await suggestIn(repoPath)
+  if (atRoot) return atRoot
+  for (const name of (await listFiles(repoPath)).sort()) {
+    if (name.startsWith('.') || name === 'node_modules') continue
+    const sub = join(repoPath, name)
+    if (!(await fs.stat(sub).catch(() => null))?.isDirectory()) continue
+    const command = await suggestIn(sub)
+    if (command) return `cd ${/^[\w.-]+$/.test(name) ? name : shellQuote(name)} && ${command}`
+  }
+  return ''
 }
 
 /** Puts the run checkout on `commit`, creating it (detached) the first time. */
@@ -116,6 +141,10 @@ export async function planRun(repoPath: string, commit: string | null, runRoot: 
     throw new Error(`${prefix} doesn't exist at commit ${commit.slice(0, 7)}, so there's nothing to run there`)
   }
   await copyEnvFiles(repoPath, cwd)
-  const script = buildRunScript(command, await installStep(cwd), process.platform)
+  // A command that starts with `cd app &&` installs app's dependencies, after the cd.
+  const { dir, dirToken, rest } = splitLeadingCd(command)
+  const script = dir
+    ? `cd ${dirToken} && ${buildRunScript(rest, await installStep(join(cwd, dir)), process.platform)}`
+    : buildRunScript(command, await installStep(cwd), process.platform)
   return { cwd, script, command, commit }
 }

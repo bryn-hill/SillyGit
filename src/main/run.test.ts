@@ -153,7 +153,29 @@ describe('planRun', () => {
   })
 })
 
+describe('a command that changes into a subfolder first', () => {
+  it('installs that folder\'s dependencies after the cd', async () => {
+    mkdirSync(join(dir, 'web'))
+    commit('web/package.json', '{"scripts":{"dev":"vite"}}', 'Web')
+    const head = commit('web/package-lock.json', '{"lockfileVersion":3}', 'Lock')
+    runCommands.set(dir, 'cd web && npm run dev')
+
+    const plan = await planRun(dir, head, runRoot)
+
+    expect(plan.cwd).toBe(runCheckoutPath(runRoot, dir))
+    expect(plan.script).toMatch(/^cd web && npm ci && printf %s '[0-9a-f]+' > '.*\/web\/node_modules\/\.sillygit-installed-lock' && npm run dev$/)
+  })
+})
+
 describe('suggestCommand', () => {
+  it('suggests changing into the subfolder that has the app when the root has none', async () => {
+    mkdirSync(join(dir, 'api'))
+    writeFileSync(join(dir, 'api', 'Program.cs'), '')
+    mkdirSync(join(dir, 'web app'))
+    writeFileSync(join(dir, 'web app', 'package.json'), '{"scripts":{"start":"ng serve"}}')
+    expect(await suggestCommand(dir)).toBe(`cd 'web app' && npm run start`)
+  })
+
   it('guesses from package.json', async () => {
     writeFileSync(join(dir, 'package.json'), '{"scripts":{"dev":"vite"}}')
     expect(await suggestCommand(dir)).toBe('npm run dev')
