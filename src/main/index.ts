@@ -3,6 +3,7 @@ import { basename, dirname, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
 import * as conflicts from './conflicts'
+import * as rebase from './rebase'
 import * as editFile from './editFile'
 import * as branches from './branches'
 import * as ai from './ai'
@@ -26,6 +27,7 @@ import { PrNotifier, type ShownNotification } from './prNotifications'
 import type { NotificationSettings } from '../shared/notifications'
 import type { SprintSettings } from '../shared/sprints'
 import type { SubmitReviewInput } from '../shared/prReview'
+import type { RebaseStep } from '../shared/rebase'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
@@ -398,6 +400,16 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('git:rebase-onto', (_e, repoPath: string, branch: string) =>
     wrap(() => conflicts.rebaseOnto(repoPath, branch))
+  )
+
+  ipcMain.handle('git:plan-interactive-rebase', (_e, repoPath: string, base: string) =>
+    wrap(() => rebase.planInteractiveRebase(repoPath, base))
+  )
+
+  ipcMain.handle(
+    'git:start-interactive-rebase',
+    (_e, repoPath: string, base: string, expectedHead: string, steps: RebaseStep[]) =>
+      wrap(() => rebase.startInteractiveRebase(repoPath, base, expectedHead, steps))
   )
 
   ipcMain.handle('git:continue-operation', (_e, repoPath: string, message?: string) =>

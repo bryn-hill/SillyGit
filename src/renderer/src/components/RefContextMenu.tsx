@@ -32,6 +32,10 @@ export interface RefActions {
   createWorktree: (ref: string, kind: 'local' | 'remote' | 'commit') => void
   createBranchAt: (hash: string) => void
   cherryPick: (hash: string) => void
+  /** Opens the interactive rebase of the current branch's commits after `hash`. */
+  interactiveRebase: (hash: string) => void
+  /** Whether `hash` is below HEAD on the current branch, so an interactive rebase can start there. */
+  canInteractiveRebase: (hash: string) => boolean
   resetTo: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
   revertCommit: (hash: string) => void
   deleteBranch: (target: RefTarget) => void
@@ -149,6 +153,16 @@ export default function RefContextMenu({
   }
   commitItems.push({ id: 'revert', label: 'Revert commit', onSelect: () => actions.revertCommit(hash) })
   sections.push(commitItems)
+
+  if (currentBranch && actions.canInteractiveRebase(hash)) {
+    sections.push([
+      {
+        id: 'interactive-rebase',
+        label: `Interactive rebase ${shortInto} to here…`,
+        onSelect: () => actions.interactiveRebase(hash)
+      }
+    ])
+  }
 
   if (target) {
     const prItems: ContextMenuItem[] = []
