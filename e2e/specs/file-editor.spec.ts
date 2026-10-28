@@ -21,7 +21,7 @@ test.describe('editing a changed file in the app', () => {
     await editor.closeButton.click()
     await editor.expectClosed()
     await sillygit.details.file('hello.txt').click()
-    await expect(sillygit.details.root.locator('.inline-diff')).toContainText('typed in monaco')
+    await sillygit.workingFile.expectShowing('hello.txt', 'typed in monaco')
   })
 
   test('closing with unsaved changes asks first', async ({ sillygit, repo }) => {

@@ -16,7 +16,7 @@ interface Props {
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
   onEditFile?: (path: string) => void
-  onOpenFileView?: (path: string, ref: string, mode: 'history' | 'blame') => void
+  onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
   onCopyText?: (text: string) => void
 }
 

@@ -1363,8 +1363,8 @@ body.ref-dragging * {
 .commit-fullview-diff {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--border);
 }
 
 .commit-fullview-empty {
@@ -1374,11 +1374,34 @@ body.ref-dragging * {
 }
 
 .commit-fullview-sidebar {
+  /* The commit and its files sit left of the diff, like the side bar beside a file view. */
+  order: -1;
   width: 380px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+
+/* A file's diff, history or blame with the side bar's file list kept on its left to pick another file. */
+.main-layout.file-focus > .detail-panel {
+  border-right: 1px solid var(--border);
+}
+
+.working-file-view .commit-fullview-diff {
+  display: flex;
+  flex-direction: column;
+}
+
+.working-file-side {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+button.working-file-stage {
+  font-size: 11.5px;
+  padding: 3px 10px;
 }
 
 .file-row.active {

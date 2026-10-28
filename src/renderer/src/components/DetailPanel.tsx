@@ -1,7 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { CommitDetail, FileStatus, GraphCommit, OperationState, RepoStatus } from '../../../shared/types'
 import type { Selection } from '../App'
-import DiffBlock from './DiffBlock'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { isPrimary, MOD } from '../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
@@ -63,6 +62,15 @@ interface WorkingProps {
   onEditFile: (path: string) => void
   onOpenFileView: (path: string, ref: string | null, mode: 'history' | 'blame') => void
   onCopyText: (text: string) => void
+  onOpenFile: (file: FileStatus, staged: boolean) => void
+  activeFile: ActiveFile | null
+}
+
+/** The file open in the main area, marked in the side bar's lists. */
+export interface ActiveFile {
+  path: string
+  /** For working changes: which list the file was opened from. */
+  staged?: boolean
 }
 
 function WorkingDirectoryView({
@@ -80,15 +88,15 @@ function WorkingDirectoryView({
   conflictActions,
   onEditFile,
   onOpenFileView,
-  onCopyText
+  onCopyText,
+  onOpenFile,
+  activeFile
 }: WorkingProps): JSX.Element {
   const [conflictMenu, setConflictMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   // Conflicted files picked with Cmd/Ctrl- or Shift-click, for bulk actions.
   const [selectedConflicts, setSelectedConflicts] = useState<string[]>([])
   const [conflictAnchor, setConflictAnchor] = useState<string | null>(null)
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; isStaged: boolean } | null>(null)
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [diffText, setDiffText] = useState('')
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null)
@@ -215,24 +223,15 @@ function WorkingDirectoryView({
     else setGenerateError(res.error)
   }
 
-  const toggleExpand = async (file: FileStatus, isStaged: boolean): Promise<void> => {
-    const key = `${isStaged ? 's' : 'u'}:${file.path}`
-    if (expanded === key) {
-      setExpanded(null)
-      return
-    }
-    setExpanded(key)
-    const res = await window.api.diff(repoPath, file.path, isStaged, file.untracked)
-    setDiffText(res.ok ? res.data : `Unable to load diff: ${res.error}`)
-  }
-
   const renderRow = (file: FileStatus, isStaged: boolean): JSX.Element => {
     const key = `${isStaged ? 's' : 'u'}:${file.path}`
+    const active = activeFile?.path === file.path && !!activeFile.staged === isStaged
     return (
       <li key={key}>
         <div
-          className="file-row"
-          onClick={() => toggleExpand(file, isStaged)}
+          className={`file-row ${active ? 'active' : ''}`}
+          aria-current={active}
+          onClick={() => onOpenFile(file, isStaged)}
           onContextMenu={(e) => {
             e.preventDefault()
             setFileMenu({ x: e.clientX, y: e.clientY, file, isStaged })
@@ -280,11 +279,6 @@ function WorkingDirectoryView({
             </button>
           </span>
         </div>
-        {expanded === key && (
-          <div className="inline-diff">
-            <DiffBlock diffText={diffText} />
-          </div>
-        )}
       </li>
     )
   }
@@ -510,7 +504,7 @@ function WorkingDirectoryView({
             deleted: (fileMenu.isStaged ? fileMenu.file.index : fileMenu.file.worktree) === 'D',
             // A newly added file has no commits to blame or list yet.
             untracked: fileMenu.file.untracked || fileMenu.file.index === 'A',
-            onOpenDiff: () => void toggleExpand(fileMenu.file, fileMenu.isStaged),
+            onOpenDiff: () => onOpenFile(fileMenu.file, fileMenu.isStaged),
             onEdit: () => onEditFile(fileMenu.file.path),
             onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
@@ -585,10 +579,12 @@ function CommitDetailView({
   hash,
   onOpenFileDiff,
   onOpenFileView,
-  onCopyText
+  onCopyText,
+  activePath
 }: {
   repoPath: string
   hash: string
+  activePath: string | null
   onOpenFileDiff: (path: string) => void
   onOpenFileView: (path: string, ref: string | null, mode: 'history' | 'blame') => void
   onCopyText: (text: string) => void
@@ -651,7 +647,8 @@ function CommitDetailView({
           {detail.files.map((f) => (
             <li key={f.path}>
               <div
-                className="file-row"
+                className={`file-row ${activePath === f.path ? 'active' : ''}`}
+                aria-current={activePath === f.path}
                 onClick={() => onOpenFileDiff(f.path)}
                 onContextMenu={(e) => {
                   e.preventDefault()
@@ -751,6 +748,9 @@ interface Props {
   onEditFile: (path: string) => void
   onOpenFileView: (path: string, ref: string | null, mode: 'history' | 'blame') => void
   onCopyText: (text: string) => void
+  onOpenWorkingFile: (file: FileStatus, staged: boolean) => void
+  /** The file shown in the main area, if any, to mark in the lists. */
+  activeFile: ActiveFile | null
 }
 
 export default function DetailPanel(props: Props): JSX.Element {
@@ -763,6 +763,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       <CommitDetailView
         repoPath={props.repoPath}
         hash={hash}
+        activePath={props.activeFile?.path ?? null}
         onOpenFileDiff={(path) => props.onOpenCommitFileDiff(hash, path)}
         onOpenFileView={props.onOpenFileView}
         onCopyText={props.onCopyText}
@@ -786,6 +787,8 @@ export default function DetailPanel(props: Props): JSX.Element {
       onEditFile={props.onEditFile}
       onOpenFileView={props.onOpenFileView}
       onCopyText={props.onCopyText}
+      onOpenFile={props.onOpenWorkingFile}
+      activeFile={props.activeFile}
     />
   )
 }

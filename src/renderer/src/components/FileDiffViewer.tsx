@@ -7,18 +7,22 @@ type Layout = 'unified' | 'split'
 
 interface Props {
   repoPath: string
-  hash: string
+  /** The commit whose change is shown, or null for an uncommitted change (see `staged`). */
+  hash: string | null
+  /** For an uncommitted change: whether it's the staged (index) side rather than the working tree's. */
+  staged?: boolean
+  untracked?: boolean
   path: string
   /** The path before this commit, when it renamed the file. */
   oldPath?: string
   diffText: string
   highlightLine?: number
-  onNavigateToCommit: (hash: string) => void
+  onNavigateToCommit?: (hash: string) => void
   onWorkingTreeChanged?: () => void
   /** Opens the working-tree copy of the file in the in-app editor. */
   onEditFile?: (path: string) => void
   /** Opens the file's history or blame view; the buttons are hidden without it. */
-  onOpenFileView?: (path: string, ref: string, mode: 'history' | 'blame') => void
+  onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
 }
 
 function renderLineHtml(text: string, lang: string | null, showWhitespace: boolean): string {
@@ -74,30 +78,39 @@ interface HunkListProps {
   activeHunkIndex: number
   hunkRefs: React.MutableRefObject<Array<HTMLDivElement | null>>
   reverting: string | null
-  onRevert: (unitId: string) => void
+  /** Undefined hides the per-hunk revert button. */
+  revert?: HunkRevert
   highlightLine?: number
+}
+
+interface HunkRevert {
+  label: string
+  title: string
+  onRevert: (unitId: string) => void
 }
 
 function HunkBar({
   hunk,
   reverting,
-  onRevert
+  revert
 }: {
   hunk: RenderedHunk
   reverting: string | null
-  onRevert: (unitId: string) => void
+  revert?: HunkRevert
 }): JSX.Element {
   return (
     <div className="diff-hunk-bar">
       <span className="diff-hunk-header-text">{hunk.header}</span>
-      <button
-        className="hunk-revert-btn"
-        disabled={reverting === hunk.id}
-        onClick={() => onRevert(hunk.id)}
-        title="Revert this change in your working directory"
-      >
-        ↺ {reverting === hunk.id ? 'Reverting…' : 'Revert Hunk'}
-      </button>
+      {revert && (
+        <button
+          className="hunk-revert-btn"
+          disabled={reverting === hunk.id}
+          onClick={() => revert.onRevert(hunk.id)}
+          title={revert.title}
+        >
+          ↺ {reverting === hunk.id ? 'Reverting…' : revert.label}
+        </button>
+      )}
     </div>
   )
 }
@@ -109,7 +122,7 @@ function UnifiedDiff({
   activeHunkIndex,
   hunkRefs,
   reverting,
-  onRevert,
+  revert,
   highlightLine
 }: HunkListProps): JSX.Element {
   const highlightRef = useRef<HTMLDivElement | null>(null)
@@ -130,7 +143,7 @@ function UnifiedDiff({
           }}
           className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
         >
-          <HunkBar hunk={hunk} reverting={reverting} onRevert={onRevert} />
+          <HunkBar hunk={hunk} reverting={reverting} revert={revert} />
           {hunk.lines.map((line, li) => {
             const isHighlighted = highlightLine != null && line.newLine === highlightLine
             return (
@@ -164,7 +177,7 @@ function SplitDiff({
   activeHunkIndex,
   hunkRefs,
   reverting,
-  onRevert
+  revert
 }: HunkListProps): JSX.Element {
   if (hunks.length === 0) return <div className="diff-empty">No changes.</div>
   return (
@@ -179,7 +192,7 @@ function SplitDiff({
             }}
             className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
           >
-            <HunkBar hunk={hunk} reverting={reverting} onRevert={onRevert} />
+            <HunkBar hunk={hunk} reverting={reverting} revert={revert} />
             <div className="diff-split-rows">
               {rows.map((row, ri) => (
                 <div key={ri} className="diff-split-row">
@@ -214,6 +227,8 @@ function SplitDiff({
 export default function FileDiffViewer({
   repoPath,
   hash,
+  staged = false,
+  untracked = false,
   path,
   oldPath,
   diffText,
@@ -249,7 +264,7 @@ export default function FileDiffViewer({
     setActiveHunkIndex(0)
     setRevertStatus(null)
     hunkRefs.current = []
-  }, [repoPath, hash, path]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [repoPath, hash, staged, path]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (highlightLine == null) return
@@ -263,20 +278,31 @@ export default function FileDiffViewer({
       return
     }
     let cancelled = false
-    window.api.commitFileDiff(repoPath, hash, path, true, oldPath).then((res) => {
+    const request =
+      hash == null
+        ? window.api.diff(repoPath, path, staged, untracked, true)
+        : window.api.commitFileDiff(repoPath, hash, path, true, oldPath)
+    request.then((res) => {
       if (cancelled) return
       if (res.ok) setEffectiveDiffText(res.data)
     })
     return () => {
       cancelled = true
     }
-  }, [ignoreWhitespace, repoPath, hash, path, oldPath, diffText])
+  }, [ignoreWhitespace, repoPath, hash, staged, untracked, path, oldPath, diffText])
 
   useEffect(() => {
     if (mode !== 'file') return
     let cancelled = false
     setFileLoading(true)
-    window.api.fileAtRef(repoPath, hash, path).then((res) => {
+    // An uncommitted change shows the file as staged (`:path` is the index copy) or on disk.
+    const request =
+      hash != null
+        ? window.api.fileAtRef(repoPath, hash, path)
+        : staged
+          ? window.api.fileAtRef(repoPath, '', path)
+          : window.api.workingFile(repoPath, path)
+    request.then((res) => {
       if (cancelled) return
       setFileLoading(false)
       setFileContent(res.ok ? res.data : `Unable to load file: ${res.error}`)
@@ -284,7 +310,7 @@ export default function FileDiffViewer({
     return () => {
       cancelled = true
     }
-  }, [mode, repoPath, hash, path])
+  }, [mode, repoPath, hash, staged, path, diffText])
 
   useEffect(() => {
     if (!revertStatus) return
@@ -313,12 +339,21 @@ export default function FileDiffViewer({
     const res = await window.api.revertHunk(repoPath, effectiveDiffText, unitId)
     setReverting(null)
     if (res.ok) {
-      setRevertStatus({ ok: true, message: 'Reverted into your working directory.' })
+      setRevertStatus({ ok: true, message: hash == null ? 'Discarded that change.' : 'Reverted into your working directory.' })
       onWorkingTreeChanged?.()
     } else {
       setRevertStatus({ ok: false, message: res.error })
     }
   }
+
+  // A commit's hunk is undone in the working tree; an unstaged one is simply discarded.
+  // Staged and untracked changes have no working-tree hunk to undo this way.
+  const revert: HunkRevert | undefined =
+    hash != null
+      ? { label: 'Revert Hunk', title: 'Revert this change in your working directory', onRevert: handleRevertHunk }
+      : !staged && !untracked
+        ? { label: 'Discard Hunk', title: 'Discard this change from your working directory', onRevert: handleRevertHunk }
+        : undefined
 
   return (
     <div className="file-diff-viewer">
@@ -432,7 +467,7 @@ export default function FileDiffViewer({
             activeHunkIndex={activeHunkIndex}
             hunkRefs={hunkRefs}
             reverting={reverting}
-            onRevert={handleRevertHunk}
+            revert={revert}
             highlightLine={highlightLine}
           />
         ) : (
@@ -443,7 +478,7 @@ export default function FileDiffViewer({
             activeHunkIndex={activeHunkIndex}
             hunkRefs={hunkRefs}
             reverting={reverting}
-            onRevert={handleRevertHunk}
+            revert={revert}
           />
         )}
       </div>
