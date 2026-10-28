@@ -17,6 +17,7 @@ import * as prReview from './prReview'
 import * as quickActions from './quickActions'
 import * as accounts from './accounts'
 import * as run from './run'
+import * as selfUpdate from './selfUpdate'
 import * as github from './github'
 import { AvatarResolver, type AvatarSources } from './avatars'
 import { githubAccess, remoteLocations } from './hosting'
@@ -33,6 +34,7 @@ import type { NotificationSettings } from '../shared/notifications'
 import type { SprintSettings } from '../shared/sprints'
 import type { SubmitReviewInput } from '../shared/prReview'
 import type { RebaseStep } from '../shared/rebase'
+import { NO_SELF_UPDATE, type SelfUpdateStatus, type SelfUpdateStep } from '../shared/selfUpdate'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
@@ -220,7 +222,95 @@ function startPrNotifications(): void {
   void prNotifier.restart()
 }
 
+// SillyGit updating itself from the git checkout it runs from (see selfUpdate.ts).
+const UPDATE_CHECK_MS = 30 * 60 * 1000
+let updateCheckout: Promise<string | null> | null = null
+let updateStatus: SelfUpdateStatus = NO_SELF_UPDATE
+let updateStep: SelfUpdateStep | null = null
+
+/** The checkout SillyGit runs from; null for a packaged build. E2E tests point it at a scratch clone. */
+function selfUpdateCheckout(): Promise<string | null> {
+  updateCheckout ??= (async () => {
+    const override = process.env['SILLYGIT_UPDATE_CHECKOUT']
+    if (override) return override
+    if (app.isPackaged || isE2E) return null
+    return selfUpdate.findCheckout(app.getAppPath())
+  })()
+  return updateCheckout
+}
+
+function sendUpdateState(): void {
+  mainWindow?.webContents.send('self-update:changed', updateStatus, updateStep)
+}
+
+async function refreshUpdateStatus(fetch: boolean): Promise<SelfUpdateStatus> {
+  const root = await selfUpdateCheckout()
+  if (!root) return updateStatus
+  try {
+    const next = await selfUpdate.checkForUpdate(root, fetch)
+    // Without a fetch, the last fetch's time and failure still stand.
+    updateStatus = fetch ? next : { ...next, checkedAt: updateStatus.checkedAt, error: next.error ?? updateStatus.error }
+  } catch (err) {
+    updateStatus = { ...updateStatus, supported: true, root, error: err instanceof Error ? err.message : String(err) }
+  }
+  sendUpdateState()
+  return updateStatus
+}
+
+/** Starts the updated SillyGit and quits this one. */
+function relaunch(): void {
+  // A dev-server run would come back pointing at a dev server that quits
+  // along with this process, so load the build the update just made instead.
+  Reflect.deleteProperty(process.env, 'ELECTRON_RENDERER_URL')
+  const appPath = app.getAppPath()
+  // electron-vite starts Electron with the relative entry "."; make it absolute.
+  const args = process.argv.slice(1).map((arg) => (arg === '.' ? appPath : arg))
+  app.relaunch({ args })
+  app.quit()
+}
+
+function startUpdateChecks(): void {
+  setTimeout(() => void refreshUpdateStatus(true), 5000)
+  setInterval(() => {
+    if (!updateStep) void refreshUpdateStatus(true)
+  }, UPDATE_CHECK_MS)
+}
+
 function registerIpcHandlers(): void {
+  ipcMain.handle('self-update:status', async () => {
+    if (!updateStatus.supported) await refreshUpdateStatus(false)
+    return { status: updateStatus, step: updateStep }
+  })
+
+  ipcMain.handle('self-update:check', () => wrap(() => refreshUpdateStatus(true)))
+
+  ipcMain.handle('self-update:apply', () =>
+    wrap(async () => {
+      const root = await selfUpdateCheckout()
+      if (!root) throw new Error("SillyGit isn't running from a git checkout, so it can't update itself.")
+      if (updateStep) throw new Error('SillyGit is already updating.')
+      try {
+        const result = await selfUpdate.applyUpdate(root, {
+          onStep: (step) => {
+            updateStep = step
+            sendUpdateState()
+          },
+          npm: selfUpdate.runNpm
+        })
+        if (result.updated) {
+          updateStep = 'restarting'
+          sendUpdateState()
+          // Let the window show "Restarting…" (and any stash notice) first.
+          setTimeout(relaunch, result.stashedChanges ? 4000 : 800)
+        }
+        return result
+      } finally {
+        if (updateStep !== 'restarting') updateStep = null
+        void refreshUpdateStatus(false)
+      }
+    })
+  )
+
   ipcMain.handle('repo:open-dialog', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory']
@@ -868,6 +958,7 @@ app.whenReady().then(() => {
   if (!app.isPackaged) app.dock?.setIcon(icon)
   createWindow()
   if (!isE2E) startPrNotifications()
+  if (!isE2E || process.env['SILLYGIT_UPDATE_CHECKOUT']) startUpdateChecks()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

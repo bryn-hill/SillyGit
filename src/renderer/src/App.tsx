@@ -42,6 +42,8 @@ import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName, type MergeToolSettings } fr
 import type { ConflictSnapshot } from '../../shared/types'
 import CommandPalette, { type Command } from './components/CommandPalette'
 import ActivityLog from './components/ActivityLog'
+import UpdateDialog from './components/UpdateDialog'
+import { NO_SELF_UPDATE, type SelfUpdateStatus, type SelfUpdateStep } from '../../shared/selfUpdate'
 import ContextMenu from './components/ContextMenu'
 import RefDragLayer from './components/RefDrag'
 import { shortRef } from './components/RefContextMenu'
@@ -179,6 +181,8 @@ export default function App(): JSX.Element {
   const [palette, setPalette] = useState<'modal' | 'dropdown' | null>(null)
   const showPalette = palette !== null
   const [showActivity, setShowActivity] = useState(false)
+  const [selfUpdate, setSelfUpdate] = useState<{ status: SelfUpdateStatus; step: SelfUpdateStep | null } | null>(null)
+  const [showUpdate, setShowUpdate] = useState(false)
   const terminalRef = useRef<TerminalPanelHandle | null>(null)
   const [runningKeys, setRunningKeys] = useState<string[]>([])
   const [runMode, setRunMode] = useState<RunMode>(loadRunMode)
@@ -195,6 +199,17 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     window.api.getAutoFetchMinutes().then(setAutoFetchMinutes)
+  }, [])
+
+  // SillyGit's own checkout against origin/main, for the Update button.
+  useEffect(() => {
+    let live = true
+    window.api.selfUpdateStatus().then((state) => live && setSelfUpdate(state))
+    const stop = window.api.onSelfUpdateChanged((status, step) => setSelfUpdate({ status, step }))
+    return () => {
+      live = false
+      stop()
+    }
   }, [])
 
   const handleAutoFetchChange = (minutes: number): void => {
@@ -1626,6 +1641,7 @@ export default function App(): JSX.Element {
       add('copy-path', 'Copy repository path', () => handleCopyText(repoPath))
     }
     add('activity', 'Activity log', () => setShowActivity(true))
+    if (selfUpdate?.status.supported) add('update-sillygit', 'Update SillyGit…', () => setShowUpdate(true))
     add('launchpad', showLaunchpad ? 'Close Launchpad' : 'Open Launchpad', () => setShowLaunchpad((v) => !v))
     if (tabs.length > 1) {
       add('next-tab', 'Next tab', () => cycleTab(1), 'Ctrl+Tab')
@@ -1798,6 +1814,9 @@ export default function App(): JSX.Element {
         onToggleTerminal={() => setShowTerminal((v) => !v)}
         claudeVisible={showClaude}
         onToggleClaude={() => setShowClaude((v) => !v)}
+        selfUpdate={selfUpdate?.status ?? NO_SELF_UPDATE}
+        updating={!!selfUpdate?.step}
+        onOpenUpdate={() => setShowUpdate(true)}
       />
       {error && (
         <div className="error-banner" role="alert" onClick={() => setError(null)}>
@@ -2038,6 +2057,9 @@ export default function App(): JSX.Element {
         />
       )}
       {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}
+      {showUpdate && selfUpdate && (
+        <UpdateDialog status={selfUpdate.status} step={selfUpdate.step} onClose={() => setShowUpdate(false)} />
+      )}
       {showActivity && <ActivityLog repoPath={repoPath} onClose={() => setShowActivity(false)} />}
       {prompt && (
         <PromptDialog

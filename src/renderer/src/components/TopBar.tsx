@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX, type ReactNode } from 'react'
 import type { BranchInfo, PullMode, RepoStatus } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
+import type { SelfUpdateStatus } from '../../../shared/selfUpdate'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
@@ -51,6 +52,10 @@ interface Props {
   onToggleTerminal: () => void
   claudeVisible: boolean
   onToggleClaude: () => void
+  /** Where SillyGit's own checkout stands against origin/main; the Update button hides for packaged builds. */
+  selfUpdate: SelfUpdateStatus
+  updating: boolean
+  onOpenUpdate: () => void
 }
 
 export function FolderIcon(): JSX.Element {
@@ -221,6 +226,28 @@ function ActionsIcon(): JSX.Element {
   )
 }
 
+function UpdateIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M13 8a5 5 0 1 1-1.5-3.55M13 2.5v2.5h-2.5"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M8 5.5v4M6.3 8 8 9.7 9.7 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** The Update button's tooltip. */
+export function updateTitle(status: SelfUpdateStatus, updating: boolean): string {
+  if (updating) return 'Updating SillyGit…'
+  if (status.behind > 0) return `Update SillyGit: ${status.behind} new commit${status.behind === 1 ? '' : 's'} on main`
+  return 'SillyGit is up to date. Click to check again.'
+}
+
 function RunIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -336,7 +363,10 @@ export default function TopBar({
   terminalVisible,
   onToggleTerminal,
   claudeVisible,
-  onToggleClaude
+  onToggleClaude,
+  selfUpdate,
+  updating,
+  onOpenUpdate
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [showRepoMenu, setShowRepoMenu] = useState(false)
@@ -630,6 +660,17 @@ export default function TopBar({
         </div>
       )}
       <div className="top-bar-right">
+        {selfUpdate.supported && (
+          <ToolButton
+            label={updating ? 'Updating' : 'Update'}
+            ariaLabel="Update SillyGit"
+            icon={<UpdateIcon />}
+            active={updating || selfUpdate.behind > 0}
+            onClick={onOpenUpdate}
+            title={updateTitle(selfUpdate, updating)}
+            badge={selfUpdate.behind}
+          />
+        )}
         <ToolButton
           label="Actions"
           icon={<ActionsIcon />}
