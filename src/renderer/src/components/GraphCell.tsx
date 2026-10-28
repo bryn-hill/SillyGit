@@ -97,7 +97,7 @@ export default function GraphCell({
     )
   }
 
-  // While the merge animation plays, its own lines draw the joins.
+  // While the animation plays, its own lines draw the joins.
   const joinClass = burst !== undefined ? 'merge-burst-join' : undefined
 
   const hasBelowOwn = row.lane < row.after.length && row.after[row.lane] !== null
@@ -168,10 +168,12 @@ export default function GraphCell({
       <svg width={width} height={ROW_HEIGHT} className="graph-svg">
         {elements}
       </svg>
-      {isMerge && burst !== undefined && <MergeBurst key={burst} row={row} />}
+      {burst !== undefined && <MergeBurst key={`burst-${burst}`} row={row} />}
       {!isMerge && (
         <Avatar
-          className="graph-node-avatar"
+          // Keyed so the pop replays for each new animation.
+          key={`avatar-${burst ?? 'still'}`}
+          className={`graph-node-avatar ${burst !== undefined ? 'commit-burst-avatar' : ''}`}
           name={row.commit.author}
           email={row.commit.authorEmail}
           hash={row.commit.hash}
@@ -185,19 +187,20 @@ export default function GraphCell({
   )
 }
 
-// How far below the merge the lines start growing from, in rows.
-const BURST_REACH = 2.5
-
 /**
- * The merge animation, in the style of Mini Metro: each parent's line grows
- * up into the merge like a new metro line, a clean station pops in where they
- * join, and everything settles into the normal graph. Drawn over the rows
- * below, so it can't take clicks.
+ * The new commit / merge animation, in the style of Mini Metro: each parent's
+ * line grows up into the new commit like a metro line being extended, a clean
+ * station (a merge's dot, or a commit's avatar) pops in where it ends, and
+ * everything settles into the normal graph. Drawn over the rows below, so it
+ * can't take clicks.
  */
 function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
   const cy = ROW_HEIGHT / 2
   const x0 = laneX(row.lane)
-  const startY = cy + ROW_HEIGHT * BURST_REACH
+  const isMerge = row.commit.parents.length > 1
+  // How far below the commit the lines start growing from, in rows: a plain
+  // commit's parent is usually the next row down.
+  const startY = cy + ROW_HEIGHT * (isMerge ? 2.5 : 1)
   const lines: { key: string; d: string; color: string }[] = []
   if (row.lane < row.after.length && row.after[row.lane] !== null) {
     lines.push({ key: 'own', d: `M ${x0} ${startY} L ${x0} ${cy}`, color: row.color })
@@ -235,8 +238,8 @@ function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
           style={{ '--line-delay': `${i * 70}ms` } as CSSProperties}
         />
       ))}
-      <circle className="merge-burst-pulse" cx={x0} cy={cy} r={7} stroke={row.color} />
-      <circle className="merge-burst-station" cx={x0} cy={cy} r={6} stroke={row.color} />
+      <circle className="merge-burst-pulse" cx={x0} cy={cy} r={isMerge ? 7 : 10} stroke={row.color} />
+      {isMerge && <circle className="merge-burst-station" cx={x0} cy={cy} r={6} stroke={row.color} />}
     </svg>
   )
 }

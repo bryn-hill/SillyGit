@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures'
 
-test.describe('merge animation', () => {
+test.describe('new commit and merge animation', () => {
   test.beforeEach(async ({ repo }) => {
     repo.addFeatureBranch()
   })
@@ -14,6 +14,16 @@ test.describe('merge animation', () => {
 
     const mergeRow = sillygit.graph.row("Merge branch 'feature'")
     await expect(mergeRow.getByTestId('merge-burst')).toHaveCount(1)
+    await expect(sillygit.graph.mergeBurst).toHaveCount(0)
+  })
+
+  test('plays over a new commit on the checked-out branch, made in the app or elsewhere', async ({ sillygit, repo }) => {
+    await sillygit.openRepository(repo.path)
+
+    repo.commitFile('outside.txt', 'made elsewhere\n', 'Commit from the command line')
+
+    const row = sillygit.graph.row('Commit from the command line')
+    await expect(row.getByTestId('merge-burst')).toHaveCount(1)
     await expect(sillygit.graph.mergeBurst).toHaveCount(0)
   })
 

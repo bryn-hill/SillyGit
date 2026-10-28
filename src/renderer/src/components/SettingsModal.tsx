@@ -105,11 +105,11 @@ export default function SettingsModal({
                 checked={mergeAnimation}
                 onChange={(e) => onMergeAnimationChange(e.target.checked)}
               />
-              Animate merges on the graph
+              Animate new commits and merges on the graph
             </label>
             <div className="modal-hint">
-              When a merge lands on the checked-out branch, its lines grow into the new commit like a metro map. If your
-              system asks for reduced motion, the new commit just fades in.
+              When a commit or merge lands on the checked-out branch, its lines grow into it like a metro map. If your
+              system asks for reduced motion, nothing moves.
             </div>
           </section>
 

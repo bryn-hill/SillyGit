@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { GraphRow } from '../../lib/graphLayout'
-import { MERGE_BURST_MS, newMergeAtHead } from '../../lib/mergeBurst'
+import { MERGE_BURST_MS, newCommitAtHead } from '../../lib/mergeBurst'
 
 /**
- * The merge commit to play the merge animation on, if one just landed on the
- * checked-out branch. `id` changes with each new merge so the animation restarts.
+ * The commit to play the commit / merge animation on, if one just landed on
+ * the checked-out branch. `id` changes with each new one so the animation restarts.
  */
 export function useMergeBurst(
   rows: GraphRow[],
@@ -12,13 +12,13 @@ export function useMergeBurst(
   enabled: boolean
 ): { hash: string; id: number } | null {
   // Compared with the last graph while rendering, so the burst starts in the
-  // same frame the merge commit first appears.
+  // same frame the new commit first appears.
   const [prevRows, setPrevRows] = useState(rows)
   const [burst, setBurst] = useState<{ hash: string; id: number } | null>(null)
   if (rows !== prevRows) {
     setPrevRows(rows)
-    const merged = enabled ? newMergeAtHead(prevRows, rows, headHash) : null
-    if (merged) setBurst({ hash: merged, id: (burst?.id ?? 0) + 1 })
+    const landed = enabled ? newCommitAtHead(prevRows, rows, headHash) : null
+    if (landed) setBurst({ hash: landed, id: (burst?.id ?? 0) + 1 })
   }
   useEffect(() => {
     if (!burst) return
