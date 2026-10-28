@@ -10,13 +10,24 @@ interface ToolButtonProps {
   ariaLabel?: string
   active?: boolean
   badge?: number
+  className?: string
 }
 
 /** A GitKraken-style toolbar button: a small label above its icon. */
-export default function ToolButton({ label, icon, onClick, disabled, title, ariaLabel, active, badge }: ToolButtonProps): JSX.Element {
+export default function ToolButton({
+  label,
+  icon,
+  onClick,
+  disabled,
+  title,
+  ariaLabel,
+  active,
+  badge,
+  className
+}: ToolButtonProps): JSX.Element {
   return (
     <button
-      className={`tool-button ${active ? 'tool-button-active' : ''}`}
+      className={`tool-button ${active ? 'tool-button-active' : ''} ${className ?? ''}`}
       disabled={disabled}
       onClick={onClick}
       title={title}

@@ -29,6 +29,15 @@ export class CommitGraph {
     return this.row(subject).getByRole('button', { name: /more branches and tags/ })
   }
 
+  get searchBox(): Locator {
+    return this.root.page().getByRole('searchbox', { name: 'Search commits' })
+  }
+
+  /** The Branch / Tag cell of a commit's row. */
+  refCell(subject: string): Locator {
+    return this.row(subject).getByTestId('ref-cell')
+  }
+
   /** The Branch / Tag column's resize handle. */
   get refColumnResizer(): Locator {
     return this.root.page().getByRole('separator', { name: 'Resize branch and tag column' })

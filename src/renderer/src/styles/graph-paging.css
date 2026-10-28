@@ -22,8 +22,14 @@
   letter-spacing: normal;
 }
 
+.graph-search {
+  flex: 0 1 180px;
+  min-width: 90px;
+}
+
 .graph-search input {
-  width: 180px;
+  width: 100%;
+  min-width: 0;
   font-size: 12px;
   padding: 3px 8px;
   text-transform: none;

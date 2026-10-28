@@ -13,6 +13,7 @@ import {
   FetchIcon,
   FolderIcon,
   GearIcon,
+  MoreIcon,
   NewBranchIcon,
   PopIcon,
   PullIcon,
@@ -126,7 +127,8 @@ export default function TopBar({
   const [showRepoMenu, setShowRepoMenu] = useState(false)
   const [showPullMenu, setShowPullMenu] = useState(false)
   const [showRunMenu, setShowRunMenu] = useState(false)
-  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showRunMenu
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showRunMenu || showMoreMenu
 
   // Escape closes whichever top-bar menu is open.
   useEffect(() => {
@@ -137,6 +139,7 @@ export default function TopBar({
       setShowRepoMenu(false)
       setShowPullMenu(false)
       setShowRunMenu(false)
+      setShowMoreMenu(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -146,10 +149,10 @@ export default function TopBar({
   const pullLabel = PULL_OPTIONS.find((o) => o.mode === pullMode)?.label ?? 'Pull'
   const noRemote = 'This repository has no remotes'
   return (
-    <div className="top-bar">
+    <div className="top-bar" data-testid="top-bar">
       <div className="top-bar-left">
         <div className="breadcrumb">
-          <div className="breadcrumb-segment-wrap">
+          <div className="breadcrumb-segment-wrap breadcrumb-repo">
             <button
               className="breadcrumb-segment"
               onClick={() => (recentRepos.length > 0 ? setShowRepoMenu((v) => !v) : onOpenRepo())}
@@ -246,6 +249,7 @@ export default function TopBar({
           />
           <ToolButton
             label="Redo"
+            className="tool-overflowable"
             icon={<RedoIcon />}
             disabled={busy || !redoLabel}
             onClick={onRedo}
@@ -326,6 +330,7 @@ export default function TopBar({
           />
           <ToolButton
             label="Stash"
+            className="tool-overflowable"
             icon={<StashIcon />}
             disabled={busy || !hasChanges}
             onClick={onStash}
@@ -333,11 +338,48 @@ export default function TopBar({
           />
           <ToolButton
             label="Pop"
+            className="tool-overflowable"
             icon={<PopIcon />}
             disabled={busy || stashCount === 0}
             onClick={onStashPop}
             title={stashCount > 0 ? 'Pop the most recent stash' : 'No stashes'}
           />
+          <div className="tool-split tool-more">
+            <ToolButton
+              label="More"
+              ariaLabel="More actions"
+              icon={<MoreIcon />}
+              active={showMoreMenu}
+              onClick={() => setShowMoreMenu((v) => !v)}
+              title="Redo, stash and pop"
+            />
+            {showMoreMenu && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setShowMoreMenu(false)} />
+                <div className="branch-dropdown tool-menu" role="menu" aria-label="More actions">
+                  {[
+                    { label: 'Redo', icon: <RedoIcon />, enabled: !busy && !!redoLabel, run: onRedo },
+                    { label: 'Stash', icon: <StashIcon />, enabled: !busy && hasChanges, run: onStash },
+                    { label: 'Pop', icon: <PopIcon />, enabled: !busy && stashCount > 0, run: onStashPop }
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      role="menuitem"
+                      className="branch-dropdown-item"
+                      aria-disabled={!item.enabled}
+                      onClick={() => {
+                        if (!item.enabled) return
+                        setShowMoreMenu(false)
+                        item.run()
+                      }}
+                    >
+                      {item.icon} {item.label}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <div className="toolbar-divider" />
           <div className="tool-split">
             <ToolButton

@@ -1,7 +1,9 @@
 /* ---------- sidebar: branch tree ---------- */
 
 .sidebar {
-  width: 230px;
+  /* Narrows with the window so the graph keeps room at half-screen widths. */
+  width: clamp(170px, 22vw, 230px);
+  flex-shrink: 0;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -16,6 +18,7 @@
 
 .filter-input {
   flex: 1;
+  min-width: 0;
 }
 
 .new-branch-row {

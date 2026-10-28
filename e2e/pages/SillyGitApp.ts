@@ -42,6 +42,9 @@ export class SillyGitApp {
   readonly terminalButton: Locator
   /** The GitKraken-style toolbar: Undo, Redo, Pull, Push, Branch, Stash, Pop, Terminal. */
   readonly toolbar: Locator
+  readonly topBar: Locator
+  /** The ⋯ button that holds Redo, Stash and Pop once the window is too narrow for them. */
+  readonly moreButton: Locator
   readonly actionsButton: Locator
   /** The Actions dropdown opened by actionsButton. */
   readonly actions: Locator
@@ -74,6 +77,8 @@ export class SillyGitApp {
     this.claudeButton = page.getByTitle('Claude Code (Ctrl+Esc)')
     this.terminalButton = page.getByTitle('Toggle terminal (Ctrl+`)')
     this.toolbar = page.getByRole('toolbar', { name: 'Git actions' })
+    this.topBar = page.getByTestId('top-bar')
+    this.moreButton = this.toolbarButton('More actions')
     this.actionsButton = page.getByRole('button', { name: 'Actions', exact: true })
     this.actions = page.getByRole('dialog', { name: 'Actions' })
   }
@@ -128,6 +133,15 @@ export class SillyGitApp {
     await this.repositoryCrumb.click()
     await this.page.getByRole('menuitem', { name: 'Open repository…' }).click()
     await expect(this.repositoryCrumb).toContainText(repoPath.split('/').pop()!)
+  }
+
+  /** Resizes the window's content area, like dragging it to half the screen. */
+  async resizeWindow(width: number, height: number): Promise<void> {
+    await this.electronApp.evaluate(
+      ({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h),
+      [width, height]
+    )
+    await expect.poll(() => this.page.evaluate<number>('window.innerWidth')).toBe(width)
   }
 
   async toggleClaude(): Promise<void> {

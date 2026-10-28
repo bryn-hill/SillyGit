@@ -2,7 +2,8 @@
 
 .commit-graph {
   width: 420px;
-  min-width: 260px;
+  min-width: 220px;
+  container: commit-graph / inline-size;
   flex: 1 1 420px;
   border-right: 1px solid var(--border);
   display: flex;
@@ -20,11 +21,38 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .col-graph {
   width: 56px;
   padding-left: 4px;
+  flex-shrink: 0;
+}
+
+.col-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* However wide it was dragged, the branch column leaves the graph and the
+   messages most of a narrow window: at most 35% once the graph is under about
+   550px wide. The header and the rows share the cap. */
+.commit-graph-header .col-refs,
+.ref-cell {
+  max-width: max(35%, 100% - 360px);
+  flex-shrink: 0;
+}
+
+/* In a narrow graph the subject matters most: the author and time are in the
+   detail panel, and the header label gives way to the search box. */
+@container commit-graph (max-width: 480px) {
+  .col-message,
+  .graph-row-meta {
+    display: none;
+  }
+
 }
 
 .commit-graph-body {
