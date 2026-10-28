@@ -2,12 +2,14 @@ import { expect, type Locator, type Page } from '@playwright/test'
 
 /** The conflict parts of the side bar's working changes: header, Conflicted Files, commit/abort buttons. */
 export class ConflictPanel {
+  readonly details: Locator
   readonly header: Locator
   readonly conflictedFiles: Locator
   readonly markAllResolvedButton: Locator
 
   constructor(private readonly page: Page) {
     const details = page.getByRole('complementary', { name: 'Details' })
+    this.details = details
     this.header = details.getByRole('status', { name: 'Operation in progress' })
     this.conflictedFiles = details.getByRole('region', { name: 'Conflicted files' })
     this.markAllResolvedButton = this.conflictedFiles.getByRole('button', { name: 'Mark All Resolved' })
@@ -46,6 +48,9 @@ export class ConflictPanel {
   }
 
   async expectNoConflictedFiles(): Promise<void> {
+    // The merge tool and its prompts take the side bar's place, so wait for
+    // it to be back: otherwise this passes while a save is still running.
+    await expect(this.details).toBeVisible()
     await expect(this.conflictedFiles).toHaveCount(0)
   }
 }
