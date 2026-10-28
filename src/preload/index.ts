@@ -107,6 +107,15 @@ const api = {
     ipcRenderer.invoke('git:merge-branch', repoPath, branch),
   rebaseOnto: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:rebase-onto', repoPath, branch),
+  planInteractiveRebase: (repoPath: string, base: string): Wrapped<import('../shared/rebase').RebasePlan> =>
+    ipcRenderer.invoke('git:plan-interactive-rebase', repoPath, base),
+  startInteractiveRebase: (
+    repoPath: string,
+    base: string,
+    expectedHead: string,
+    steps: import('../shared/rebase').RebaseStep[]
+  ): Wrapped<import('../shared/types').ConflictableResult> =>
+    ipcRenderer.invoke('git:start-interactive-rebase', repoPath, base, expectedHead, steps),
   continueOperation: (repoPath: string, message?: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:continue-operation', repoPath, message),
   abortOperation: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:abort-operation', repoPath),

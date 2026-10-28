@@ -5,6 +5,7 @@ import { CommitView } from './CommitView'
 import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
 import { FileEditor } from './FileEditor'
+import { InteractiveRebase } from './InteractiveRebase'
 import { MergeTool } from './MergeTool'
 import { PullRequestReview } from './PullRequestReview'
 import { RepoTabs } from './RepoTabs'
@@ -26,6 +27,7 @@ export class SillyGitApp {
   readonly tabs: RepoTabs
   readonly editor: FileEditor
   readonly pullRequest: PullRequestReview
+  readonly rebase: InteractiveRebase
 
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
@@ -56,6 +58,7 @@ export class SillyGitApp {
     this.tabs = new RepoTabs(page)
     this.editor = new FileEditor(page)
     this.pullRequest = new PullRequestReview(page)
+    this.rebase = new InteractiveRebase(page)
 
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })

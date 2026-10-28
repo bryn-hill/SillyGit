@@ -161,6 +161,37 @@ export async function runMayConflict(
 // Keep git from opening an editor for commit messages it would ask about.
 const NO_EDITOR = { GIT_EDITOR: 'true' }
 
+/** Where an interactive rebase started from the app keeps its todo, messages and editor script. */
+export async function interactiveRebaseDir(repoPath: string): Promise<string> {
+  return join(await gitDir(repoPath), 'sillygit-rebase')
+}
+
+/**
+ * The editor for a rebase: during an interactive rebase started from the app,
+ * its script, which answers with the messages the user typed for rewords and
+ * squashes (see rebase.ts); otherwise none.
+ */
+export async function rebaseEditorEnv(repoPath: string): Promise<Record<string, string>> {
+  const script = join(await interactiveRebaseDir(repoPath), 'editor.sh')
+  if (!(await exists(script))) return NO_EDITOR
+  return { GIT_EDITOR: `sh '${script.replace(/\\/g, '/').replace(/'/g, `'\\''`)}'` }
+}
+
+/** Removes an interactive rebase's scratch files once no rebase is left in progress. */
+export async function cleanUpInteractiveRebase(repoPath: string): Promise<void> {
+  if ((await getOperationState(repoPath))?.kind === 'rebase') return
+  await fsp.rm(await interactiveRebaseDir(repoPath), { recursive: true, force: true }).catch(() => {})
+}
+
+/** Runs a rebase command with the right editor, and tidies up when the rebase is over. */
+async function runRebase(repoPath: string, args: string[]): Promise<ConflictableResult> {
+  try {
+    return await runMayConflict(repoPath, args, await rebaseEditorEnv(repoPath))
+  } finally {
+    await cleanUpInteractiveRebase(repoPath)
+  }
+}
+
 export async function mergeBranch(repoPath: string, branch: string): Promise<ConflictableResult> {
   return runMayConflict(repoPath, ['merge', '--no-edit', branch], NO_EDITOR)
 }
@@ -185,9 +216,7 @@ export async function continueOperation(repoPath: string, message?: string): Pro
   if (await hasUnmergedPaths(repoPath)) {
     throw new GitError('Resolve every conflicted file before continuing.')
   }
-  if (state.kind === 'rebase') {
-    return runMayConflict(repoPath, ['rebase', '--continue'], NO_EDITOR)
-  }
+  if (state.kind === 'rebase') return runRebase(repoPath, ['rebase', '--continue'])
   // A plain commit concludes a merge, cherry-pick or revert, and keeps the
   // picked commit's author.
   const args = message?.trim() ? ['commit', '-m', message.trim()] : ['commit', '--no-edit']
@@ -198,12 +227,14 @@ export async function continueOperation(repoPath: string, message?: string): Pro
 export async function abortOperation(repoPath: string): Promise<void> {
   const state = await requireState(repoPath)
   await runGit(repoPath, [state.kind, '--abort'])
+  if (state.kind === 'rebase') await cleanUpInteractiveRebase(repoPath)
 }
 
 /** Skips the commit being applied (rebase, cherry-pick or revert). */
 export async function skipOperation(repoPath: string): Promise<ConflictableResult> {
   const state = await requireState(repoPath)
   if (state.kind === 'merge') throw new GitError('A merge cannot skip; abort it instead.')
+  if (state.kind === 'rebase') return runRebase(repoPath, ['rebase', '--skip'])
   return runMayConflict(repoPath, [state.kind, '--skip'], NO_EDITOR)
 }
 

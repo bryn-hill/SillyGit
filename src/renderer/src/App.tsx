@@ -19,6 +19,8 @@ import CommitGraph, { DEFAULT_REF_COLUMN_WIDTH } from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
 import MergeResolver from './components/MergeResolver'
+import InteractiveRebase from './components/InteractiveRebase'
+import type { RebasePlan, RebaseStep } from '../../shared/rebase'
 import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
 import PromptDialog, { type PromptRequest } from './components/PromptDialog'
@@ -129,6 +131,9 @@ export default function App(): JSX.Element {
   )
   const [operation, setOperation] = useState<OperationState | null>(null)
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
+  // The interactive rebase being planned, and the repo it's for.
+  const [rebaseEditor, setRebaseEditor] = useState<{ repoPath: string; base: string } | null>(null)
+  const rebaseBase = rebaseEditor && rebaseEditor.repoPath === repoPath ? rebaseEditor.base : null
   // The file open in the editor, per repo tab, and unsaved text left in files
   // whose editor was hidden (tab switch, Launchpad, another file opened).
   const [editingFiles, setEditingFiles] = useState<Record<string, string>>({})
@@ -493,7 +498,7 @@ export default function App(): JSX.Element {
 
   // ArrowUp/ArrowDown move the selection through the graph (WIP row first, then commits).
   useEffect(() => {
-    if (fullScreenHash || showLaunchpad || showSettings || resolvingPath) return
+    if (fullScreenHash || showLaunchpad || showSettings || resolvingPath || rebaseBase) return
     const handler = (e: KeyboardEvent): void => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
@@ -518,7 +523,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [fullScreenHash, showLaunchpad, showSettings, resolvingPath, hasWorkingChanges, graphRows, selection])
+  }, [fullScreenHash, showLaunchpad, showSettings, resolvingPath, rebaseBase, hasWorkingChanges, graphRows, selection])
 
   const handleOpenRepo = async (): Promise<void> => {
     const picked = await window.api.openRepoDialog()
@@ -1089,6 +1094,56 @@ export default function App(): JSX.Element {
   const handleRevertCommit = (hash: string | string[]): void =>
     runConflictable((path) => window.api.revertCommit(path, hash))
 
+  // The loaded commits HEAD can reach: the ones an interactive rebase can start from.
+  const headAncestors = useMemo(() => {
+    const parents = new Map(graphRows.map((r) => [r.commit.hash, r.commit.parents]))
+    const seen = new Set<string>()
+    const queue = headHash ? [headHash] : []
+    while (queue.length > 0) {
+      const hash = queue.pop()!
+      if (seen.has(hash) || !parents.has(hash)) continue
+      seen.add(hash)
+      queue.push(...parents.get(hash)!)
+    }
+    return seen
+  }, [graphRows, headHash])
+
+  const handleInteractiveRebase = (base: string): void => {
+    if (!repoPath) return
+    setFullScreenHash(null)
+    setResolvingPath(null)
+    closeEditor()
+    setRebaseEditor({ repoPath, base })
+  }
+
+  /** Runs the planned rebase; resolves to false when it didn't start, so the editor stays open. */
+  const handleStartRebase = async (plan: RebasePlan, steps: RebaseStep[]): Promise<boolean> => {
+    if (!repoPath) return false
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const res = await window.api.startInteractiveRebase(repoPath, plan.base.hash, plan.head, steps)
+      const op = await window.api.operationState(repoPath)
+      // A rebase that stopped part way (on a conflict, or a commit that came
+      // out empty) goes on in the commit panel, like any other.
+      const stopped = op.ok && op.data?.kind === 'rebase'
+      if (!res.ok) showError(res.error)
+      if (!res.ok && !stopped) return false
+      setRebaseEditor(null)
+      await refresh(repoPath)
+      if (stopped) {
+        setSelection({ type: 'working' })
+      } else {
+        const kept = steps.filter((s) => s.action !== 'drop' && s.action !== 'squash' && s.action !== 'fixup').length
+        setNotice(`Rebased ${plan.branch}: ${plan.commits.length} commit${plan.commits.length === 1 ? '' : 's'} became ${kept}.`)
+      }
+      return true
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const graphOrder = useMemo(() => graphRows.map((r) => r.commit.hash), [graphRows])
 
   const handleClickCommit = (hash: string, modifiers: ClickModifiers): void =>
@@ -1248,6 +1303,8 @@ export default function App(): JSX.Element {
     createWorktree: handleCreateWorktree,
     createBranchAt: handleCreateBranchAt,
     cherryPick: handleCherryPick,
+    interactiveRebase: handleInteractiveRebase,
+    canInteractiveRebase: (hash) => !!status?.branch && hash !== headHash && headAncestors.has(hash),
     resetTo: handleResetTo,
     revertCommit: handleRevertCommit,
     deleteBranch: handleDeleteBranch,
@@ -1624,6 +1681,14 @@ export default function App(): JSX.Element {
                 onError={showError}
                 externalToolName={externalToolName}
                 onOpenExternal={(path) => void handleOpenExternal(path)}
+              />
+            ) : rebaseBase ? (
+              <InteractiveRebase
+                key={rebaseBase}
+                repoPath={repoPath}
+                base={rebaseBase}
+                onClose={() => setRebaseEditor(null)}
+                onStart={handleStartRebase}
               />
             ) : editingPath ? (
               <div className="main-layout">

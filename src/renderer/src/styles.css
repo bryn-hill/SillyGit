@@ -4874,6 +4874,135 @@ button.merge-ai-button {
 }
 
 .merge-ai-explanation {
+/* Interactive rebase */
+
+.interactive-rebase {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.rebase-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rebase-hint {
+  padding: 6px 14px;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.rebase-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 80px;
+  padding: 4px 0;
+}
+
+.rebase-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px 0 6px;
+  border-left: 3px solid transparent;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  cursor: grab;
+  user-select: none;
+  outline: none;
+}
+
+.rebase-row:hover {
+  background: var(--bg-hover);
+}
+
+.rebase-row.selected,
+.rebase-row:focus-visible {
+  background: var(--bg-elevated);
+}
+
+.rebase-row.dragging {
+  opacity: 0.4;
+}
+
+.rebase-row.drop-before {
+  border-top-color: var(--accent);
+}
+
+.rebase-row.drop-after {
+  border-bottom-color: var(--accent);
+}
+
+.rebase-pick {
+  border-left-color: var(--green);
+}
+
+.rebase-reword {
+  border-left-color: var(--cyan);
+}
+
+.rebase-squash {
+  border-left-color: var(--orange);
+}
+
+.rebase-fixup {
+  border-left-color: var(--yellow);
+}
+
+.rebase-drop {
+  border-left-color: var(--red);
+}
+
+.rebase-squash,
+.rebase-fixup {
+  padding-left: 22px;
+}
+
+.rebase-drop .rebase-subject,
+.rebase-drop .rebase-hash {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.rebase-fixup .rebase-subject {
+  color: var(--text-dim);
+}
+
+.rebase-grip {
+  width: 12px;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: -2px;
+  flex-shrink: 0;
+}
+
+.rebase-action {
+  width: 84px;
+  flex-shrink: 0;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.rebase-hash {
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.rebase-subject {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -4913,4 +5042,66 @@ button.merge-ai-button {
   margin-top: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
+}
+
+.rebase-into {
+  font-size: 11px;
+  color: var(--orange);
+  flex-shrink: 0;
+}
+
+.rebase-author {
+  color: var(--text-dim);
+  font-size: 11.5px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rebase-base {
+  cursor: default;
+  color: var(--text-dim);
+  border-left-color: var(--border);
+}
+
+.rebase-base:hover {
+  background: none;
+}
+
+.rebase-base-label {
+  width: 84px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rebase-error {
+  padding: 6px 14px;
+  color: var(--red);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.rebase-message {
+  display: flex;
+  flex-direction: column;
+  height: 180px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+
+.rebase-message-editor {
+  flex: 1;
+  resize: none;
+  border: none;
+  background: var(--bg);
+  color: var(--text);
+  padding: 8px 12px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 18px;
+  outline: none;
 }
