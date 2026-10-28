@@ -85,6 +85,18 @@ describe('Select', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('stays open for a late scroll event that did not move it, and closes once it moves', () => {
+    const { button } = setup()
+    let top = 100
+    button.getBoundingClientRect = () => ({ left: 10, top }) as DOMRect
+    fireEvent.click(button)
+    fireEvent.scroll(document.body)
+    expect(screen.queryByRole('listbox')).not.toBeNull()
+    top = 60
+    fireEvent.scroll(document.body)
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
   it('does nothing when disabled', () => {
     const { button } = setup(5, true)
     fireEvent.click(button)

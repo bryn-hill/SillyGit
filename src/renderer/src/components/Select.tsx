@@ -50,6 +50,8 @@ export default function Select<T extends string | number>({
   // The list's accessible name: the aria-label, or else the text of the button's <label>.
   const [listLabel, setListLabel] = useState<string | undefined>(ariaLabel)
   const typed = useRef({ text: '', at: 0 })
+  // Where the button was when the list was placed beside it.
+  const anchor = useRef<{ left: number; top: number } | null>(null)
 
   const selectedIndex = options.findIndex((o) => o.value === value)
   const selected = options[selectedIndex]
@@ -76,6 +78,7 @@ export default function Select<T extends string | number>({
     const list = listRef.current
     if (!button || !list) return
     const b = button.getBoundingClientRect()
+    anchor.current = { left: b.left, top: b.top }
     const height = Math.min(list.scrollHeight, MAX_HEIGHT)
     const below = window.innerHeight - b.bottom - MARGIN
     const above = b.top - MARGIN
@@ -102,6 +105,13 @@ export default function Select<T extends string | number>({
     // A scroll or resize would leave the popup floating away from its button.
     const close = (e: Event): void => {
       if (e.target instanceof Node && listRef.current?.contains(e.target)) return
+      // Scroll events arrive a frame late, so the one from scrolling the
+      // button into view can land just after a click opened the list. Only a
+      // scroll that actually moved the button counts.
+      if (e.type === 'scroll' && anchor.current) {
+        const b = buttonRef.current?.getBoundingClientRect()
+        if (b && b.left === anchor.current.left && b.top === anchor.current.top) return
+      }
       setOpen(false)
     }
     document.addEventListener('mousedown', onPointer, true)
