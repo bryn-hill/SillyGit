@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX } from 'react'
 
 export function FolderIcon(): JSX.Element {
   return (
@@ -10,33 +10,15 @@ export function FolderIcon(): JSX.Element {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function BranchIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <circle
-        cx="4.5"
-        cy="3.5"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <circle
-        cx="4.5"
-        cy="12.5"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <circle
-        cx="11.5"
-        cy="6.5"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
+      <circle cx="4.5" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="4.5" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11.5" cy="6.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
       <path
         d="M4.5 5v6M4.5 8c0-1.5 1.3-2.8 3-2.8h2.3"
         stroke="currentColor"
@@ -44,61 +26,33 @@ export function BranchIcon(): JSX.Element {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }
 
 export function ChevronIcon(): JSX.Element {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M6 3.5 10.5 8 6 12.5"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
+  )
 }
 
 export function PullIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 2.5v8M4.5 7 8 10.5 11.5 7"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M3 13.5h10"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
+      <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 13.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function PushIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 13.5v-8M4.5 9 8 5.5 11.5 9"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M3 2.5h10"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
+      <path d="M8 13.5v-8M4.5 9 8 5.5 11.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 2.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function FetchIcon(): JSX.Element {
@@ -112,84 +66,36 @@ export function FetchIcon(): JSX.Element {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 export function UndoIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M5 3.5 2.5 6 5 8.5"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M2.5 6h7a3.5 3.5 0 0 1 0 7H6"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
+      <path d="M5 3.5 2.5 6 5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 6h7a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function StashIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <rect
-        x="2.5"
-        y="5.5"
-        width="11"
-        height="7"
-        rx="1"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M2.5 5.5 4.5 2.5h7l2 3"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6 8.5h4"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
+      <rect x="2.5" y="5.5" width="11" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2.5 5.5 4.5 2.5h7l2 3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M6 8.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function PopIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <rect
-        x="2.5"
-        y="5.5"
-        width="11"
-        height="7"
-        rx="1"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M2.5 5.5 4.5 2.5h7l2 3"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8 6.8V11M6 9l2 2 2-2"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <rect x="2.5" y="5.5" width="11" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2.5 5.5 4.5 2.5h7l2 3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M8 6.8V11M6 9l2 2 2-2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
+  )
 }
 
 export function LaunchpadIcon(): JSX.Element {
@@ -202,43 +108,19 @@ export function LaunchpadIcon(): JSX.Element {
         strokeLinejoin="round"
       />
       <circle cx="8" cy="7.2" r="1.3" stroke="currentColor" strokeWidth="1.1" />
-      <path
-        d="M5.6 11 4 14.2M10.4 11 12 14.2"
-        stroke="currentColor"
-        strokeWidth="1.1"
-        strokeLinecap="round"
-      />
+      <path d="M5.6 11 4 14.2M10.4 11 12 14.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function TerminalIcon(): JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <rect
-        x="1.5"
-        y="2.5"
-        width="13"
-        height="11"
-        rx="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M4 6.2 6.8 8 4 9.8"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.2 9.8h3.3"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4 6.2 6.8 8 4 9.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.2 9.8h3.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function GearIcon(): JSX.Element {
@@ -252,90 +134,37 @@ export function GearIcon(): JSX.Element {
       />
       <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
     </svg>
-  );
+  )
 }
 
 export function RedoIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M11 3.5 13.5 6 11 8.5"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M13.5 6h-7a3.5 3.5 0 0 0 0 7H10"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
+      <path d="M11 3.5 13.5 6 11 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.5 6h-7a3.5 3.5 0 0 0 0 7H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function NewBranchIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <circle
-        cx="4.5"
-        cy="3.5"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <circle
-        cx="4.5"
-        cy="12.5"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <circle
-        cx="11.5"
-        cy="6.5"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M4.5 5v6M4.5 10.5c0-2 1.6-3 3.5-3.3l2-.4"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
+      <circle cx="4.5" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="4.5" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11.5" cy="6.5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 5v6M4.5 10.5c0-2 1.6-3 3.5-3.3l2-.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
-  );
+  )
 }
 
 export function ActionsIcon(): JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <rect
-        x="1.5"
-        y="5.5"
-        width="13"
-        height="5"
-        rx="1.2"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M4.5 8h7"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8 1.5v2M8 12.5v2M6.8 2.3 8 3.5l1.2-1.2M6.8 13.7 8 12.5l1.2 1.2"
-        stroke="currentColor"
-        strokeWidth="1.1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <rect x="1.5" y="5.5" width="13" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M8 1.5v2M8 12.5v2M6.8 2.3 8 3.5l1.2-1.2M6.8 13.7 8 12.5l1.2 1.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
+  )
 }
 
 export function UpdateIcon(): JSX.Element {
@@ -348,44 +177,25 @@ export function UpdateIcon(): JSX.Element {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M8 5.5v4M6.3 8 8 9.7 9.7 8"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M8 5.5v4M6.3 8 8 9.7 9.7 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
+  )
 }
 
 export function RunIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M4.5 2.8v10.4L13 8 4.5 2.8Z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
+      <path d="M4.5 2.8v10.4L13 8 4.5 2.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
-  );
+  )
 }
 
 export function StopIcon(): JSX.Element {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <rect
-        x="3.5"
-        y="3.5"
-        width="9"
-        height="9"
-        rx="1.2"
-        stroke="currentColor"
-        strokeWidth="1.3"
-      />
+      <rect x="3.5" y="3.5" width="9" height="9" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
     </svg>
-  );
+  )
 }
 
 export function MoreIcon(): JSX.Element {
@@ -395,5 +205,5 @@ export function MoreIcon(): JSX.Element {
       <circle cx="8" cy="8" r="1.3" />
       <circle cx="12.5" cy="8" r="1.3" />
     </svg>
-  );
+  )
 }

@@ -1,16 +1,16 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX, ReactNode } from 'react'
 
 interface ToolButtonProps {
-  label: string;
-  icon: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  title: string;
+  label: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  title: string
   /** The accessible name, when it should differ from the visible label. */
-  ariaLabel?: string;
-  active?: boolean;
-  badge?: number;
-  className?: string;
+  ariaLabel?: string
+  active?: boolean
+  badge?: number
+  className?: string
 }
 
 /** A GitKraken-style toolbar button: a small label above its icon. */
@@ -23,11 +23,11 @@ export default function ToolButton({
   ariaLabel,
   active,
   badge,
-  className,
+  className
 }: ToolButtonProps): JSX.Element {
   return (
     <button
-      className={`tool-button ${active ? "tool-button-active" : ""} ${className ?? ""}`}
+      className={`tool-button ${active ? 'tool-button-active' : ''} ${className ?? ''}`}
       disabled={disabled}
       onClick={onClick}
       title={title}
@@ -39,5 +39,5 @@ export default function ToolButton({
         {badge ? <span className="tool-badge">{badge}</span> : null}
       </span>
     </button>
-  );
+  )
 }
