@@ -19,6 +19,12 @@ export class DetailPanel {
     await this.file(path).getByRole('button', { name: `Edit ${path}` }).click()
   }
 
+  /** Right-clicks a file row and picks a menu item, e.g. "Blame" or "File history". */
+  async fileMenu(path: string, item: string): Promise<void> {
+    await this.file(path).click({ button: 'right' })
+    await this.root.page().getByRole('menuitem', { name: item, exact: true }).click()
+  }
+
   async openFile(path: string): Promise<void> {
     await this.file(path).click()
   }

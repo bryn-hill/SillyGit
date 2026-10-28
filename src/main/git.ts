@@ -13,6 +13,7 @@ import type {
   PullMode,
   GraphCommit,
   CommitSearchHit,
+  FileHistoryEntry,
   RepoStatus,
   StashEntry
 } from '../shared/types'
@@ -399,11 +400,15 @@ export async function getCommitFileDiff(
   repoPath: string,
   hash: string,
   path: string,
-  ignoreWhitespace = false
+  ignoreWhitespace = false,
+  oldPath?: string
 ): Promise<string> {
-  const args = ['show', '--no-color']
+  // A merge shows what it changed against its first parent, like the file history lists it.
+  const args = ['show', '--no-color', '-M', '--diff-merges=first-parent']
   if (ignoreWhitespace) args.push('-w')
   args.push('--format=', hash, '--', path)
+  // Naming both sides of a rename shows it as one, rather than a whole file added.
+  if (oldPath && oldPath !== path) args.push(oldPath)
   return runGit(repoPath, args)
 }
 
@@ -498,37 +503,70 @@ export async function getWorkingFileContent(repoPath: string, path: string): Pro
   return fsp.readFile(join(repoPath, path), 'utf-8')
 }
 
+/**
+ * The commits that changed `path`, newest first, following it back through renames.
+ * Each entry carries the file's path in that commit, so its diff and content can be read.
+ */
 export async function getFileHistory(
   repoPath: string,
   path: string,
   fromRef: string,
   limit = 100
-): Promise<CommitInfo[]> {
-  const format = '%H%x09%an%x09%ad%x09%s'
+): Promise<FileHistoryEntry[]> {
   const out = await runGit(repoPath, [
     'log',
     fromRef,
     '--follow',
+    '-M',
+    '--name-status',
     `--max-count=${limit}`,
-    `--format=${format}`,
-    '--date=short',
+    `--format=%x1e%H${US}%an${US}%ae${US}%aI${US}%s`,
     '--',
     path
   ])
+  // A merge that didn't touch the file lists no paths, so it keeps the path the newer commit started from.
+  let current = path
   return out
-    .split('\n')
-    .filter((l) => l.trim().length > 0)
-    .map((line) => {
-      const [hash, author, date, subject] = line.split('\t')
-      return { hash, author, date, subject }
+    .split(RS)
+    .filter((rec) => rec.trim().length > 0)
+    .map((rec) => {
+      const [header, ...rest] = rec.split('\n')
+      const [hash, author, authorEmail, date, subject] = header.split(US)
+      const change = rest.find((l) => /^[A-Z]\d*\t/.test(l))
+      const entry: FileHistoryEntry = { hash, author, authorEmail, date, subject, path: current, status: '' }
+      if (change) {
+        const [code, a, b] = change.split('\t')
+        entry.status = code[0]
+        if (b !== undefined) {
+          entry.oldPath = a
+          entry.path = b
+        } else {
+          entry.path = a
+        }
+      }
+      current = entry.oldPath ?? entry.path
+      return entry
     })
 }
 
-/** Parses `git blame --porcelain` output into one entry per final-side line number. */
-export async function getBlame(repoPath: string, ref: string, path: string): Promise<BlameLine[]> {
-  const out = await runGit(repoPath, ['blame', '--porcelain', ref, '--', path])
+const UNCOMMITTED = '0000000000000000000000000000000000000000'
+
+/**
+ * Parses `git blame --porcelain` output into one entry per final-side line number.
+ * A null `ref` blames the working-tree file, so uncommitted lines show up too.
+ */
+export async function getBlame(repoPath: string, ref: string | null, path: string): Promise<BlameLine[]> {
+  const out = await runGit(repoPath, ref ? ['blame', '--porcelain', ref, '--', path] : ['blame', '--porcelain', '--', path])
   const lines = out.split('\n')
-  const meta = new Map<string, { author: string; date: string; summary: string }>()
+  interface Meta {
+    author: string
+    authorEmail: string
+    date: string
+    summary: string
+    path: string
+    previous?: { hash: string; path: string }
+  }
+  const meta = new Map<string, Meta>()
   const result: BlameLine[] = []
 
   let i = 0
@@ -540,21 +578,43 @@ export async function getBlame(repoPath: string, ref: string, path: string): Pro
     }
     const hash = headerMatch[1]
     const finalLine = Number(headerMatch[2])
-    if (!meta.has(hash)) meta.set(hash, { author: '', date: '', summary: '' })
+    if (!meta.has(hash)) meta.set(hash, { author: '', authorEmail: '', date: '', summary: '', path })
+    const m = meta.get(hash)!
     i++
     while (i < lines.length && !lines[i].startsWith('\t')) {
       const line = lines[i]
-      if (line.startsWith('author ')) meta.get(hash)!.author = line.slice(7)
-      else if (line.startsWith('author-time ')) {
-        meta.get(hash)!.date = new Date(Number(line.slice(12)) * 1000).toISOString()
-      } else if (line.startsWith('summary ')) meta.get(hash)!.summary = line.slice(8)
+      if (line.startsWith('author ')) m.author = line.slice(7)
+      else if (line.startsWith('author-mail ')) m.authorEmail = line.slice(12).replace(/^<|>$/g, '')
+      else if (line.startsWith('author-time ')) m.date = new Date(Number(line.slice(12)) * 1000).toISOString()
+      else if (line.startsWith('summary ')) m.summary = line.slice(8)
+      else if (line.startsWith('filename ')) m.path = line.slice(9)
+      else if (line.startsWith('previous ')) {
+        const rest = line.slice(9)
+        const space = rest.indexOf(' ')
+        m.previous = { hash: rest.slice(0, space), path: rest.slice(space + 1) }
+      }
       i++
     }
-    const m = meta.get(hash)!
-    result.push({ lineNo: finalLine, hash, author: m.author, date: m.date, summary: m.summary })
+    result.push({
+      lineNo: finalLine,
+      hash,
+      author: m.author,
+      authorEmail: m.authorEmail,
+      date: m.date,
+      summary: m.summary,
+      path: m.path,
+      ...(m.previous ? { previous: m.previous } : {}),
+      uncommitted: hash === UNCOMMITTED
+    })
     i++ // consume the '\t<content>' line
   }
   return result
+}
+
+/** Every file git tracks in the working tree, for picking one to blame or show the history of. */
+export async function listTrackedFiles(repoPath: string): Promise<string[]> {
+  const out = await runGit(repoPath, ['ls-files', '-z'])
+  return out.split('\0').filter(Boolean)
 }
 
 /**

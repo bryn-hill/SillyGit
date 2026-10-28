@@ -65,9 +65,10 @@ const api = {
     repoPath: string,
     hash: string,
     path: string,
-    ignoreWhitespace?: boolean
+    ignoreWhitespace?: boolean,
+    oldPath?: string
   ): Wrapped<string> =>
-    ipcRenderer.invoke('git:commit-file-diff', repoPath, hash, path, ignoreWhitespace),
+    ipcRenderer.invoke('git:commit-file-diff', repoPath, hash, path, ignoreWhitespace, oldPath),
   stash: (repoPath: string, message?: string): Wrapped<void> => ipcRenderer.invoke('git:stash', repoPath, message),
   stashPop: (repoPath: string, ref?: string): Wrapped<void> => ipcRenderer.invoke('git:stash-pop', repoPath, ref),
   stashApply: (repoPath: string, ref: string): Wrapped<void> => ipcRenderer.invoke('git:stash-apply', repoPath, ref),
@@ -82,14 +83,16 @@ const api = {
     ipcRenderer.invoke('file:read-editable', repoPath, path),
   writeFile: (repoPath: string, path: string, content: string): Wrapped<void> =>
     ipcRenderer.invoke('file:write', repoPath, path, content),
-  blame: (repoPath: string, ref: string, path: string): Wrapped<import('../shared/types').BlameLine[]> =>
+  /** A null `ref` blames the working-tree file, uncommitted lines included. */
+  blame: (repoPath: string, ref: string | null, path: string): Wrapped<import('../shared/types').BlameLine[]> =>
     ipcRenderer.invoke('git:blame', repoPath, ref, path),
+  trackedFiles: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('git:tracked-files', repoPath),
   fileHistory: (
     repoPath: string,
     path: string,
     fromRef: string,
     limit?: number
-  ): Wrapped<import('../shared/types').CommitInfo[]> =>
+  ): Wrapped<import('../shared/types').FileHistoryEntry[]> =>
     ipcRenderer.invoke('git:file-history', repoPath, path, fromRef, limit),
   revertHunk: (repoPath: string, diffText: string, unitId: string): Wrapped<void> =>
     ipcRenderer.invoke('git:revert-hunk', repoPath, diffText, unitId),

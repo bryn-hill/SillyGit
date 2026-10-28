@@ -12,6 +12,8 @@ interface Props {
   onClose: () => void
   /** Called after each save, so the working-tree status can refresh. */
   onSaved: () => void
+  /** Shows the file's blame or history (unsaved text is kept as a draft). */
+  onOpenFileView?: (path: string, mode: 'history' | 'blame') => void
 }
 
 function formatSize(bytes: number): string {
@@ -20,7 +22,15 @@ function formatSize(bytes: number): string {
 }
 
 /** Edits one working-tree file in Monaco, in place of the commit graph. */
-export default function FileEditor({ repoPath, path, draft, onDraftChange, onClose, onSaved }: Props): JSX.Element {
+export default function FileEditor({
+  repoPath,
+  path,
+  draft,
+  onDraftChange,
+  onClose,
+  onSaved,
+  onOpenFileView
+}: Props): JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -209,6 +219,16 @@ export default function FileEditor({ repoPath, path, draft, onDraftChange, onClo
         )}
         <span className="merge-toolbar-spacer" />
         {file?.kind === 'text' && <span className="file-editor-language">{language}</span>}
+        {onOpenFileView && file && file.kind !== 'missing' && (
+          <>
+            <button className="text-toggle" onClick={() => onOpenFileView(path, 'blame')} title="Who last changed each line">
+              Blame
+            </button>
+            <button className="text-toggle" onClick={() => onOpenFileView(path, 'history')} title="Every commit that changed this file">
+              History
+            </button>
+          </>
+        )}
         {file && file.kind !== 'missing' && (
           <button className="icon-button" onClick={openExternally} title="Open in external editor" aria-label="Open in external editor">
             ↗

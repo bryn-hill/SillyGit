@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import type { BlameLine, CommitInfo } from '../../../shared/types'
 import { pairForSplit, renderFileDiff, type RenderedHunk } from '../lib/diffRender'
 import { highlightLine, languageForPath } from '../lib/highlight'
 
@@ -10,12 +9,16 @@ interface Props {
   repoPath: string
   hash: string
   path: string
+  /** The path before this commit, when it renamed the file. */
+  oldPath?: string
   diffText: string
   highlightLine?: number
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
   /** Opens the working-tree copy of the file in the in-app editor. */
   onEditFile?: (path: string) => void
+  /** Opens the file's history or blame view; the buttons are hidden without it. */
+  onOpenFileView?: (path: string, ref: string, mode: 'history' | 'blame') => void
 }
 
 function renderLineHtml(text: string, lang: string | null, showWhitespace: boolean): string {
@@ -29,24 +32,16 @@ function renderLineHtml(text: string, lang: string | null, showWhitespace: boole
   return highlightLine(main, lang) + markers
 }
 
-function formatBlameLabel(b: BlameLine): string {
-  const name = b.author.split(' ')[0] || b.author
-  const date = b.date ? new Date(b.date).toLocaleDateString() : ''
-  return [name, date].filter(Boolean).join(' · ')
-}
-
 function FileViewPane({
   content,
   lang,
   loading,
-  showWhitespace,
-  blame
+  showWhitespace
 }: {
   content: string | null
   lang: string | null
   loading: boolean
   showWhitespace: boolean
-  blame: BlameLine[] | null
 }): JSX.Element {
   if (loading) return <div className="diff-empty">Loading…</div>
   if (content == null) return <div className="diff-empty">No content.</div>
@@ -54,24 +49,12 @@ function FileViewPane({
   const lines = content.split('\n')
   if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
 
-  const blameByLine = new Map<number, BlameLine>()
-  blame?.forEach((b) => blameByLine.set(b.lineNo, b))
-
   return (
     <pre className="file-view-content">
       {lines.map((line, idx) => {
         const lineNo = idx + 1
-        const b = blameByLine.get(lineNo)
         return (
           <div className="file-view-row" key={lineNo}>
-            {blame && (
-              <span
-                className="blame-cell"
-                title={b ? `${b.summary}\n${b.author} · ${new Date(b.date).toLocaleString()}` : ''}
-              >
-                {b ? formatBlameLabel(b) : ''}
-              </span>
-            )}
             <span className="line-num">{lineNo}</span>
             <span
               className="line-code"
@@ -232,16 +215,16 @@ export default function FileDiffViewer({
   repoPath,
   hash,
   path,
+  oldPath,
   diffText,
   highlightLine,
   onNavigateToCommit,
   onWorkingTreeChanged,
-  onEditFile
+  onEditFile,
+  onOpenFileView
 }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('diff')
   const [layout, setLayout] = useState<Layout>('unified')
-  const [showBlame, setShowBlame] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
   const [showWhitespace, setShowWhitespace] = useState(false)
   const [wrapLines, setWrapLines] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -250,11 +233,6 @@ export default function FileDiffViewer({
 
   const [fileContent, setFileContent] = useState<string | null>(null)
   const [fileLoading, setFileLoading] = useState(false)
-  const [blameLines, setBlameLines] = useState<BlameLine[] | null>(null)
-  const [blameLoading, setBlameLoading] = useState(false)
-  const [historyEntries, setHistoryEntries] = useState<CommitInfo[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyError, setHistoryError] = useState<string | null>(null)
 
   const [activeHunkIndex, setActiveHunkIndex] = useState(0)
   const [reverting, setReverting] = useState<string | null>(null)
@@ -263,11 +241,9 @@ export default function FileDiffViewer({
 
   const lang = languageForPath(path)
 
-  // New file selected (or a History click navigated to a different commit) — reset per-file state.
+  // New file or commit selected — reset per-file state.
   useEffect(() => {
     setMode('diff')
-    setShowBlame(false)
-    setShowHistory(false)
     setIgnoreWhitespace(false)
     setEffectiveDiffText(diffText)
     setActiveHunkIndex(0)
@@ -287,14 +263,14 @@ export default function FileDiffViewer({
       return
     }
     let cancelled = false
-    window.api.commitFileDiff(repoPath, hash, path, true).then((res) => {
+    window.api.commitFileDiff(repoPath, hash, path, true, oldPath).then((res) => {
       if (cancelled) return
       if (res.ok) setEffectiveDiffText(res.data)
     })
     return () => {
       cancelled = true
     }
-  }, [ignoreWhitespace, repoPath, hash, path, diffText])
+  }, [ignoreWhitespace, repoPath, hash, path, oldPath, diffText])
 
   useEffect(() => {
     if (mode !== 'file') return
@@ -309,36 +285,6 @@ export default function FileDiffViewer({
       cancelled = true
     }
   }, [mode, repoPath, hash, path])
-
-  useEffect(() => {
-    if (!showBlame || mode !== 'file') return
-    let cancelled = false
-    setBlameLoading(true)
-    window.api.blame(repoPath, hash, path).then((res) => {
-      if (cancelled) return
-      setBlameLoading(false)
-      if (res.ok) setBlameLines(res.data)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [showBlame, mode, repoPath, hash, path])
-
-  useEffect(() => {
-    if (!showHistory) return
-    let cancelled = false
-    setHistoryLoading(true)
-    setHistoryError(null)
-    window.api.fileHistory(repoPath, path, hash).then((res) => {
-      if (cancelled) return
-      setHistoryLoading(false)
-      if (res.ok) setHistoryEntries(res.data)
-      else setHistoryError(res.error)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [showHistory, repoPath, path, hash])
 
   useEffect(() => {
     if (!revertStatus) return
@@ -398,12 +344,16 @@ export default function FileDiffViewer({
               Diff View
             </button>
           </div>
-          <button className={`text-toggle ${showBlame ? 'active' : ''}`} onClick={() => setShowBlame((v) => !v)}>
-            Blame
-          </button>
-          <button className={`text-toggle ${showHistory ? 'active' : ''}`} onClick={() => setShowHistory((v) => !v)}>
-            History
-          </button>
+          {onOpenFileView && (
+            <>
+              <button className="text-toggle" onClick={() => onOpenFileView(path, hash, 'blame')} title="Who last changed each line">
+                Blame
+              </button>
+              <button className="text-toggle" onClick={() => onOpenFileView(path, hash, 'history')} title="Every commit that changed this file">
+                History
+              </button>
+            </>
+          )}
         </div>
         <div className="diff-toolbar-right">
           {mode === 'diff' && (
@@ -466,30 +416,6 @@ export default function FileDiffViewer({
         <div className={`revert-status ${revertStatus.ok ? 'ok' : 'error'}`}>{revertStatus.message}</div>
       )}
 
-      {showHistory && (
-        <div className="file-history-panel">
-          {historyLoading ? (
-            <div className="diff-empty">Loading history…</div>
-          ) : historyError ? (
-            <div className="diff-empty">{historyError}</div>
-          ) : (
-            historyEntries.map((entry) => (
-              <div
-                key={entry.hash}
-                className={`file-history-row ${entry.hash === hash ? 'current' : ''}`}
-                onClick={() => onNavigateToCommit(entry.hash)}
-              >
-                <span className="file-history-hash">{entry.hash.slice(0, 7)}</span>
-                <span className="file-history-subject">{entry.subject}</span>
-                <span className="file-history-meta">
-                  {entry.author} · {entry.date}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
       <div className={`diff-body ${wrapLines ? 'wrap' : ''}`} data-testid="diff-scroller">
         {mode === 'file' ? (
           <FileViewPane
@@ -497,7 +423,6 @@ export default function FileDiffViewer({
             lang={lang}
             loading={fileLoading}
             showWhitespace={showWhitespace}
-            blame={showBlame ? (blameLoading ? null : blameLines) : null}
           />
         ) : layout === 'unified' ? (
           <UnifiedDiff

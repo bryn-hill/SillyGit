@@ -343,8 +343,8 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'git:commit-file-diff',
-    (_e, repoPath: string, hash: string, path: string, ignoreWhitespace?: boolean) =>
-      wrap(() => git.getCommitFileDiff(repoPath, hash, path, ignoreWhitespace))
+    (_e, repoPath: string, hash: string, path: string, ignoreWhitespace?: boolean, oldPath?: string) =>
+      wrap(() => git.getCommitFileDiff(repoPath, hash, path, ignoreWhitespace, oldPath))
   )
 
   ipcMain.handle('git:stash', (_e, repoPath: string, message?: string) => wrap(() => git.stash(repoPath, message)))
@@ -373,9 +373,11 @@ function registerIpcHandlers(): void {
     wrap(() => editFile.writeEditableFile(repoPath, path, content))
   )
 
-  ipcMain.handle('git:blame', (_e, repoPath: string, ref: string, path: string) =>
+  ipcMain.handle('git:blame', (_e, repoPath: string, ref: string | null, path: string) =>
     wrap(() => git.getBlame(repoPath, ref, path))
   )
+
+  ipcMain.handle('git:tracked-files', (_e, repoPath: string) => wrap(() => git.listTrackedFiles(repoPath)))
 
   ipcMain.handle(
     'git:file-history',
