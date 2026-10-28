@@ -117,6 +117,25 @@ describe('getStatus', () => {
   })
 })
 
+describe('push', () => {
+  it('sets the upstream when the branch has none', async () => {
+    const remote = mkdtempSync(join(tmpdir(), 'sillygit-remote-'))
+    try {
+      execFileSync('git', ['init', '-q', '--bare', remote])
+      run('remote', 'add', 'origin', remote)
+      run('checkout', '-q', '-b', 'feature')
+      commitFile('a.txt', 'two\n', 'On feature')
+      await git.push(dir)
+      expect(run('rev-parse', '--abbrev-ref', 'feature@{upstream}')).toBe('origin/feature')
+      commitFile('a.txt', 'three\n', 'More')
+      await git.push(dir)
+      expect(run('rev-list', '--count', 'origin/feature..feature')).toBe('0')
+    } finally {
+      rmSync(remote, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('staging', () => {
   it('stages and unstages single files and everything', async () => {
     write('a.txt', 'changed\n')

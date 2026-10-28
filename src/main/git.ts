@@ -230,8 +230,18 @@ export async function fetchAll(repoPath: string): Promise<void> {
   await runGit(repoPath, ['fetch', '--all', '--prune', '--quiet'], await remoteEnv())
 }
 
+/** Pushes the current branch, publishing it with `-u` when it has no upstream yet. */
 export async function push(repoPath: string): Promise<void> {
-  await runGit(repoPath, ['push'], await remoteEnv())
+  const env = await remoteEnv()
+  const upstream = await runGit(repoPath, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']).catch(() => null)
+  if (upstream?.trim()) {
+    await runGit(repoPath, ['push'], env)
+    return
+  }
+  const remotes = (await runGit(repoPath, ['remote'])).split('\n').map((r) => r.trim()).filter(Boolean)
+  const remote = remotes.includes('origin') ? 'origin' : remotes[0]
+  if (!remote) throw new Error('This repository has no remote to push to.')
+  await runGit(repoPath, ['push', '-u', remote, 'HEAD'], env)
 }
 
 const PULL_ARGS: Record<PullMode, string[]> = {
