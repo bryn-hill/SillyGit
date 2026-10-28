@@ -27,7 +27,7 @@ monaco.typescript.typescriptDefaults.setCompilerOptions({
   allowNonTsExtensions: true
 })
 
-// Dracula, to match the rest of the app (see :root in styles.css).
+// Dracula, to match the rest of the app (see :root in styles/base.css).
 monaco.editor.defineTheme('sillygit-dracula', {
   base: 'vs-dark',
   inherit: true,
