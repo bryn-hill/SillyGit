@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { ROW_HEIGHT, WipGraphCell } from './GraphCell'
 import type { Selection } from '../lib/selection'
@@ -11,7 +11,8 @@ import { dropTarget, useRefDrag } from './RefDrag'
 import { commitsLabel } from '../lib/refDrag'
 import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
 import { timeAgo } from '../lib/time'
-import { MERGE_BURST_MS, newMergeAtHead } from '../lib/mergeBurst'
+import { useMergeBurst } from './commitGraph/useMergeBurst'
+import { useGraphSearch } from './commitGraph/useGraphSearch'
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
 const MIN_REF_COLUMN_WIDTH = 60
@@ -131,74 +132,18 @@ export default function CommitGraph({
     () => (sprints.enabled ? sprintMarks(rows.map((r) => r.commit.committedAt || r.commit.date), sprints) : null),
     [rows, sprints]
   )
-  // --- Merge animation ----------------------------------------------------------
-  // Compared with the last graph while rendering, so the burst starts in the
-  // same frame the merge commit first appears.
-  const [prevRows, setPrevRows] = useState(rows)
-  const [burst, setBurst] = useState<{ hash: string; id: number } | null>(null)
-  if (rows !== prevRows) {
-    setPrevRows(rows)
-    const merged = mergeAnimation ? newMergeAtHead(prevRows, rows, headHash) : null
-    if (merged) setBurst({ hash: merged, id: (burst?.id ?? 0) + 1 })
-  }
-  useEffect(() => {
-    if (!burst) return
-    // Ended by time rather than animationend, which never fires if the row is
-    // scrolled out of the virtual list or motion is reduced.
-    const timer = setTimeout(() => setBurst(null), MERGE_BURST_MS)
-    return () => clearTimeout(timer)
-  }, [burst])
+  const burst = useMergeBurst(rows, headHash, mergeAnimation)
 
   const now = new Date()
   const today = localDay(now.toISOString())
   const currentSprint = today === null ? null : sprintIndexOfDay(today, sprints)
 
-  // --- Search -------------------------------------------------------------
-  const [query, setQuery] = useState('')
-  const [found, setFound] = useState<CommitSearchHit[] | null>(null)
-  const hits = query.trim() ? found : null
-  const [hitIndex, setHitIndex] = useState(0)
-  const hitSet = useMemo(() => (hits ? new Set(hits.map((h) => h.hash)) : null), [hits])
-
-  useEffect(() => {
-    if (searchFocusToken === 0) return
-    searchRef.current?.focus()
-    searchRef.current?.select()
-  }, [searchFocusToken])
-
-  const jumpToFirstHit = useEffectEvent((hit: CommitSearchHit) => onJumpToCommit(hit))
-
-  useEffect(() => {
-    const q = query.trim()
-    if (!q) return
-    let cancelled = false
-    const timer = setTimeout(() => {
-      window.api.searchCommits(repoPath, q).then((res) => {
-        if (cancelled) return
-        const results = res.ok ? res.data : []
-        setFound(results)
-        setHitIndex(0)
-        if (results.length > 0) jumpToFirstHit(results[0])
-      })
-    }, 200)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [query, repoPath])
-
-  const changeQuery = (next: string): void => {
-    setQuery(next)
-    // Don't flash the last search's results when a new one starts from empty.
-    if (!next.trim()) setFound(null)
-  }
-
-  const stepHit = (delta: number): void => {
-    if (!hits || hits.length === 0) return
-    const next = (hitIndex + delta + hits.length) % hits.length
-    setHitIndex(next)
-    onJumpToCommit(hits[next])
-  }
+  const { query, changeQuery, hits, hitIndex, hitSet, stepHit } = useGraphSearch({
+    repoPath,
+    searchRef,
+    searchFocusToken,
+    onJumpToCommit
+  })
 
   // --- Virtual scrolling ----------------------------------------------------
   useLayoutEffect(() => {
