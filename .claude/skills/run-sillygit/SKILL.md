@@ -101,8 +101,13 @@ Layout (page object model):
   role/label or a `data-testid` to the component rather than reaching for a
   CSS class.
 - `e2e/fixtures.ts`: `repo` (a fresh two-commit `FixtureRepo`),
-  `electronApp` (isolated `--user-data-dir`, trace kept on failure) and
-  `sillygit` (the page object).
+  `electronApp` (trace kept on failure) and `sillygit` (the page object).
+  Each worker launches one app and its tests share it: between tests the app
+  is reset (fresh settings folder, IPC/dialog stubs put back, page reloaded),
+  and after a failure it is replaced. `relaunch` and `appEnv` tests, or any
+  test with `test.use({ freshApp: true })`, get an app of their own. Tests run
+  in parallel (`fullyParallel`), so never rely on another test's state or
+  order.
 - `e2e/support/`: `FixtureRepo` and `stubIpc()` for replacing a main-process
   handler (the Claude panel tests stub `claude:start`).
 

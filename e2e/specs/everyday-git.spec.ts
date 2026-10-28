@@ -79,7 +79,7 @@ test('lists stashes and applies, pops and deletes them', async ({ sillygit, repo
 
   await stashes.getByRole('listitem').filter({ hasText: 'first' }).hover()
   await stashes.getByRole('listitem').filter({ hasText: 'first' }).getByRole('button', { name: 'Apply' }).click()
-  await expect.poll(() => repo.readFile('hello.txt')).toBe('first stash\n')
+  await expect.poll(() => repo.readFileIfPresent('hello.txt')).toBe('first stash\n')
   await expect(stashes.getByRole('listitem')).toHaveCount(2)
 
   repo.git('checkout', '--', 'hello.txt')

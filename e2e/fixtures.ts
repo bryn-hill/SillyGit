@@ -15,14 +15,24 @@ const APP_DIR = resolve(__dirname, '..')
 const SHOW_WINDOW = !!process.env['CI'] || process.env['E2E_SHOW_WINDOW'] === '1'
 
 type Fixtures = {
-  /** Extra environment for the app, e.g. `test.use({ appEnv: { … } })`. */
+  /** Extra environment for the app, e.g. `test.use({ appEnv: { … } })`. Implies `freshApp`. */
   appEnv: Record<string, string>
+  /**
+   * Launch an app just for this test instead of reusing the worker's, for a
+   * test that changes main-process state resetApp can't put back.
+   */
+  freshApp: boolean
   repo: FixtureRepo
   userData: string
   electronApp: ElectronApplication
   sillygit: SillyGitApp
   /** Quits the app and starts it again with the same settings, like a real relaunch. */
   relaunch: () => Promise<SillyGitApp>
+}
+
+type WorkerFixtures = {
+  /** The app this worker's tests share, launched on first use and replaced after a failure. */
+  sharedApp: { app: ElectronApplication | null; url: string; dir: string }
 }
 
 function launchApp(userData: string, appEnv: Record<string, string> = {}): Promise<ElectronApplication> {
@@ -35,6 +45,14 @@ function launchApp(userData: string, appEnv: Record<string, string> = {}): Promi
   return electron.launch({ args: [APP_DIR, `--user-data-dir=${userData}`], env, timeout: 30_000 })
 }
 
+function makeUserData(): string {
+  const userData = mkdtempSync(join(tmpdir(), 'sillygit-e2e-userdata-'))
+  // Background fetches and avatar lookups are off so nothing reaches the
+  // network or prunes a test's fake remote branches.
+  writeFileSync(join(userData, 'sillygit-settings.json'), JSON.stringify({ autoFetchMinutes: 0, showAvatars: false }))
+  return userData
+}
+
 async function openWindow(electronApp: ElectronApplication): Promise<SillyGitApp> {
   const page = await electronApp.firstWindow()
   if (SHOW_WINDOW) {
@@ -44,8 +62,82 @@ async function openWindow(electronApp: ElectronApplication): Promise<SillyGitApp
   return new SillyGitApp(electronApp, page)
 }
 
-export const test = base.extend<Fixtures>({
+/** Records the main process's pristine state, so `resetApp` can put back whatever a test stubbed. */
+async function snapshotApp(electronApp: ElectronApplication): Promise<void> {
+  await electronApp.evaluate(({ ipcMain, clipboard, dialog, shell }) => {
+    // ipcMain keeps `handle` handlers in this (internal) map; stubIpc and
+    // friends replace entries in it, so copy the originals.
+    const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, unknown> })._invokeHandlers
+    ;(globalThis as Record<string, unknown>)['__e2ePristine'] = {
+      handlers: new Map(handlers),
+      clipboard: { ...clipboard },
+      dialog: { ...dialog },
+      shell: { ...shell },
+      globals: new Set(Object.keys(globalThis))
+    }
+  })
+}
+
+/**
+ * Makes a used app look freshly launched with `userData` as its settings
+ * folder: no page state, no stubs, default window size. Much cheaper than
+ * quitting and starting Electron again.
+ */
+async function resetApp(shared: WorkerFixtures['sharedApp'], userData: string): Promise<void> {
+  const page = await shared.app!.firstWindow()
+  page.removeAllListeners('dialog')
+  // Leaving the app's page stops its timers (debounced layout saves) before
+  // the settings folder changes underneath it, and ends its terminals.
+  await page.goto('about:blank')
+  await shared.app!.evaluate(
+    async ({ app, BrowserWindow, clipboard, dialog, ipcMain, session, shell }, userData) => {
+      const g = globalThis as Record<string, unknown>
+      const pristine = g['__e2ePristine'] as {
+        handlers: Map<string, unknown>
+        clipboard: typeof clipboard
+        dialog: typeof dialog
+        shell: typeof shell
+        globals: Set<string>
+      }
+      const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, unknown> })._invokeHandlers
+      // Settings saves run one after another, so once this no-op save is done
+      // every save the last test started has landed in its own folder.
+      const flush = pristine.handlers.get('settings:remove-workspace-repo') as (e: unknown, path: string) => Promise<unknown>
+      await flush({}, '\0e2e-flush')
+      handlers.clear()
+      for (const [channel, handler] of pristine.handlers) handlers.set(channel, handler)
+      Object.assign(clipboard, pristine.clipboard)
+      Object.assign(dialog, pristine.dialog)
+      Object.assign(shell, pristine.shell)
+      // Values tests parked on globalThis, e.g. recorded IPC calls.
+      for (const key of Object.keys(g)) if (key !== '__e2ePristine' && !pristine.globals.has(key)) delete g[key]
+      app.setPath('userData', userData)
+      await session.defaultSession.clearStorageData()
+      const window = BrowserWindow.getAllWindows()[0]
+      if (window.isMaximized()) window.unmaximize()
+      window.setSize(1280, 800)
+    },
+    userData
+  )
+  await page.goto(shared.url)
+}
+
+export const test = base.extend<Fixtures, WorkerFixtures>({
   appEnv: [{}, { option: true }],
+  freshApp: [false, { option: true }],
+
+  sharedApp: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      // Chromium's own profile stays here; each test's settings folder is
+      // switched in by resetApp.
+      const shared: WorkerFixtures['sharedApp'] = { app: null, url: '', dir: makeUserData() }
+      await use(shared)
+      await shared.app?.close().catch(() => {})
+      rmSync(shared.dir, { recursive: true, force: true })
+    },
+    { scope: 'worker' }
+  ],
 
   // eslint-disable-next-line no-empty-pattern
   repo: async ({}, use) => {
@@ -60,16 +152,28 @@ export const test = base.extend<Fixtures>({
     // or API keys from a developer's own install never leak in. The
     // settings file also stops the one-time copy from the old gitdesk
     // settings location.
-    const userData = mkdtempSync(join(tmpdir(), 'sillygit-e2e-userdata-'))
-    // Background fetches and avatar lookups are off so nothing reaches the
-    // network or prunes a test's fake remote branches.
-    writeFileSync(join(userData, 'sillygit-settings.json'), JSON.stringify({ autoFetchMinutes: 0, showAvatars: false }))
+    const userData = makeUserData()
     await use(userData)
     rmSync(userData, { recursive: true, force: true })
   },
 
-  electronApp: async ({ userData, appEnv }, use, testInfo) => {
-    const app = await launchApp(userData, appEnv)
+  electronApp: async ({ userData, appEnv, freshApp, sharedApp }, use, testInfo) => {
+    const shared = !freshApp && Object.keys(appEnv).length === 0
+    let app: ElectronApplication
+    if (!shared) {
+      app = await launchApp(userData, appEnv)
+    } else {
+      if (!sharedApp.app) {
+        const launched = await launchApp(sharedApp.dir)
+        const page = await launched.firstWindow()
+        await page.waitForLoadState('domcontentloaded')
+        sharedApp.url = page.url()
+        await snapshotApp(launched)
+        sharedApp.app = launched
+      }
+      app = sharedApp.app
+      await resetApp(sharedApp, userData)
+    }
 
     // The config's `trace` option only covers the built-in browser page, so
     // record one here and keep it when a test fails.
@@ -84,7 +188,12 @@ export const test = base.extend<Fixtures>({
       await app.context().tracing.stop().catch(() => {})
     }
 
-    await app.close().catch(() => {})
+    // A failed test may have left the app in any state, so the next test
+    // starts a new one rather than trust the reset.
+    if (!shared || testInfo.status !== testInfo.expectedStatus) {
+      if (shared) sharedApp.app = null
+      await app.close().catch(() => {})
+    }
   },
 
   sillygit: async ({ electronApp }, use, testInfo) => {
@@ -96,9 +205,11 @@ export const test = base.extend<Fixtures>({
     }
   },
 
-  relaunch: async ({ electronApp, userData, appEnv }, use) => {
+  relaunch: async ({ electronApp, userData, appEnv, sharedApp }, use) => {
     const relaunched: ElectronApplication[] = []
     await use(async () => {
+      // Quitting the worker's shared app means the next test launches a new one.
+      if (sharedApp.app === electronApp) sharedApp.app = null
       await (relaunched.at(-1) ?? electronApp).close()
       const app = await launchApp(userData, appEnv)
       relaunched.push(app)

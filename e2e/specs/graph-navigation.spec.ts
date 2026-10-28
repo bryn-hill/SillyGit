@@ -82,11 +82,11 @@ test.describe('large histories', () => {
     expect(await sillygit.graph.rows.count()).toBeLessThan(120)
 
     const body = sillygit.graph.root
-    for (let i = 0; i < 30 && (await sillygit.graph.row('Initial commit').count()) === 0; i++) {
+    // Each scroll to the bottom loads another page, until the first commit shows.
+    await expect(async () => {
       await body.evaluate((el) => (el.scrollTop = el.scrollHeight))
-      await sillygit.page.waitForTimeout(150)
-    }
-    await expect(sillygit.graph.row('Initial commit')).toBeVisible()
+      await expect(sillygit.graph.row('Initial commit')).toBeVisible({ timeout: 150 })
+    }).toPass()
   })
 
   test('search finds a commit that is not loaded yet and jumps to it', async ({ sillygit, repo }) => {

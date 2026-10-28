@@ -49,7 +49,7 @@ test.describe('a changed file in the working directory', () => {
   test('discarding the only hunk closes the diff once the file is unchanged', async ({ sillygit, repo }) => {
     await sillygit.workingFile.diff.getByRole('button', { name: /Discard Hunk/ }).click()
 
-    await expect.poll(() => repo.readFile('hello.txt')).toBe('hello\nworld\n')
+    await expect.poll(() => repo.readFileIfPresent('hello.txt')).toBe('hello\nworld\n')
     await sillygit.workingFile.expectClosed()
   })
 

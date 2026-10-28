@@ -1,12 +1,12 @@
 import { expect, test } from '../fixtures'
 import { FixtureRepo } from '../support/fixtureRepo'
+import { savedLayout } from '../support/settings'
 
-test('reopens the last repository and panel layout after a relaunch', async ({ sillygit, repo, relaunch }) => {
+test('reopens the last repository and panel layout after a relaunch', async ({ sillygit, repo, relaunch, userData }) => {
   await sillygit.openRepository(repo.path)
   await sillygit.toggleTerminal()
   await expect(sillygit.terminal.root).toBeVisible()
-  // Layout saves are debounced.
-  await sillygit.page.waitForTimeout(600)
+  await expect.poll(() => savedLayout(userData)?.showTerminal).toBe(true)
 
   const reopened = await relaunch()
 

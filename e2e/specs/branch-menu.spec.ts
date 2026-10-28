@@ -171,8 +171,9 @@ test.describe('branch right-click menu', () => {
       await expect(menu.getByRole('menuitem', { name: 'Copy link to branch: origin/feature' })).toBeVisible()
 
       await menu.getByRole('menuitem', { name: 'Copy link for pull request #16' }).click()
-      const copied = await electronApp.evaluate(({ clipboard }) => clipboard.readText())
-      expect(copied).toBe('https://github.com/owner/repo/pull/16')
+      await expect
+        .poll(() => electronApp.evaluate(({ clipboard }) => clipboard.readText()))
+        .toBe('https://github.com/owner/repo/pull/16')
     })
   })
 

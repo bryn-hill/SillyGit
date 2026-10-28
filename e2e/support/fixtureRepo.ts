@@ -115,6 +115,18 @@ export class FixtureRepo {
     return readFileSync(join(this.path, relativePath), 'utf8')
   }
 
+  /**
+   * Like readFile, but null while the file is missing. Git replaces a file by
+   * deleting and rewriting it, so poll with this while the app changes it.
+   */
+  readFileIfPresent(relativePath: string): string | null {
+    try {
+      return this.readFile(relativePath)
+    } catch {
+      return null
+    }
+  }
+
   git(...args: string[]): string {
     return execFileSync('git', args, { cwd: this.path, env: { ...process.env, ...GIT_IDENTITY }, encoding: 'utf8' })
   }

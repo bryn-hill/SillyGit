@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures'
 import { FixtureRepo } from '../support/fixtureRepo'
+import { savedLayout } from '../support/settings'
 
 test.describe('Branch / Tag column', () => {
   test('a local branch and its remote share one pill', async ({ sillygit, repo }) => {
@@ -40,8 +41,9 @@ test.describe('Branch / Tag column', () => {
     await expect(sillygit.branchCrumb).toContainText('one')
   })
 
-  test('the column can be resized and keeps its width after a relaunch', async ({ sillygit, repo, relaunch }) => {
+  test('the column can be resized and keeps its width after a relaunch', async ({ sillygit, repo, relaunch, userData }) => {
     await sillygit.openRepository(repo.path)
+    const savedBefore = savedLayout(userData)?.refColumnWidth
     const cell = sillygit.graph.row('Add hello.txt').getByTestId('ref-cell')
     const before = (await cell.boundingBox())!.width
 
@@ -53,8 +55,7 @@ test.describe('Branch / Tag column', () => {
     await sillygit.page.mouse.up()
 
     await expect.poll(async () => (await cell.boundingBox())!.width).toBeCloseTo(before + 80, 0)
-    // Layout saves are debounced.
-    await sillygit.page.waitForTimeout(600)
+    await expect.poll(() => savedLayout(userData)?.refColumnWidth).not.toBe(savedBefore)
 
     const reopened = await relaunch()
     const reopenedCell = reopened.graph.row('Add hello.txt').getByTestId('ref-cell')
