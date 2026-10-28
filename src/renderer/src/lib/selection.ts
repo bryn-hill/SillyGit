@@ -1,5 +1,12 @@
-import type { Selection } from '../App'
 import type { ClickModifiers } from '../components/CommitGraph'
+
+// 'none' means nothing is selected and the side bar is closed. 'commits' is a
+// multi-selection (newest first); `anchor` is where a Shift-click range starts.
+export type Selection =
+  | { type: 'none' }
+  | { type: 'working' }
+  | { type: 'commit'; hash: string }
+  | { type: 'commits'; hashes: string[]; anchor: string }
 
 /** The commits a selection covers, for highlighting rows. */
 export function selectedHashes(selection: Selection): Set<string> {
@@ -53,4 +60,57 @@ export function clickCommit(
 
   if (selection.type === 'commit' && selection.hash === hash) return { type: 'none' }
   return { type: 'commit', hash }
+}
+
+/**
+ * Keeps a selection on something that exists: drops commits that went away
+ * (e.g. after a rebase) and moves between the WIP row and the newest commit as
+ * working changes come and go. Returns `selection` itself when it's fine.
+ */
+export function fixSelection(
+  selection: Selection,
+  hasCommit: (hash: string) => boolean,
+  newestHash: string | null,
+  hasWorkingChanges: boolean
+): Selection {
+  if (newestHash === null || selection.type === 'none') return selection
+  if (selection.type === 'commits') {
+    const kept = selection.hashes.filter(hasCommit)
+    if (kept.length === selection.hashes.length) return selection
+    return kept.length > 1
+      ? { type: 'commits', hashes: kept, anchor: kept.includes(selection.anchor) ? selection.anchor : kept[0] }
+      : kept.length === 1
+        ? { type: 'commit', hash: kept[0] }
+        : { type: 'none' }
+  }
+  const selectedExists = selection.type === 'commit' && hasCommit(selection.hash)
+  if (!hasWorkingChanges && (selection.type === 'working' || !selectedExists)) {
+    return { type: 'commit', hash: newestHash }
+  }
+  if (hasWorkingChanges && selection.type === 'commit' && !selectedExists) return { type: 'working' }
+  return selection
+}
+
+/**
+ * The row ArrowUp (-1) or ArrowDown (+1) moves to: the WIP row first when
+ * there is one, then the commits newest first. Null when there are no rows.
+ */
+export function stepSelection(
+  selection: Selection,
+  order: string[],
+  hasWorkingChanges: boolean,
+  delta: -1 | 1
+): Selection | null {
+  const items: Selection[] = [
+    ...(hasWorkingChanges ? [{ type: 'working' } as const] : []),
+    ...order.map((hash) => ({ type: 'commit', hash }) as const)
+  ]
+  if (items.length === 0) return null
+  const focusedHash =
+    selection.type === 'commit' ? selection.hash : selection.type === 'commits' ? selection.anchor : null
+  const current = items.findIndex((item) =>
+    item.type === 'commit' ? focusedHash === item.hash : selection.type === item.type
+  )
+  const next = current === -1 ? 0 : Math.min(items.length - 1, Math.max(0, current + delta))
+  return items[next]
 }

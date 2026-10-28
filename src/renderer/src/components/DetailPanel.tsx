@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import type { CommitDetail, FileStatus, GraphCommit, OperationState, RepoStatus } from '../../../shared/types'
-import type { Selection } from '../App'
+import type { Selection } from '../lib/selection'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { isPrimary, MOD } from '../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
