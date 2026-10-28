@@ -42,8 +42,8 @@ const api = {
     ipcRenderer.on('repo:changed', listener)
     return () => ipcRenderer.removeListener('repo:changed', listener)
   },
-  diff: (repoPath: string, path: string, staged: boolean, untracked: boolean): Wrapped<string> =>
-    ipcRenderer.invoke('git:diff', repoPath, path, staged, untracked),
+  diff: (repoPath: string, path: string, staged: boolean, untracked: boolean, ignoreWhitespace?: boolean): Wrapped<string> =>
+    ipcRenderer.invoke('git:diff', repoPath, path, staged, untracked, ignoreWhitespace),
   branches: (repoPath: string): Wrapped<import('../shared/types').BranchInfo[]> =>
     ipcRenderer.invoke('git:branches', repoPath),
   checkout: (repoPath: string, branch: string): Wrapped<void> =>

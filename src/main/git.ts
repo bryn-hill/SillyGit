@@ -157,10 +157,17 @@ export async function lastCommitMessage(repoPath: string): Promise<string> {
   }
 }
 
-export async function getDiff(repoPath: string, path: string, staged: boolean, untracked: boolean): Promise<string> {
+export async function getDiff(
+  repoPath: string,
+  path: string,
+  staged: boolean,
+  untracked: boolean,
+  ignoreWhitespace = false
+): Promise<string> {
+  const ws = ignoreWhitespace ? ['-w'] : []
   if (untracked) {
     try {
-      return await runGit(repoPath, ['diff', '--no-color', '--no-index', '--', '/dev/null', path])
+      return await runGit(repoPath, ['diff', '--no-color', ...ws, '--no-index', '--', '/dev/null', path])
     } catch (err) {
       // git diff --no-index exits 1 when the files differ, with the diff on stdout.
       if (err instanceof GitError && err.stdout) return err.stdout
@@ -168,8 +175,8 @@ export async function getDiff(repoPath: string, path: string, staged: boolean, u
     }
   }
   const args = staged
-    ? ['diff', '--no-color', '--cached', '--', path]
-    : ['diff', '--no-color', '--', path]
+    ? ['diff', '--no-color', ...ws, '--cached', '--', path]
+    : ['diff', '--no-color', ...ws, '--', path]
   return runGit(repoPath, args)
 }
 

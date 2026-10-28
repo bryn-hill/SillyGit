@@ -27,6 +27,10 @@ interface Props {
   onCopyText: (text: string) => void
   onEditFile?: (path: string) => void
   onWorkingTreeChanged?: () => void
+  /** Shows the file's diff instead, when it's one of the changes listed beside this view. */
+  onShowDiff?: () => void
+  /** Called when History or Blame is picked, so switching file can keep it. */
+  onModeChange?: (mode: FileViewMode) => void
 }
 
 const PAGE = 200
@@ -49,9 +53,15 @@ export default function FileHistoryView({
   onShowInGraph,
   onCopyText,
   onEditFile,
-  onWorkingTreeChanged
+  onWorkingTreeChanged,
+  onShowDiff,
+  onModeChange
 }: Props): JSX.Element {
-  const [mode, setMode] = useState<FileViewMode>(target.mode)
+  const [mode, setModeState] = useState<FileViewMode>(target.mode)
+  const setMode = (next: FileViewMode): void => {
+    setModeState(next)
+    onModeChange?.(next)
+  }
   const [menuOpen, setMenuOpen] = useState(false)
 
   // History
@@ -70,7 +80,7 @@ export default function FileHistoryView({
   const [lineMenu, setLineMenu] = useState<{ x: number; y: number; line: BlameLine } | null>(null)
 
   useEffect(() => {
-    setMode(target.mode)
+    setModeState(target.mode)
     setLimit(PAGE)
     setSelectedHash(target.ref)
     setBlameAt({ ref: target.ref, path: target.path })
@@ -180,6 +190,11 @@ export default function FileHistoryView({
           {target.path}
         </span>
         <div className="toggle-group" role="group" aria-label="File view">
+          {onShowDiff && (
+            <button aria-pressed={false} onClick={onShowDiff} title="This file's changes">
+              Diff
+            </button>
+          )}
           <button className={mode === 'history' ? 'active' : ''} aria-pressed={mode === 'history'} onClick={() => setMode('history')}>
             History
           </button>

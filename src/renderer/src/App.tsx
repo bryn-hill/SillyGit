@@ -16,8 +16,9 @@ import TopBar from './components/TopBar'
 import TabBar from './components/TabBar'
 import Sidebar from './components/Sidebar'
 import CommitGraph, { DEFAULT_REF_COLUMN_WIDTH } from './components/CommitGraph'
-import DetailPanel from './components/DetailPanel'
+import DetailPanel, { type ActiveFile } from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
+import WorkingFileView from './components/WorkingFileView'
 import FileHistoryView, { type FileViewMode, type FileViewTarget } from './components/FileHistoryView'
 import MergeResolver from './components/MergeResolver'
 import InteractiveRebase from './components/InteractiveRebase'
@@ -148,6 +149,10 @@ export default function App(): JSX.Element {
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
   /** A file's history or blame, shown in place of the graph. */
   const [fileView, setFileView] = useState<FileViewTarget | null>(null)
+  // An uncommitted file's diff shown in place of the graph, from the unstaged or staged list.
+  const [workingDiff, setWorkingDiff] = useState<{ path: string; staged: boolean } | null>(null)
+  // History or Blame as last picked in the open file view, kept when another file is picked beside it.
+  const fileViewMode = useRef<FileViewMode>('history')
   /** Tracked files, loaded when the Actions list opens, for its Blame and File history pickers. */
   const [trackedFiles, setTrackedFiles] = useState<string[]>([])
   const [showSettings, setShowSettings] = useState(false)
@@ -342,6 +347,7 @@ export default function App(): JSX.Element {
     setSelection(snapshot?.selection ?? { type: 'working' })
     setFullScreenHash(null)
     setFileView(null)
+    setWorkingDiff(null)
     setResolvingPath(null)
     if (repoPath) refresh(repoPath)
   }, [repoPath, refresh])
@@ -508,7 +514,7 @@ export default function App(): JSX.Element {
 
   // ArrowUp/ArrowDown move the selection through the graph (WIP row first, then commits).
   useEffect(() => {
-    if (fullScreenHash || showLaunchpad || showSettings || resolvingPath || rebaseBase) return
+    if (fullScreenHash || workingDiff || showLaunchpad || showSettings || resolvingPath || rebaseBase) return
     const handler = (e: KeyboardEvent): void => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
@@ -533,7 +539,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [fullScreenHash, showLaunchpad, showSettings, resolvingPath, rebaseBase, hasWorkingChanges, graphRows, selection])
+  }, [fullScreenHash, workingDiff, showLaunchpad, showSettings, resolvingPath, rebaseBase, hasWorkingChanges, graphRows, selection])
 
   const handleOpenRepo = async (): Promise<void> => {
     const picked = await window.api.openRepoDialog()
@@ -885,6 +891,7 @@ export default function App(): JSX.Element {
       if (res.ok && res.data.conflicts) {
         setFullScreenHash(null)
         setFileView(null)
+        setWorkingDiff(null)
         setSelection({ type: 'working' })
       }
     })
@@ -917,6 +924,7 @@ export default function App(): JSX.Element {
         )
         setFullScreenHash(null)
         setFileView(null)
+        setWorkingDiff(null)
         setShowLaunchpad(false)
         setSelection({ type: 'working' })
       }
@@ -1126,6 +1134,7 @@ export default function App(): JSX.Element {
     setResolvingPath(null)
     closeEditor()
     setFileView(null)
+    setWorkingDiff(null)
     setRebaseEditor({ repoPath, base })
   }
 
@@ -1208,6 +1217,7 @@ export default function App(): JSX.Element {
     }
     setFullScreenHash(null)
     setFileView(null)
+    setWorkingDiff(null)
     setSelection({ type: 'commit', hash: hit.hash })
   }
 
@@ -1389,11 +1399,71 @@ export default function App(): JSX.Element {
   const openFileView = (path: string, ref: string | null, mode: FileViewMode): void => {
     setShowLaunchpad(false)
     setRebaseEditor(null)
+    fileViewMode.current = mode
     setFileView({ path, ref, mode })
+  }
+
+  // Keep an open working diff on its file as it's staged or unstaged; close it once the file has no changes left.
+  useEffect(() => {
+    if (!workingDiff || !status) return
+    const listed = (staged: boolean): boolean =>
+      (staged ? status.staged : status.unstaged).some((f) => f.path === workingDiff.path)
+    if (listed(workingDiff.staged)) return
+    setWorkingDiff(listed(!workingDiff.staged) ? { ...workingDiff, staged: !workingDiff.staged } : null)
+  }, [status, workingDiff])
+
+  /** Opens a working change's diff full window; with history or blame open, switches that to the file instead. */
+  const openWorkingFile = (file: FileStatus, staged: boolean): void => {
+    if (fileView) {
+      setFileView({ path: file.path, ref: null, mode: fileViewMode.current })
+      setWorkingDiff({ path: file.path, staged })
+      return
+    }
+    // Clicking the open file again closes the diff.
+    if (workingDiff?.path === file.path && workingDiff.staged === staged) {
+      setWorkingDiff(null)
+      return
+    }
+    closeEditor()
+    setWorkingDiff({ path: file.path, staged })
+  }
+
+  const openCommitFile = (hash: string, path: string): void => {
+    if (fileView) {
+      setFileView({ path, ref: hash, mode: fileViewMode.current })
+      return
+    }
+    closeEditor()
+    setFullScreenHash(hash)
+    setFullScreenPath(path)
+  }
+
+  /** Back from history or blame to the file's diff, when it's one of the listed changes. */
+  const fileViewDiff = (): (() => void) | undefined => {
+    if (!fileView) return undefined
+    const { path } = fileView
+    if (selection.type === 'commit' && fileView.ref === selection.hash) {
+      const hash = selection.hash
+      return () => {
+        setFileView(null)
+        setFullScreenHash(hash)
+        setFullScreenPath(path)
+      }
+    }
+    if (selection.type === 'working' && fileView.ref == null && status) {
+      const staged = workingDiff?.path === path ? workingDiff.staged : !status.unstaged.some((f) => f.path === path)
+      if (!(staged ? status.staged : status.unstaged).some((f) => f.path === path)) return undefined
+      return () => {
+        setFileView(null)
+        setWorkingDiff({ path, staged })
+      }
+    }
+    return undefined
   }
 
   const showCommitInGraph = (hash: string): void => {
     setFileView(null)
+    setWorkingDiff(null)
     setFullScreenHash(null)
     closeEditor()
     void handleSelectBranchCommit(hash)
@@ -1414,6 +1484,7 @@ export default function App(): JSX.Element {
   const focusSearch = (): void => {
     setFullScreenHash(null)
     setFileView(null)
+    setWorkingDiff(null)
     setShowLaunchpad(false)
     setResolvingPath(null)
     setSearchFocusToken((n) => n + 1)
@@ -1422,6 +1493,7 @@ export default function App(): JSX.Element {
   const startAmend = (): void => {
     setFullScreenHash(null)
     setFileView(null)
+    setWorkingDiff(null)
     setShowLaunchpad(false)
     setSelection({ type: 'working' })
     handleAmendChange(true)
@@ -1455,6 +1527,7 @@ export default function App(): JSX.Element {
       add('commit', 'Go to uncommitted changes', () => {
         setFullScreenHash(null)
         setFileView(null)
+        setWorkingDiff(null)
         setShowLaunchpad(false)
         setSelection({ type: 'working' })
       })
@@ -1611,6 +1684,12 @@ export default function App(): JSX.Element {
     if (!repoPath) return
     setEditingFiles(({ [repoPath]: _closed, ...rest }) => rest)
   }
+  const activeFile: ActiveFile | null = fileView
+    ? { path: fileView.path, staged: workingDiff?.path === fileView.path ? workingDiff.staged : !status?.unstaged.some((f) => f.path === fileView.path) }
+    : workingDiff
+  const workingDiffFile = workingDiff
+    ? (workingDiff.staged ? status?.staged : status?.unstaged)?.find((f) => f.path === workingDiff.path)
+    : undefined
   const detailPanel =
     repoPath && selection.type !== 'none' ? (
       <div className="detail-panel" role="complementary" aria-label="Details">
@@ -1628,11 +1707,9 @@ export default function App(): JSX.Element {
           onUnstage={handleUnstage}
           onDiscard={handleDiscard}
           onCommit={handleCommit}
-          onOpenCommitFileDiff={(hash, path) => {
-            closeEditor()
-            setFullScreenHash(hash)
-            setFullScreenPath(path)
-          }}
+          onOpenCommitFileDiff={openCommitFile}
+          onOpenWorkingFile={openWorkingFile}
+          activeFile={activeFile}
           operation={operation}
           conflictActions={{
             onOpenConflict: setResolvingPath,
@@ -1783,13 +1860,19 @@ export default function App(): JSX.Element {
                 onStart={handleStartRebase}
               />
             ) : fileView ? (
-              <div className="main-layout">
+              <div className="main-layout file-focus">
+                {(selection.type === 'working' || selection.type === 'commit') && detailPanel}
                 <FileHistoryView
                   repoPath={repoPath}
                   target={fileView}
                   onClose={() => setFileView(null)}
+                  onShowDiff={fileViewDiff()}
+                  onModeChange={(mode) => {
+                    fileViewMode.current = mode
+                  }}
                   onOpenCommit={(hash, path) => {
                     setFileView(null)
+                    setWorkingDiff(null)
                     closeEditor()
                     setFullScreenHash(hash)
                     setFullScreenPath(path)
@@ -1799,6 +1882,7 @@ export default function App(): JSX.Element {
                   onCopyText={handleCopyText}
                   onEditFile={(path) => {
                     setFileView(null)
+                    setWorkingDiff(null)
                     openEditor(path)
                   }}
                   onWorkingTreeChanged={() => refresh(repoPath)}
@@ -1823,6 +1907,23 @@ export default function App(): JSX.Element {
                   />
                 </Suspense>
                 {detailPanel}
+              </div>
+            ) : workingDiff && selection.type === 'working' ? (
+              <div className="main-layout file-focus">
+                {detailPanel}
+                <WorkingFileView
+                  repoPath={repoPath}
+                  path={workingDiff.path}
+                  staged={workingDiff.staged}
+                  untracked={workingDiffFile?.untracked ?? false}
+                  refreshKey={status}
+                  onClose={() => setWorkingDiff(null)}
+                  onStage={handleStage}
+                  onUnstage={handleUnstage}
+                  onEditFile={openEditor}
+                  onOpenFileView={openFileView}
+                  onWorkingTreeChanged={() => refresh(repoPath)}
+                />
               </div>
             ) : fullScreenHash ? (
               <CommitFullView

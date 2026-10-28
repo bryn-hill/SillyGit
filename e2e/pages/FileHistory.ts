@@ -5,6 +5,8 @@ export class FileHistory {
   readonly root: Locator
   readonly historyTab: Locator
   readonly blameTab: Locator
+  /** Back to the file's diff; only there when the file is one of the changes listed beside the view. */
+  readonly diffTab: Locator
   readonly closeButton: Locator
   /** The commits that changed the file, newest first. */
   readonly entries: Locator
@@ -17,6 +19,7 @@ export class FileHistory {
     this.root = page.getByRole('region', { name: 'File history and blame' })
     this.historyTab = this.root.getByRole('button', { name: 'History', exact: true })
     this.blameTab = this.root.getByRole('button', { name: 'Blame', exact: true })
+    this.diffTab = this.root.getByRole('button', { name: 'Diff', exact: true })
     this.closeButton = this.root.getByRole('button', { name: 'Close file view' })
     this.entries = this.root.getByRole('list', { name: 'Commits changing this file' }).getByRole('listitem')
     this.activeEntry = this.entries.and(this.root.locator('[aria-current="true"]'))

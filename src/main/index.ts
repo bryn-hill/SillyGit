@@ -313,8 +313,8 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'git:diff',
-    (_e, repoPath: string, path: string, staged: boolean, untracked: boolean) =>
-      wrap(() => git.getDiff(repoPath, path, staged, untracked))
+    (_e, repoPath: string, path: string, staged: boolean, untracked: boolean, ignoreWhitespace?: boolean) =>
+      wrap(() => git.getDiff(repoPath, path, staged, untracked, ignoreWhitespace))
   )
 
   ipcMain.handle('git:branches', (_e, repoPath: string) => wrap(() => git.listBranches(repoPath)))
