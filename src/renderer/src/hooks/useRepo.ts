@@ -57,44 +57,54 @@ export function useRepo({
   const openRepo = useRef<string | null>(null)
   const tabSnapshots = useRef(new Map<string, TabSnapshot>())
 
+  const latestRefresh = useRef<Promise<void>>(Promise.resolve())
+
   const refresh = useCallback(
-    async (path: string) => {
+    (path: string): Promise<void> => {
       const seq = ++refreshSeq.current
-      const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes, redoRes] = await Promise.all([
-        window.api.getStatus(path),
-        window.api.branches(path),
-        window.api.graphLog(path, graphLimitRef.current),
-        window.api.operationState(path),
-        window.api.remotes(path),
-        window.api.stashes(path),
-        window.api.undoLabel(path),
-        window.api.redoLabel(path)
-      ])
-      if (seq !== refreshSeq.current || openRepo.current !== path) return
-      setRemotes(remotesRes.ok ? remotesRes.data : [])
-      if (statusRes.ok) setStatus(statusRes.data)
-      else onError(statusRes.error)
-      setOperation(operationRes.ok ? operationRes.data : null)
-      if (branchesRes.ok) {
-        setBranches(branchesRes.data)
-        setBranchesListedAt(Date.now())
-      }
-      if (graphRes.ok) setGraphCommits(graphRes.data)
-      setStashes(stashesRes.ok ? stashesRes.data : [])
-      setUndoLabel(undoRes.ok ? undoRes.data : null)
-      setRedoLabel(redoRes.ok ? redoRes.data : null)
-      const previous = tabSnapshots.current.get(path)
-      tabSnapshots.current.set(path, {
-        status: statusRes.ok ? statusRes.data : (previous?.status ?? null),
-        branches: branchesRes.ok ? branchesRes.data : (previous?.branches ?? []),
-        graphCommits: graphRes.ok ? graphRes.data : (previous?.graphCommits ?? []),
-        operation: operationRes.ok ? operationRes.data : null,
-        remotes: remotesRes.ok ? remotesRes.data : [],
-        stashes: stashesRes.ok ? stashesRes.data : [],
-        undoLabel: undoRes.ok ? undoRes.data : null,
-        redoLabel: redoRes.ok ? redoRes.data : null,
-        selection: previous?.selection
-      })
+      const run = (async (): Promise<void> => {
+        const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes, redoRes] = await Promise.all([
+          window.api.getStatus(path),
+          window.api.branches(path),
+          window.api.graphLog(path, graphLimitRef.current),
+          window.api.operationState(path),
+          window.api.remotes(path),
+          window.api.stashes(path),
+          window.api.undoLabel(path),
+          window.api.redoLabel(path)
+        ])
+        if (openRepo.current !== path) return
+        // A newer refresh started meanwhile and its answers win. Wait for it,
+        // so whoever awaits this one (to show the conflicts after a merge, say)
+        // sees state at least as new as when they asked.
+        if (seq !== refreshSeq.current) return latestRefresh.current
+        setRemotes(remotesRes.ok ? remotesRes.data : [])
+        if (statusRes.ok) setStatus(statusRes.data)
+        else onError(statusRes.error)
+        setOperation(operationRes.ok ? operationRes.data : null)
+        if (branchesRes.ok) {
+          setBranches(branchesRes.data)
+          setBranchesListedAt(Date.now())
+        }
+        if (graphRes.ok) setGraphCommits(graphRes.data)
+        setStashes(stashesRes.ok ? stashesRes.data : [])
+        setUndoLabel(undoRes.ok ? undoRes.data : null)
+        setRedoLabel(redoRes.ok ? redoRes.data : null)
+        const previous = tabSnapshots.current.get(path)
+        tabSnapshots.current.set(path, {
+          status: statusRes.ok ? statusRes.data : (previous?.status ?? null),
+          branches: branchesRes.ok ? branchesRes.data : (previous?.branches ?? []),
+          graphCommits: graphRes.ok ? graphRes.data : (previous?.graphCommits ?? []),
+          operation: operationRes.ok ? operationRes.data : null,
+          remotes: remotesRes.ok ? remotesRes.data : [],
+          stashes: stashesRes.ok ? stashesRes.data : [],
+          undoLabel: undoRes.ok ? undoRes.data : null,
+          redoLabel: redoRes.ok ? redoRes.data : null,
+          selection: previous?.selection
+        })
+      })()
+      latestRefresh.current = run
+      return run
     },
     [onError]
   )
