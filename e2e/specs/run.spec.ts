@@ -11,6 +11,11 @@ const report = (): string => (existsSync(out) ? readFileSync(out, 'utf8') : '')
 const reportCommand = (): string =>
   `{ pwd; git log -1 --format=%s; test -f hello.txt && cat hello.txt; } > '${out}'`
 
+// A run starts a login shell (the user's profile, nvm and all) and, for a
+// commit, sets up a checkout first, which is slow on a busy machine.
+const RUN_TIMEOUT = 25_000
+test.slow()
+
 test.beforeEach(() => {
   outDir = mkdtempSync(join(tmpdir(), 'sillygit-run-out-'))
   out = join(outDir, 'report.txt')
@@ -27,7 +32,7 @@ test('the first Run asks for the command, then runs the working tree', async ({ 
   await sillygit.toolbarButton('Run').click()
   await sillygit.setRunCommand(reportCommand())
 
-  await expect.poll(report).toContain('uncommitted')
+  await expect.poll(report, { timeout: RUN_TIMEOUT }).toContain('uncommitted')
   expect(report().split('\n')[0]).toBe(repo.path)
   await expect(sillygit.terminal.runTabs).toHaveCount(1)
   await expect(sillygit.toolbarButton('Run')).toHaveAttribute('title', /in the working tree/)
@@ -43,7 +48,7 @@ test('a selected commit runs in isolation without touching the working tree', as
   await sillygit.graph.select('Initial commit')
   await sillygit.toolbarButton('Run').click()
 
-  await expect.poll(report).toContain('Initial commit')
+  await expect.poll(report, { timeout: RUN_TIMEOUT }).toContain('Initial commit')
   const [cwd] = report().split('\n')
   expect(cwd).not.toBe(repo.path)
   // hello.txt doesn't exist yet at the initial commit.
@@ -69,7 +74,7 @@ test('Check out and run checks the commit out first, but not over uncommitted ch
   await expect(sillygit.graph.workingChangesRow()).toHaveCount(0)
   await sillygit.graph.expectSelected('Initial commit')
   await sillygit.toolbarButton('Run').click()
-  await expect.poll(report).toContain('Initial commit')
+  await expect.poll(report, { timeout: RUN_TIMEOUT }).toContain('Initial commit')
   expect(report().split('\n')[0]).toBe(repo.path)
   expect(repo.git('log', '-1', '--format=%s').trim()).toBe('Initial commit')
 })

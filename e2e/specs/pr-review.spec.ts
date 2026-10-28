@@ -121,6 +121,8 @@ test('a pull request opens from Launchpad with its description, checks and conve
 })
 
 test('line comments are drafted on the diff and sent with the review', async ({ sillygit, electronApp }) => {
+  // Many clicks, and with the window hidden (a local run) each one waits for frames.
+  test.slow()
   await sillygit.tabs.launchpad.click()
   await sillygit.page.getByText('Add login page').click()
   const pr = sillygit.pullRequest

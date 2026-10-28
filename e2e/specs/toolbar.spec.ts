@@ -32,8 +32,9 @@ test.describe('toolbar', () => {
     await expect(stash).toBeDisabled()
 
     await pop.click()
+    // The toolbar is also disabled while the pop runs, so wait for its result.
+    await expect.poll(() => repo.readFileIfPresent('hello.txt')).toBe('hello\nchanged\n')
     await expect(pop).toBeDisabled()
-    expect(repo.readFile('hello.txt')).toBe('hello\nchanged\n')
   })
 
   test('Pull and Push are disabled without a remote', async ({ sillygit, repo }) => {

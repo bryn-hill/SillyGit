@@ -1,4 +1,4 @@
-import { test as base, _electron as electron, type ElectronApplication } from '@playwright/test'
+import { test as base, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -78,6 +78,33 @@ async function snapshotApp(electronApp: ElectronApplication): Promise<void> {
   })
 }
 
+type RendererApi = { api: { watchRepo(path: null): Promise<void>; removeWorkspaceRepo(path: string): Promise<unknown> } }
+
+/**
+ * Stops the app's page using the last test's repo and settings: leaving it
+ * stops its timers (debounced layout saves) and ends its terminals, and the
+ * repo is no longer watched, so nothing touches the repo while it's deleted.
+ */
+async function parkPage(page: Page): Promise<void> {
+  page.removeAllListeners('dialog')
+  if (page.url() === 'about:blank') return
+  await page.evaluate(() => (globalThis as unknown as RendererApi).api.watchRepo(null)).catch(() => {})
+  await page.goto('about:blank')
+}
+
+/**
+ * Waits until the settings saves the page has sent so far have landed: saves
+ * run one after another, and this no-op one is sent after them.
+ */
+async function flushSettings(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    // Saves are sent from effects, which run after the next paint.
+    const { requestAnimationFrame } = globalThis as unknown as { requestAnimationFrame(callback: () => void): number }
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)))
+    await (globalThis as unknown as RendererApi).api.removeWorkspaceRepo('\0e2e-flush')
+  })
+}
+
 /**
  * Makes a used app look freshly launched with `userData` as its settings
  * folder: no page state, no stubs, default window size. Much cheaper than
@@ -85,10 +112,7 @@ async function snapshotApp(electronApp: ElectronApplication): Promise<void> {
  */
 async function resetApp(shared: WorkerFixtures['sharedApp'], userData: string): Promise<void> {
   const page = await shared.app!.firstWindow()
-  page.removeAllListeners('dialog')
-  // Leaving the app's page stops its timers (debounced layout saves) before
-  // the settings folder changes underneath it, and ends its terminals.
-  await page.goto('about:blank')
+  await parkPage(page)
   await shared.app!.evaluate(
     async ({ app, BrowserWindow, clipboard, dialog, ipcMain, session, shell }, userData) => {
       const g = globalThis as Record<string, unknown>
@@ -157,7 +181,8 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     rmSync(userData, { recursive: true, force: true })
   },
 
-  electronApp: async ({ userData, appEnv, freshApp, sharedApp }, use, testInfo) => {
+  // Depends on `repo` so the app is parked (or closed) before the repo is deleted.
+  electronApp: async ({ userData, appEnv, freshApp, sharedApp, repo: _repo }, use, testInfo) => {
     const shared = !freshApp && Object.keys(appEnv).length === 0
     let app: ElectronApplication
     if (!shared) {
@@ -193,6 +218,8 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     if (!shared || testInfo.status !== testInfo.expectedStatus) {
       if (shared) sharedApp.app = null
       await app.close().catch(() => {})
+    } else if (sharedApp.app === app) {
+      await parkPage(await app.firstWindow())
     }
   },
 
@@ -208,9 +235,11 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   relaunch: async ({ electronApp, userData, appEnv, sharedApp }, use) => {
     const relaunched: ElectronApplication[] = []
     await use(async () => {
+      const current = relaunched.at(-1) ?? electronApp
+      await flushSettings(await current.firstWindow())
       // Quitting the worker's shared app means the next test launches a new one.
       if (sharedApp.app === electronApp) sharedApp.app = null
-      await (relaunched.at(-1) ?? electronApp).close()
+      await current.close()
       const app = await launchApp(userData, appEnv)
       relaunched.push(app)
       return openWindow(app)

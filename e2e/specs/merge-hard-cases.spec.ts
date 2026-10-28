@@ -220,7 +220,10 @@ test('a binary conflict offers whole-file choices only', async ({ sillygit, repo
   await prompt.getByRole('button', { name: 'Take incoming (feature)' }).click()
 
   await sillygit.conflicts.expectNoConflictedFiles()
-  expect(repo.git('rev-parse', ':logo.png')).toBe(repo.git('rev-parse', 'feature:logo.png'))
+  // Resolved in the index too (stage 0), once the app has staged it.
+  await expect
+    .poll(() => repo.git('ls-files', '--stage', 'logo.png').split(/\s+/).slice(1, 3))
+    .toEqual([repo.git('rev-parse', 'feature:logo.png').trim(), '0'])
 })
 
 test('CRLF files keep CRLF when lines from both sides are taken', async ({ sillygit, repo }) => {

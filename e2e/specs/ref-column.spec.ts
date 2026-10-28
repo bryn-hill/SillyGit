@@ -43,7 +43,6 @@ test.describe('Branch / Tag column', () => {
 
   test('the column can be resized and keeps its width after a relaunch', async ({ sillygit, repo, relaunch, userData }) => {
     await sillygit.openRepository(repo.path)
-    const savedBefore = savedLayout(userData)?.refColumnWidth
     const cell = sillygit.graph.row('Add hello.txt').getByTestId('ref-cell')
     const before = (await cell.boundingBox())!.width
 
@@ -55,7 +54,7 @@ test.describe('Branch / Tag column', () => {
     await sillygit.page.mouse.up()
 
     await expect.poll(async () => (await cell.boundingBox())!.width).toBeCloseTo(before + 80, 0)
-    await expect.poll(() => savedLayout(userData)?.refColumnWidth).not.toBe(savedBefore)
+    await expect.poll(() => savedLayout(userData)?.refColumnWidth).toBeCloseTo(before + 80, 0)
 
     const reopened = await relaunch()
     const reopenedCell = reopened.graph.row('Add hello.txt').getByTestId('ref-cell')

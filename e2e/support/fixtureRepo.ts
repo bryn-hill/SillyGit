@@ -132,6 +132,7 @@ export class FixtureRepo {
   }
 
   remove(): void {
-    rmSync(this.path, { recursive: true, force: true })
+    // Retried: a git command the app started may still be writing to it.
+    rmSync(this.path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 }
