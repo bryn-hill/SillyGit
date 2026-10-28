@@ -33,6 +33,8 @@ interface StoredSettings {
   branchList?: Partial<BranchListSettings>
   /** Starred branches, per repo path, in the order they were starred. */
   favouriteBranches?: Record<string, string[]>
+  /** Per repo: when the branch cleanup banner may show again, in ms. */
+  cleanupSnoozedUntil?: Record<string, number>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -180,6 +182,20 @@ export async function setFavouriteBranches(repoPath: string, names: string[]): P
     if (names.length > 0) all[repoPath] = [...new Set(names)]
     else delete all[repoPath]
     current.favouriteBranches = all
+  })
+}
+
+export async function getCleanupSnooze(repoPath: string): Promise<number | null> {
+  const until = (await readSettings()).cleanupSnoozedUntil?.[repoPath]
+  return typeof until === 'number' ? until : null
+}
+
+export async function setCleanupSnooze(repoPath: string, until: number | null): Promise<void> {
+  await updateSettings((current) => {
+    const all = { ...current.cleanupSnoozedUntil }
+    if (until === null) delete all[repoPath]
+    else all[repoPath] = until
+    current.cleanupSnoozedUntil = all
   })
 }
 

@@ -45,6 +45,7 @@ export interface PaletteContext {
     applyStash: (stash: StashEntry) => void
     popStash: (stash: StashEntry) => void
     createBranch: () => void
+    cleanUpBranches: () => void
     checkout: (branch: string) => void
     checkoutRemote: (branch: string) => void
     merge: (branch: string) => void
@@ -130,6 +131,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       stashes.map((stash) => ({ id: stash.ref, label: `${stash.ref}: ${stash.message}`, run: () => a.popStash(stash) }))
     )
     add('new-branch', 'Create branch…', a.createBranch)
+    add('cleanup-branches', 'Clean up branches…', a.cleanUpBranches)
     const checkouts: Command[] = []
     for (const b of branches) {
       if (b.current) continue

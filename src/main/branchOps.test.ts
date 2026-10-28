@@ -104,6 +104,67 @@ describe('branch commands', () => {
   })
 })
 
+describe('branch cleanup', () => {
+  const commit = (file: string): void => {
+    writeFileSync(join(dir, file), `${file}\n`)
+    run('add', '.')
+    run('commit', '-q', '-m', file)
+  }
+
+  it('lists gone, merged and unpushed branches, leaving out current, default and brand-new ones', async () => {
+    run('remote', 'set-head', 'origin', 'main')
+    // done: merged into origin/main. gone: its upstream was deleted. wip: unpushed work.
+    run('checkout', '-q', '-b', 'done')
+    commit('done.txt')
+    run('checkout', '-q', 'main')
+    run('merge', '-q', '--no-ff', '-m', 'Merge done', 'done')
+    run('push', '-q', 'origin', 'main')
+    run('checkout', '-q', '-b', 'gone')
+    commit('gone.txt')
+    run('push', '-q', '-u', 'origin', 'gone')
+    run('push', '-q', 'origin', '--delete', 'gone')
+    run('fetch', '-q', '--prune')
+    run('checkout', '-q', '-b', 'wip', 'main')
+    commit('wip1.txt')
+    commit('wip2.txt')
+    run('checkout', '-q', 'main')
+    run('branch', 'fresh')
+
+    const found = await branches.listCleanupCandidates(dir)
+    const byName = Object.fromEntries(found.map((c) => [c.name, c]))
+    expect(Object.keys(byName).sort()).toEqual(['done', 'gone', 'wip'])
+    expect(byName.done).toMatchObject({ gone: false, mergedInto: 'origin/main', localOnly: 0 })
+    expect(byName.gone).toMatchObject({ gone: true, mergedInto: null, localOnly: 1 })
+    expect(byName.wip).toMatchObject({ gone: false, mergedInto: null, localOnly: 2 })
+    expect(byName.wip.lastCommitAt).toBeGreaterThan(0)
+  })
+
+  it('measures merged against a local main when the remote has no HEAD', async () => {
+    run('branch', 'old', 'main')
+    commit('next.txt')
+    const found = await branches.listCleanupCandidates(dir)
+    expect(found).toEqual([expect.objectContaining({ name: 'old', mergedInto: 'main' })])
+  })
+
+  it('deletes branches and restores them with their tracking config', async () => {
+    run('checkout', '-q', '-b', 'topic')
+    commit('topic.txt')
+    run('push', '-q', '-u', 'origin', 'topic')
+    run('checkout', '-q', 'main')
+    const tip = run('rev-parse', 'topic')
+
+    const result = await branches.deleteBranches(dir, ['topic', 'main', 'missing'])
+    expect(result.deleted).toEqual([{ name: 'topic', hash: tip, remote: 'origin', merge: 'refs/heads/topic' }])
+    // main is checked out and missing doesn't exist; both are reported, not fatal.
+    expect(result.failed.map((f) => f.name)).toEqual(['main', 'missing'])
+    expect(run('branch', '--list', 'topic')).toBe('')
+
+    await branches.restoreBranches(dir, result.deleted)
+    expect(run('rev-parse', 'topic')).toBe(tip)
+    expect(run('rev-parse', '--abbrev-ref', 'topic@{upstream}')).toBe('origin/topic')
+  })
+})
+
 describe('pullBranch', () => {
   // A second clone that pushes a new commit to `feature` on the remote.
   const pushFromElsewhere = (branch: string, file: string): void => {

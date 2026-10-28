@@ -5,10 +5,13 @@ export class Sidebar {
   readonly root: Locator
   /** The FAVOURITES group above LOCAL, holding starred branches. */
   readonly favourites: Locator
+  /** "N branches can be tidied", under LOCAL. */
+  readonly tidyBanner: Locator
 
   constructor(private readonly page: Page) {
     this.root = page.getByRole('navigation', { name: 'Branches' })
     this.favourites = this.root.getByRole('group', { name: 'Favourite branches' })
+    this.tidyBanner = this.root.getByTestId('tidy-banner')
   }
 
   /** A branch row by the name it shows: the last path segment in the tree, the full name among favourites. */

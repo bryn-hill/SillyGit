@@ -33,6 +33,7 @@ import { PrNotifier, type ShownNotification } from './prNotifications'
 import type { NotificationSettings } from '../shared/notifications'
 import type { SprintSettings } from '../shared/sprints'
 import type { BranchListSettings } from '../shared/branchStatus'
+import type { DeletedBranch } from '../shared/branchCleanup'
 import type { SubmitReviewInput } from '../shared/prReview'
 import type { RebaseStep } from '../shared/rebase'
 import { NO_SELF_UPDATE, type SelfUpdateStatus, type SelfUpdateStep } from '../shared/selfUpdate'
@@ -642,6 +643,18 @@ function registerIpcHandlers(): void {
     wrap(() => branches.deleteBranch(repoPath, name, force))
   )
 
+  ipcMain.handle('git:cleanup-candidates', (_e, repoPath: string) =>
+    wrap(() => branches.listCleanupCandidates(repoPath))
+  )
+
+  ipcMain.handle('git:delete-branches', (_e, repoPath: string, names: string[]) =>
+    wrap(() => branches.deleteBranches(repoPath, names))
+  )
+
+  ipcMain.handle('git:restore-branches', (_e, repoPath: string, deleted: DeletedBranch[]) =>
+    wrap(() => branches.restoreBranches(repoPath, deleted))
+  )
+
   ipcMain.handle('git:delete-remote-branch', (_e, repoPath: string, name: string) =>
     wrap(() => branches.deleteRemoteBranch(repoPath, name))
   )
@@ -819,6 +832,12 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('branches:set-favourites', (_e, repoPath: string, names: string[]) =>
     wrap(() => settings.setFavouriteBranches(repoPath, names))
+  )
+
+  ipcMain.handle('branches:get-cleanup-snooze', (_e, repoPath: string) => settings.getCleanupSnooze(repoPath))
+
+  ipcMain.handle('branches:set-cleanup-snooze', (_e, repoPath: string, until: number | null) =>
+    wrap(() => settings.setCleanupSnooze(repoPath, until))
   )
 
   ipcMain.handle('notifications:get-settings', () => settings.getNotificationSettings())

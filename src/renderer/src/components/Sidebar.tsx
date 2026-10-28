@@ -5,6 +5,7 @@ import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { dropTarget, useRefDrag } from './RefDrag'
 import { pressable } from '../lib/pressable'
 import { favouriteBranches, staleAge, type BranchListSettings } from '../../../shared/branchStatus'
+import { CLEANUP_SNOOZE_DAYS, formatCount, tidyCount } from '../../../shared/branchCleanup'
 
 interface TreeNode {
   name: string
@@ -59,6 +60,10 @@ interface Props {
   branchListSettings: BranchListSettings
   /** When `branches` was listed, in ms, to age the stale tags against. */
   listedAt: number
+  /** The "can be tidied" banner was dismissed for a while. */
+  cleanupSnoozed: boolean
+  onOpenCleanup: () => void
+  onSnoozeCleanup: () => void
 }
 
 /** "WIP on main: 1a2b3c4 Subject" -> "Subject"; "On main: my note" -> "my note". */
@@ -113,7 +118,7 @@ function BranchTags({ branch, settings, listedAt }: { branch: BranchInfo; settin
           data-testid="branch-tag-deleted"
           title={`${branch.upstream} was deleted on the remote. The local branch is still here.`}
         >
-          deleted
+          gone
         </span>
       )}
       {stale && (
@@ -122,7 +127,7 @@ function BranchTags({ branch, settings, listedAt }: { branch: BranchInfo; settin
           data-testid="branch-tag-stale"
           title={`No commits for ${stale} (stale after ${settings.staleDays} days, change it in Settings)`}
         >
-          stale {stale}
+          {stale}
         </span>
       )}
     </span>
@@ -239,10 +244,14 @@ export default function Sidebar({
   favourites,
   onToggleFavourite,
   branchListSettings,
-  listedAt
+  listedAt,
+  cleanupSnoozed,
+  onOpenCleanup,
+  onSnoozeCleanup
 }: Props): JSX.Element {
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget } | null>(null)
   const [stashMenu, setStashMenu] = useState<{ x: number; y: number; stash: StashEntry } | null>(null)
+  const [localMenu, setLocalMenu] = useState<{ x: number; y: number } | null>(null)
   const [filter, setFilter] = useState('')
   const [newBranch, setNewBranch] = useState('')
   const [showNewBranch, setShowNewBranch] = useState(false)
@@ -263,6 +272,8 @@ export default function Sidebar({
     () => buildTree(filtered.filter((b) => b.remote && !favouriteSet.has(b.name))),
     [filtered, favouriteSet]
   )
+
+  const tidy = cleanupSnoozed ? 0 : tidyCount(branches, favouriteSet, listedAt, branchListSettings)
 
   const toggle = (path: string): void => {
     setCollapsed((prev) => {
@@ -374,10 +385,37 @@ export default function Sidebar({
           </>
         )}
 
-        <div className="tree-group-header" aria-expanded={!collapsed.has('local-root')} {...pressable(() => toggle('local-root'))}>
+        <div
+          className="tree-group-header"
+          aria-expanded={!collapsed.has('local-root')}
+          title="Right-click to clean up branches"
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setLocalMenu({ x: e.clientX, y: e.clientY })
+          }}
+          {...pressable(() => toggle('local-root'))}
+        >
           <span className="tree-caret" aria-hidden="true">{collapsed.has('local-root') ? '▸' : '▾'}</span>
           LOCAL
         </div>
+        {tidy > 0 && !collapsed.has('local-root') && (
+          <div className="tidy-banner" role="status" data-testid="tidy-banner">
+            <span className="tidy-banner-text">
+              {formatCount(tidy)} branch{tidy === 1 ? '' : 'es'} to tidy
+            </span>
+            <button className="tidy-banner-review" onClick={onOpenCleanup}>
+              Review
+            </button>
+            <button
+              className="icon-button tidy-banner-dismiss"
+              aria-label={`Hide for ${CLEANUP_SNOOZE_DAYS} days`}
+              title={`Don't remind me for ${CLEANUP_SNOOZE_DAYS} days`}
+              onClick={onSnoozeCleanup}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {!collapsed.has('local-root') && (
           <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} handlers={handlers} />
         )}
@@ -426,6 +464,14 @@ export default function Sidebar({
           </ul>
         )}
       </div>
+      {localMenu && (
+        <ContextMenu
+          x={localMenu.x}
+          y={localMenu.y}
+          sections={[[{ id: 'cleanup', label: 'Clean up branches…', onSelect: onOpenCleanup }]]}
+          onClose={() => setLocalMenu(null)}
+        />
+      )}
       {stashMenu && (
         <ContextMenu
           x={stashMenu.x}

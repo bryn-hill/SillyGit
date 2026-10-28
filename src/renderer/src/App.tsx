@@ -53,6 +53,8 @@ import { usePullRequests } from './hooks/usePullRequests'
 import { usePrompt } from './hooks/usePrompt'
 import { usePanelLayout } from './hooks/usePanelLayout'
 import { useArrowKeySelection } from './hooks/useArrowKeySelection'
+import BranchCleanupDialog from './components/BranchCleanupDialog'
+import { CLEANUP_SNOOZE_DAYS, type DeletedBranch } from '../../shared/branchCleanup'
 
 // Monaco is several MB, so the editor loads the first time a file is opened in it.
 const FileEditor = lazy(() => import('./components/FileEditor'))
@@ -107,6 +109,14 @@ export default function App(): JSX.Element {
   const [pullRequests, revalidatePullRequests] = usePullRequests(repoPath)
   // Starred branches, per repo.
   const [favourites, setFavourites] = useRepoValue(repoPath, window.api.getFavouriteBranches, NO_FAVOURITES)
+  // When the "branches to tidy" banner may show again, per repo.
+  const [cleanupSnoozedUntil, setCleanupSnoozedUntil] = useRepoValue(repoPath, window.api.getCleanupSnooze, null)
+  const cleanupSnoozed = cleanupSnoozedUntil !== null && cleanupSnoozedUntil > repo.branchesListedAt
+  const [showCleanup, setShowCleanup] = useState(false)
+  // The last batch of branches the cleanup dialog deleted, for Restore.
+  const [branchRestore, setBranchRestore] = useState<{ repoPath: string; deleted: DeletedBranch[]; message: string } | null>(
+    null
+  )
   // The repo's saved Run command, or null until one is set.
   const [runCommand, setRunCommand] = useRepoValue(
     repoPath,
@@ -765,6 +775,41 @@ export default function App(): JSX.Element {
     window.api.setFavouriteBranches(repoPath, names).then((res) => !res.ok && showError(res.error))
   }
 
+  const handleSnoozeCleanup = (): void => {
+    if (!repoPath) return
+    const until = repo.branchesListedAt + CLEANUP_SNOOZE_DAYS * 24 * 60 * 60 * 1000
+    setCleanupSnoozedUntil(repoPath, until)
+    window.api.setCleanupSnooze(repoPath, until).then((res) => !res.ok && showError(res.error))
+  }
+
+  const handleCleanupBranches = (names: string[]): void => {
+    setShowCleanup(false)
+    runGit(
+      (path) => window.api.deleteBranches(path, names),
+      ({ deleted, failed }, path) => {
+        if (deleted.length > 0) {
+          setBranchRestore({
+            repoPath: path,
+            deleted,
+            message: `Deleted ${deleted.length} branch${deleted.length === 1 ? '' : 'es'}.`
+          })
+        }
+        if (failed.length > 0) showError(`Couldn't delete ${failed.map((f) => `${f.name} (${f.error})`).join(', ')}`)
+      }
+    )
+  }
+
+  const handleRestoreBranches = (): void => {
+    const restore = branchRestore
+    if (!restore) return
+    setBranchRestore(null)
+    withBusy(async () => {
+      const res = await window.api.restoreBranches(restore.repoPath, restore.deleted)
+      if (!res.ok) showError(res.error)
+      await refresh(restore.repoPath)
+    })
+  }
+
   // --- Stashes ----------------------------------------------------------------------
 
   const handleStash = (): void => runGit((path) => window.api.stash(path))
@@ -1093,6 +1138,7 @@ export default function App(): JSX.Element {
         applyStash: stashActions.apply,
         popStash: stashActions.pop,
         createBranch: promptCreateBranch,
+        cleanUpBranches: () => setShowCleanup(true),
         checkout: handleCheckout,
         checkoutRemote: handleCheckoutRemote,
         merge: handleMerge,
@@ -1376,6 +1422,9 @@ export default function App(): JSX.Element {
           onToggleFavourite={handleToggleFavourite}
           branchListSettings={branchListSettings}
           listedAt={repo.branchesListedAt}
+          cleanupSnoozed={cleanupSnoozed}
+          onOpenCleanup={() => setShowCleanup(true)}
+          onSnoozeCleanup={handleSnoozeCleanup}
         />
         <CommitGraph
           repoPath={repoPath}
@@ -1473,6 +1522,9 @@ export default function App(): JSX.Element {
         undoMessage={conflictUndo && conflictUndo.repoPath === repoPath ? conflictUndo.message : null}
         onUndo={handleUndoConflictAction}
         onDismissUndo={() => setConflictUndo(null)}
+        restoreMessage={branchRestore && branchRestore.repoPath === repoPath ? branchRestore.message : null}
+        onRestore={handleRestoreBranches}
+        onDismissRestore={() => setBranchRestore(null)}
       />
       <div className="workspace-row">
         <div className="workspace">
@@ -1499,6 +1551,16 @@ export default function App(): JSX.Element {
           />
         )}
       </div>
+      {showCleanup && repoPath && (
+        <BranchCleanupDialog
+          repoPath={repoPath}
+          favourites={favourites}
+          settings={branchListSettings}
+          nowMs={repo.branchesListedAt}
+          onDelete={handleCleanupBranches}
+          onClose={() => setShowCleanup(false)}
+        />
+      )}
       {showSettings && (
         <SettingsModal
           onClose={() => setShowSettings(false)}

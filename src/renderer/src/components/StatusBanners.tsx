@@ -1,6 +1,9 @@
 import type { JSX } from 'react'
 
-/** The error and notice banners under the toolbar (click to dismiss), and the Undo offer after a bulk conflict action. */
+/**
+ * The error and notice banners under the toolbar (click to dismiss), the Undo
+ * offer after a bulk conflict action, and the Restore offer after a branch cleanup.
+ */
 export default function StatusBanners({
   error,
   onDismissError,
@@ -8,7 +11,10 @@ export default function StatusBanners({
   onDismissNotice,
   undoMessage,
   onUndo,
-  onDismissUndo
+  onDismissUndo,
+  restoreMessage,
+  onRestore,
+  onDismissRestore
 }: {
   error: string | null
   onDismissError: () => void
@@ -18,6 +24,10 @@ export default function StatusBanners({
   undoMessage: string | null
   onUndo: () => void
   onDismissUndo: () => void
+  /** What Restore would bring back, or null to offer nothing. */
+  restoreMessage: string | null
+  onRestore: () => void
+  onDismissRestore: () => void
 }): JSX.Element {
   return (
     <>
@@ -38,6 +48,17 @@ export default function StatusBanners({
             Undo
           </button>
           <button className="icon-button" title="Dismiss" onClick={onDismissUndo}>
+            ✕
+          </button>
+        </div>
+      )}
+      {restoreMessage && (
+        <div className="notice-banner conflict-undo-banner" role="status" aria-label="Restore deleted branches">
+          {restoreMessage}
+          <button className="link-button" onClick={onRestore}>
+            Restore
+          </button>
+          <button className="icon-button" title="Dismiss" onClick={onDismissRestore}>
             ✕
           </button>
         </div>

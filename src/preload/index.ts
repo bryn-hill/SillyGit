@@ -204,6 +204,15 @@ const api = {
     ipcRenderer.invoke('git:checkout-remote-branch', repoPath, name),
   deleteBranch: (repoPath: string, name: string, force: boolean): Wrapped<void> =>
     ipcRenderer.invoke('git:delete-branch', repoPath, name, force),
+  cleanupCandidates: (repoPath: string): Wrapped<import('../shared/branchCleanup').CleanupCandidate[]> =>
+    ipcRenderer.invoke('git:cleanup-candidates', repoPath),
+  deleteBranches: (
+    repoPath: string,
+    names: string[]
+  ): Wrapped<{ deleted: import('../shared/branchCleanup').DeletedBranch[]; failed: { name: string; error: string }[] }> =>
+    ipcRenderer.invoke('git:delete-branches', repoPath, names),
+  restoreBranches: (repoPath: string, deleted: import('../shared/branchCleanup').DeletedBranch[]): Wrapped<void> =>
+    ipcRenderer.invoke('git:restore-branches', repoPath, deleted),
   deleteRemoteBranch: (repoPath: string, name: string): Wrapped<void> =>
     ipcRenderer.invoke('git:delete-remote-branch', repoPath, name),
   pullBranch: (repoPath: string, name: string): Wrapped<{ updated: boolean }> =>
@@ -240,6 +249,10 @@ const api = {
   getFavouriteBranches: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('branches:get-favourites', repoPath),
   setFavouriteBranches: (repoPath: string, names: string[]): Wrapped<void> =>
     ipcRenderer.invoke('branches:set-favourites', repoPath, names),
+  /** When the "can be tidied" banner may show again, in ms, or null when it isn't snoozed. */
+  getCleanupSnooze: (repoPath: string): Promise<number | null> => ipcRenderer.invoke('branches:get-cleanup-snooze', repoPath),
+  setCleanupSnooze: (repoPath: string, until: number | null): Wrapped<void> =>
+    ipcRenderer.invoke('branches:set-cleanup-snooze', repoPath, until),
   getNotificationSettings: (): Promise<import('../shared/notifications').NotificationSettings> =>
     ipcRenderer.invoke('notifications:get-settings'),
   setNotificationSettings: (

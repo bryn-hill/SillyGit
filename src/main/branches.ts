@@ -1,6 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { OpenPullRequest, RepoRemote } from '../shared/types'
+import type { CleanupCandidate, DeletedBranch } from '../shared/branchCleanup'
 import { GitError, remoteEnv, runGit } from './gitExec'
 import * as github from './github'
 import { githubAccess } from './hosting'
@@ -142,6 +143,108 @@ export async function pullBranch(repoPath: string, name: string): Promise<{ upda
   }
   const after = (await runGit(repoPath, ['rev-parse', ref])).trim()
   return { updated: before !== after }
+}
+
+/** The branch "merged" is measured against: the remote's default branch, else a local main or master. */
+async function mergeBase(repoPath: string): Promise<{ ref: string; local: string } | null> {
+  for (const remote of await listRemotes(repoPath)) {
+    try {
+      const head = (await runGit(repoPath, ['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`])).trim()
+      if (head) return { ref: head, local: head.slice(remote.length + 1) }
+    } catch {
+      // No HEAD recorded for this remote (never cloned from it); try the next.
+    }
+  }
+  for (const name of ['main', 'master']) {
+    if (await localBranchExists(repoPath, name)) return { ref: name, local: name }
+  }
+  return null
+}
+
+/**
+ * Local branches the cleanup dialog could offer: everything but the current
+ * branch and the default branch, with what's needed to group and warn about
+ * them. Branches sitting exactly on the default branch's tip are left out, as
+ * they're usually brand new rather than finished.
+ */
+export async function listCleanupCandidates(repoPath: string): Promise<CleanupCandidate[]> {
+  const out = await runGit(repoPath, [
+    'for-each-ref',
+    '--format=%(HEAD)%09%(refname:short)%09%(objectname)%09%(upstream:track,nobracket)%09%(committerdate:unix)',
+    'refs/heads'
+  ])
+  const base = await mergeBase(repoPath)
+  const baseHash = base ? (await runGit(repoPath, ['rev-parse', base.ref])).trim() : null
+  const merged = new Set(
+    base
+      ? (await runGit(repoPath, ['branch', '--merged', base.ref, '--format=%(refname:short)']))
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)
+      : []
+  )
+  const candidates: CleanupCandidate[] = []
+  for (const line of out.split('\n')) {
+    if (!line.trim()) continue
+    const [head, name, hash, track, date] = line.split('\t')
+    if (head === '*' || name === base?.local || hash === baseHash) continue
+    const isMerged = merged.has(name)
+    const localOnly = isMerged
+      ? 0
+      : Number((await runGit(repoPath, ['rev-list', '--count', `refs/heads/${name}`, '--not', '--remotes'])).trim()) || 0
+    candidates.push({
+      name,
+      hash,
+      gone: (track ?? '').trim() === 'gone',
+      mergedInto: isMerged && base ? base.ref : null,
+      localOnly,
+      lastCommitAt: date ? Number(date) : undefined
+    })
+  }
+  return candidates
+}
+
+async function configValue(repoPath: string, key: string): Promise<string | undefined> {
+  try {
+    return (await runGit(repoPath, ['config', '--get', key])).trim() || undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Force-deletes local branches for the cleanup dialog, remembering each one's
+ * tip and tracking config so `restoreBranches` can bring them back. A branch
+ * that can't be deleted (say it's checked out in another worktree) is skipped
+ * and reported rather than stopping the rest.
+ */
+export async function deleteBranches(
+  repoPath: string,
+  names: string[]
+): Promise<{ deleted: DeletedBranch[]; failed: { name: string; error: string }[] }> {
+  const deleted: DeletedBranch[] = []
+  const failed: { name: string; error: string }[] = []
+  for (const name of names) {
+    try {
+      const hash = (await runGit(repoPath, ['rev-parse', `refs/heads/${name}`])).trim()
+      const remote = await configValue(repoPath, `branch.${name}.remote`)
+      const merge = await configValue(repoPath, `branch.${name}.merge`)
+      await runGit(repoPath, ['branch', '-D', name])
+      deleted.push({ name, hash, remote, merge })
+    } catch (err) {
+      failed.push({ name, error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  return { deleted, failed }
+}
+
+/** Puts branches deleted by `deleteBranches` back, tracking included. */
+export async function restoreBranches(repoPath: string, branches: DeletedBranch[]): Promise<void> {
+  for (const b of branches) {
+    await runGit(repoPath, ['branch', b.name, b.hash])
+    if (b.remote) await runGit(repoPath, ['config', `branch.${b.name}.remote`, b.remote])
+    if (b.merge) await runGit(repoPath, ['config', `branch.${b.name}.merge`, b.merge])
+  }
 }
 
 export async function renameBranch(repoPath: string, from: string, to: string): Promise<void> {
