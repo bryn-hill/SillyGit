@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildOutput,
+  buildOutputLines,
+  dropCustomForChangedPicks,
   conflictHunks,
   isHunkSideTaken,
   isSideTaken,
@@ -180,5 +182,35 @@ describe('hard conflict shapes', () => {
     const out = buildOutput(s, picks).split('\n')
     expect(out.slice(0, 4)).toEqual(['c0', 't0', 'c1', 'o1'])
     expect(out).toHaveLength(601)
+  })
+})
+
+describe('custom (AI) resolutions', () => {
+  const text = 'a\n<<<<<<< ours\nb1\n||||||| base\nb\n=======\nb2\n>>>>>>> theirs\nc\n<<<<<<< ours\nd1\n||||||| base\nd\n=======\nd2\n>>>>>>> theirs\n'
+  const segments = parseConflictMarkers(text)
+
+  it('resolve a hunk, even to nothing, and win over picks', () => {
+    const picks = { 0: [{ side: 'ours' as const, index: 0 }] }
+    expect(buildOutput(segments, picks, { custom: { 0: ['merged\n'], 1: [] } })).toBe('a\nmerged\nc\n')
+    expect(unresolvedCount(segments, {}, { 1: [] })).toBe(1)
+  })
+
+  it('proposals show only for display, with header rows that never get terminators', () => {
+    const lines = buildOutputLines(segments, {}, { proposals: { 1: ['d!\n'] }, headers: true })
+    expect(lines.map((l) => [l.origin, l.text])).toEqual([
+      ['common', 'a\n'],
+      ['base', 'b\n'],
+      ['common', 'c\n'],
+      ['proposal-header', ''],
+      ['proposal', 'd!\n']
+    ])
+    // Without proposals passed in (as when saving) the hunk is still unresolved.
+    expect(buildOutput(segments, {})).toBe('a\nb\nc\nd\n')
+  })
+
+  it('picking lines in a hunk drops its custom resolution', () => {
+    const custom = { 0: ['x\n'], 1: ['y\n'] }
+    const after = toggleLine({}, 1, 'theirs', 0)
+    expect(dropCustomForChangedPicks(custom, {}, after)).toEqual({ 0: ['x\n'] })
   })
 })

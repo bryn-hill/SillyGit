@@ -4,11 +4,13 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import type {
   ConflictFileContent,
+  ConflictSnapshot,
   ConflictableResult,
   OperationState,
   RenameConflict,
   RenameKeep
 } from '../shared/types'
+import { conflictHunks, parseConflictMarkers } from '../shared/conflicts'
 import { GitError, runGit } from './gitExec'
 
 // Merge, rebase, cherry-pick and revert can all stop part way with conflicts.
@@ -580,8 +582,95 @@ export async function deleteConflictedFile(repoPath: string, path: string): Prom
   await runGit(repoPath, ['rm', '-q', '--force', '--', path])
 }
 
-/** Marks files resolved as they are in the working tree (a missing file is resolved as deleted). */
-export async function markResolved(repoPath: string, paths: string[]): Promise<void> {
-  if (paths.length === 0) return
+/**
+ * Marks files resolved as they are in the working tree (a missing file is
+ * resolved as deleted). Returns how they were before, for Undo.
+ */
+export async function markResolved(repoPath: string, paths: string[]): Promise<ConflictSnapshot> {
+  if (paths.length === 0) return { files: [] }
+  const snapshot = await snapshotConflicts(repoPath, paths)
   await runGit(repoPath, ['add', '-A', '--', ...paths])
+  return snapshot
+}
+
+/**
+ * True when `text` still has conflict markers: ones of the default length, or
+ * of `markerSize` when the file needed longer ones.
+ */
+export function hasConflictMarkers(text: string, markerSize = DEFAULT_MARKER_SIZE): boolean {
+  const sizes = new Set([DEFAULT_MARKER_SIZE, markerSize])
+  return [...sizes].some((size) => conflictHunks(parseConflictMarkers(text, size)).length > 0)
+}
+
+/** The paths, of those given, whose working-tree file still contains conflict markers. */
+export async function pathsWithMarkers(repoPath: string, paths: string[]): Promise<string[]> {
+  const found: string[] = []
+  for (const path of paths) {
+    const text = await fsp.readFile(join(repoPath, path), 'utf-8').catch(() => null)
+    if (text === null || text.includes('\0')) continue
+    const stages = await conflictStages(repoPath, path).catch(() => new Map<number, string>())
+    const texts =
+      stages.has(2) && stages.has(3)
+        ? await readThreeWay(repoPath, { base: stages.get(1), ours: stages.get(2)!, theirs: stages.get(3)! }).catch(() => null)
+        : null
+    const markerSize = texts ? markerSizeFor([texts.base ?? '', texts.ours, texts.theirs]) : DEFAULT_MARKER_SIZE
+    if (hasConflictMarkers(text, markerSize)) found.push(path)
+  }
+  return found
+}
+
+/** Records how `paths` look now (index stages and working-tree content) so a bulk action can be undone. */
+export async function snapshotConflicts(repoPath: string, paths: string[]): Promise<ConflictSnapshot> {
+  const files: ConflictSnapshot['files'] = []
+  for (const path of paths) {
+    const entries = await stageEntries(repoPath, path)
+    const stages = [...entries].map(([stage, e]) => ({ stage, mode: e.mode, sha: e.sha }))
+    const file = join(repoPath, path)
+    const stat = await fsp.stat(file).catch(() => null)
+    let worktree: ConflictSnapshot['files'][number]['worktree'] = null
+    if (stat?.isFile()) {
+      // -w keeps the content in the object store, so it can be read back later.
+      const sha = (await runGit(repoPath, ['hash-object', '-w', '--no-filters', '--', path])).trim()
+      worktree = { sha, executable: (stat.mode & 0o111) !== 0 }
+    }
+    files.push({ path, stages, worktree })
+  }
+  return { files }
+}
+
+/** Puts files back exactly as a snapshot recorded them: conflicted again, with their old content. */
+export async function restoreConflicts(repoPath: string, snapshot: ConflictSnapshot): Promise<void> {
+  for (const { path, stages, worktree } of snapshot.files) {
+    // Mode 0 drops whatever entry the path has now; the stage lines put the conflict back.
+    const lines = [`0 ${'0'.repeat(40)}\t${path}\n`, ...stages.map((s) => `${s.mode} ${s.sha} ${s.stage}\t${path}\n`)]
+    await runGitWithInput(repoPath, ['update-index', '--index-info'], lines.join(''))
+    const file = join(repoPath, path)
+    if (worktree) {
+      await fsp.mkdir(dirname(file), { recursive: true })
+      await fsp.writeFile(file, await blobBytes(repoPath, worktree.sha))
+      await fsp.chmod(file, worktree.executable ? 0o755 : 0o644)
+    } else {
+      await fsp.rm(file, { force: true })
+    }
+  }
+}
+
+/**
+ * Takes one side for several files at once. All or nothing: if any file
+ * fails, the ones already done are put back. Returns a snapshot of how the
+ * files were before, for Undo.
+ */
+export async function takeSideMany(
+  repoPath: string,
+  paths: string[],
+  side: 'current' | 'incoming'
+): Promise<ConflictSnapshot> {
+  const snapshot = await snapshotConflicts(repoPath, paths)
+  try {
+    for (const path of paths) await takeSide(repoPath, path, side)
+  } catch (err) {
+    await restoreConflicts(repoPath, snapshot).catch(() => {})
+    throw err
+  }
+  return snapshot
 }

@@ -34,6 +34,9 @@ export interface ConflictActions {
   onOpenConflict: (path: string) => void
   onTakeSide: (paths: string[], side: 'current' | 'incoming') => void
   onMarkResolved: (paths: string[]) => void
+  /** The configured external merge tool's name, or null when there isn't one. */
+  externalToolName: string | null
+  onOpenExternal: (path: string) => void
   onContinue: () => void
   onAbort: () => void
   onSkip: () => void
@@ -75,6 +78,9 @@ function WorkingDirectoryView({
   onEditFile
 }: WorkingProps): JSX.Element {
   const [conflictMenu, setConflictMenu] = useState<{ x: number; y: number; path: string } | null>(null)
+  // Conflicted files picked with Cmd/Ctrl- or Shift-click, for bulk actions.
+  const [selectedConflicts, setSelectedConflicts] = useState<string[]>([])
+  const [conflictAnchor, setConflictAnchor] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [diffText, setDiffText] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -86,6 +92,45 @@ function WorkingDirectoryView({
   const staged = status?.staged ?? []
   const unstaged = status?.unstaged ?? []
   const conflicted = status?.conflicted ?? []
+  const conflictedKey = conflicted.map((f) => f.path).join('\0')
+  // Forget selected files once they're resolved.
+  useEffect(() => {
+    const paths = new Set(conflictedKey.split('\0'))
+    setSelectedConflicts((sel) => (sel.every((p) => paths.has(p)) ? sel : sel.filter((p) => paths.has(p))))
+  }, [conflictedKey])
+  const selectedSet = new Set(selectedConflicts)
+
+  const clickConflict = (e: React.MouseEvent, path: string): void => {
+    const order = conflicted.map((f) => f.path)
+    const toggle = e.metaKey || e.ctrlKey
+    if (e.shiftKey && conflictAnchor && order.includes(conflictAnchor)) {
+      const [a, b] = [order.indexOf(conflictAnchor), order.indexOf(path)].sort((x, y) => x - y)
+      const range = order.slice(a, b + 1)
+      setSelectedConflicts(toggle ? order.filter((p) => selectedSet.has(p) || range.includes(p)) : range)
+      return
+    }
+    if (toggle) {
+      setSelectedConflicts(selectedSet.has(path) ? selectedConflicts.filter((p) => p !== path) : order.filter((p) => selectedSet.has(p) || p === path))
+      setConflictAnchor(path)
+      return
+    }
+    setSelectedConflicts([path])
+    setConflictAnchor(path)
+    conflictActions.onOpenConflict(path)
+  }
+
+  // Cmd/Ctrl+D opens the selected conflicted file in the external merge tool.
+  useEffect(() => {
+    if (!conflictActions.externalToolName || selectedConflicts.length !== 1) return
+    const handler = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'd' && !e.defaultPrevented) {
+        e.preventDefault()
+        conflictActions.onOpenExternal(selectedConflicts[0])
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [conflictActions, selectedConflicts])
   const totalChanges = staged.length + unstaged.length + conflicted.length
   // Amending can just reword the last commit, with nothing staged.
   const canCommit = !!commitMessage.trim() && (amend || staged.length > 0)
@@ -231,22 +276,44 @@ function WorkingDirectoryView({
     )
   }
 
-  const conflictMenuSections = (path: string): ContextMenuItem[][] => [
-    [{ id: 'open', label: 'Open in merge tool', onSelect: () => conflictActions.onOpenConflict(path) }],
-    [
-      {
-        id: 'take-current',
-        label: `Take current (${operation?.currentLabel ?? 'current'})`,
-        onSelect: () => conflictActions.onTakeSide([path], 'current')
-      },
-      {
-        id: 'take-incoming',
-        label: `Take incoming (${operation?.incomingLabel ?? 'incoming'})`,
-        onSelect: () => conflictActions.onTakeSide([path], 'incoming')
-      }
-    ],
-    [{ id: 'resolve', label: 'Mark resolved', onSelect: () => conflictActions.onMarkResolved([path]) }]
-  ]
+  const conflictMenuSections = (path: string): ContextMenuItem[][] => {
+    // Right-clicking one of several selected files acts on all of them.
+    const paths = selectedSet.has(path) && selectedConflicts.length > 1 ? selectedConflicts : [path]
+    const n = paths.length
+    const suffix = n > 1 ? ` ${n} files` : ''
+    const open: ContextMenuItem[] =
+      n > 1
+        ? []
+        : [
+            ...(conflictActions.externalToolName
+              ? [
+                  {
+                    id: 'open-external',
+                    label: `Open in ${conflictActions.externalToolName}`,
+                    title: `${MOD}D`,
+                    onSelect: () => conflictActions.onOpenExternal(path)
+                  }
+                ]
+              : []),
+            { id: 'open', label: 'Open in merge tool', onSelect: () => conflictActions.onOpenConflict(path) }
+          ]
+    return [
+      ...(open.length > 0 ? [open] : []),
+      [
+        {
+          id: 'take-current',
+          label: `Take current (${operation?.currentLabel ?? 'current'})${suffix}`,
+          onSelect: () => conflictActions.onTakeSide(paths, 'current')
+        },
+        {
+          id: 'take-incoming',
+          label: `Take incoming (${operation?.incomingLabel ?? 'incoming'})${suffix}`,
+          onSelect: () => conflictActions.onTakeSide(paths, 'incoming')
+        }
+      ],
+      [{ id: 'resolve', label: n > 1 ? `Mark ${n} resolved` : 'Mark resolved', onSelect: () => conflictActions.onMarkResolved(paths) }]
+    ]
+  }
 
   const operationName = operation ? OPERATION_NAMES[operation.kind] : null
 
@@ -276,17 +343,22 @@ function WorkingDirectoryView({
             <span>Conflicted Files ({conflicted.length})</span>
             <button
               className="mark-resolved-button"
-              onClick={() => conflictActions.onMarkResolved(conflicted.map((f) => f.path))}
+              onClick={() =>
+                conflictActions.onMarkResolved(selectedConflicts.length > 1 ? selectedConflicts : conflicted.map((f) => f.path))
+              }
             >
-              Mark All Resolved
+              {selectedConflicts.length > 1 ? `Mark ${selectedConflicts.length} resolved` : 'Mark All Resolved'}
             </button>
           </div>
           <ul className="file-list">
             {conflicted.map((f) => (
               <li key={`c:${f.path}`}>
                 <div
-                  className={`file-row conflict-row ${conflictMenu?.path === f.path ? 'context-target' : ''}`}
-                  onClick={() => conflictActions.onOpenConflict(f.path)}
+                  className={`file-row conflict-row ${conflictMenu?.path === f.path ? 'context-target' : ''} ${
+                    selectedSet.has(f.path) ? 'selected' : ''
+                  }`}
+                  aria-selected={selectedSet.has(f.path)}
+                  onClick={(e) => clickConflict(e, f.path)}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     setConflictMenu({ x: e.clientX, y: e.clientY, path: f.path })

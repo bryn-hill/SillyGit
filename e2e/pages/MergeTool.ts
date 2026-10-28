@@ -42,6 +42,15 @@ export class MergeTool {
     await this.page.keyboard.press('ControlOrMeta+s')
   }
 
+  get autoResolveButton(): Locator {
+    return this.root.getByRole('button', { name: /Auto-resolve with AI/ })
+  }
+
+  /** The AI suggestion header for a conflict (numbered from 1), with its Accept and Reject buttons. */
+  suggestion(conflict: number): Locator {
+    return this.output.getByRole('group', { name: `AI suggestion for conflict ${conflict}` })
+  }
+
   async expectClosed(): Promise<void> {
     await expect(this.root).toHaveCount(0)
   }

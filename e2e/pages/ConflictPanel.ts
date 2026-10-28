@@ -21,6 +21,15 @@ export class ConflictPanel {
     return this.page.getByRole('complementary', { name: 'Details' }).getByRole('button', { name })
   }
 
+  /** Adds a file to the selection with Cmd/Ctrl-click, without opening it. */
+  async toggleSelect(path: string): Promise<void> {
+    await this.file(path).click({ modifiers: ['ControlOrMeta'] })
+  }
+
+  get undoBanner(): Locator {
+    return this.page.getByRole('status', { name: 'Undo conflict action' })
+  }
+
   async openFile(path: string): Promise<void> {
     await this.file(path).click()
   }

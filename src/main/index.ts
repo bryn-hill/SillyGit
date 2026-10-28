@@ -3,6 +3,9 @@ import { basename, dirname, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from './git'
 import * as conflicts from './conflicts'
+import * as mergeTool from './mergeTool'
+import { parseConflictMarkers } from '../shared/conflicts'
+import type { MergeToolSettings } from '../shared/mergeTools'
 import * as editFile from './editFile'
 import * as branches from './branches'
 import * as ai from './ai'
@@ -29,7 +32,7 @@ import type { SubmitReviewInput } from '../shared/prReview'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
-import type { AvatarRequest, CommitSplitProposal, PullMode, RenameKeep, SavedLayout, SavedSession, SavedTabs, SplitGroupProposal } from '../shared/types'
+import type { AvatarRequest, CommitSplitProposal, ConflictSnapshot, PullMode, RenameKeep, SavedLayout, SavedSession, SavedTabs, SplitGroupProposal } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let prNotifier: PrNotifier | null = null
@@ -436,6 +439,35 @@ function registerIpcHandlers(): void {
     wrap(() => conflicts.markResolved(repoPath, paths))
   )
 
+  ipcMain.handle('git:take-side-many', (_e, repoPath: string, paths: string[], side: 'current' | 'incoming') =>
+    wrap(() => conflicts.takeSideMany(repoPath, paths, side))
+  )
+
+  ipcMain.handle('git:restore-conflicts', (_e, repoPath: string, snapshot: ConflictSnapshot) =>
+    wrap(() => conflicts.restoreConflicts(repoPath, snapshot))
+  )
+
+  ipcMain.handle('git:paths-with-markers', (_e, repoPath: string, paths: string[]) =>
+    wrap(() => conflicts.pathsWithMarkers(repoPath, paths))
+  )
+
+  ipcMain.handle('git:open-in-merge-tool', (_e, repoPath: string, path: string) =>
+    wrap(() => mergeTool.openInMergeTool(repoPath, path))
+  )
+
+  ipcMain.handle('ai:resolve-conflicts', (_e, repoPath: string, path: string) =>
+    wrap(async () => {
+      const file = await conflicts.getConflictFile(repoPath, path)
+      if (file.kind !== 'text') throw new Error('Only text files can be resolved with AI.')
+      return ai.resolveConflicts({
+        path,
+        currentLabel: file.currentLabel,
+        incomingLabel: file.incomingLabel,
+        segments: parseConflictMarkers(file.marked, file.markerSize)
+      })
+    })
+  )
+
   ipcMain.handle(
     'git:reset-to',
     (_e, repoPath: string, hash: string, mode: 'soft' | 'mixed' | 'hard') =>
@@ -624,6 +656,12 @@ function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('accounts:remove', (_e, id: string) => wrap(() => accounts.removeAccount(id)))
+
+  ipcMain.handle('settings:get-merge-tool', () => settings.getMergeToolSettings())
+
+  ipcMain.handle('settings:set-merge-tool', (_e, next: MergeToolSettings) =>
+    wrap(() => settings.setMergeToolSettings(next))
+  )
 
   ipcMain.handle('settings:get-sprints', () => settings.getSprintSettings())
 

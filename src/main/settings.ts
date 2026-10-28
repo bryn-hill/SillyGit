@@ -4,6 +4,7 @@ import { promises as fs } from 'fs'
 import type { SavedLayout, SavedTabs } from '../shared/types'
 import { normalizeNotificationSettings, type NotificationSettings } from '../shared/notifications'
 import { normalizeSprintSettings, type SprintSettings } from '../shared/sprints'
+import { normalizeMergeToolSettings, type MergeToolSettings } from '../shared/mergeTools'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -23,6 +24,8 @@ interface StoredSettings {
   notifications?: Partial<NotificationSettings>
   /** Sprint markers on the commit graph. */
   sprints?: Partial<SprintSettings>
+  /** The external merge tool, if any. */
+  mergeTool?: Partial<MergeToolSettings>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -128,6 +131,14 @@ export async function getSprintSettings(): Promise<SprintSettings> {
 
 export async function setSprintSettings(next: SprintSettings): Promise<SprintSettings> {
   return updateSettings((current) => (current.sprints = normalizeSprintSettings(next)))
+}
+
+export async function getMergeToolSettings(): Promise<MergeToolSettings> {
+  return normalizeMergeToolSettings((await readSettings()).mergeTool)
+}
+
+export async function setMergeToolSettings(next: MergeToolSettings): Promise<MergeToolSettings> {
+  return updateSettings((current) => (current.mergeTool = normalizeMergeToolSettings(next)))
 }
 
 export async function getWorkspaceRepos(): Promise<string[]> {
