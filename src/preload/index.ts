@@ -232,6 +232,14 @@ const api = {
   setSprintSettings: (
     next: import('../shared/sprints').SprintSettings
   ): Wrapped<import('../shared/sprints').SprintSettings> => ipcRenderer.invoke('settings:set-sprints', next),
+  getBranchListSettings: (): Promise<import('../shared/branchStatus').BranchListSettings> =>
+    ipcRenderer.invoke('settings:get-branch-list'),
+  setBranchListSettings: (
+    next: import('../shared/branchStatus').BranchListSettings
+  ): Wrapped<import('../shared/branchStatus').BranchListSettings> => ipcRenderer.invoke('settings:set-branch-list', next),
+  getFavouriteBranches: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('branches:get-favourites', repoPath),
+  setFavouriteBranches: (repoPath: string, names: string[]): Wrapped<void> =>
+    ipcRenderer.invoke('branches:set-favourites', repoPath, names),
   getNotificationSettings: (): Promise<import('../shared/notifications').NotificationSettings> =>
     ipcRenderer.invoke('notifications:get-settings'),
   setNotificationSettings: (

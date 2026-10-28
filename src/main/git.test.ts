@@ -200,14 +200,53 @@ describe('listBranches', () => {
       run('branch', 'feature/x')
       const head = run('rev-parse', 'HEAD')
 
+      const date = Number(run('log', '-1', '--format=%ct'))
+
       expect(await git.listBranches(dir)).toEqual([
-        { name: 'feature/x', current: false, remote: false, hash: head, upstream: undefined },
-        { name: 'main', current: true, remote: false, hash: head, upstream: 'origin/main' },
+        { name: 'feature/x', current: false, remote: false, hash: head, upstream: undefined, lastCommitAt: date },
+        {
+          name: 'main',
+          current: true,
+          remote: false,
+          hash: head,
+          upstream: 'origin/main',
+          ahead: 0,
+          behind: 0,
+          upstreamGone: false,
+          lastCommitAt: date
+        },
         // origin/HEAD is a symbolic ref and is left out.
-        { name: 'origin/main', current: false, remote: true, hash: head }
+        { name: 'origin/main', current: false, remote: true, hash: head, lastCommitAt: date }
       ])
     } finally {
       rmSync(remote, { recursive: true, force: true })
+    }
+  })
+
+  it('reports ahead/behind and upstreams deleted on the remote', async () => {
+    const remote = mkdtempSync(join(tmpdir(), 'sillygit-remote-'))
+    const other = mkdtempSync(join(tmpdir(), 'sillygit-other-'))
+    try {
+      execFileSync('git', ['init', '-q', '--bare', remote])
+      run('remote', 'add', 'origin', remote)
+      run('push', '-q', '-u', 'origin', 'main')
+      run('branch', 'done')
+      run('push', '-q', '-u', 'origin', 'done')
+      // Someone else pushes to main and deletes "done".
+      execFileSync('git', ['clone', '-q', '-b', 'main', remote, other])
+      const theirs = (...args: string[]): string => execFileSync('git', args, { cwd: other, encoding: 'utf8' })
+      theirs('-c', 'user.name=Bo', '-c', 'user.email=bo@example.com', 'commit', '-q', '--allow-empty', '-m', 'Theirs')
+      theirs('push', '-q', 'origin', 'main', ':done')
+      commitFile('mine.txt', 'mine\n', 'Mine')
+      run('fetch', '-q', '--prune')
+
+      const byName = new Map((await git.listBranches(dir)).map((b) => [b.name, b]))
+      expect(byName.get('main')).toMatchObject({ ahead: 1, behind: 1, upstreamGone: false })
+      expect(byName.get('done')).toMatchObject({ upstream: 'origin/done', upstreamGone: true })
+      expect(byName.has('origin/done')).toBe(false)
+    } finally {
+      rmSync(remote, { recursive: true, force: true })
+      rmSync(other, { recursive: true, force: true })
     }
   })
 })

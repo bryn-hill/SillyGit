@@ -950,6 +950,79 @@ button.select.open .select-chevron {
   font-size: 9px;
 }
 
+.branch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-weight: 400;
+}
+
+.branch-tag {
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 5px;
+  border-radius: 7px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.branch-tag-gone {
+  color: var(--red);
+}
+
+.branch-tag-stale {
+  color: var(--text-dim);
+}
+
+.branch-sync {
+  display: inline-flex;
+  gap: 3px;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.branch-ahead {
+  color: var(--green);
+}
+
+.branch-behind {
+  color: var(--orange);
+}
+
+.branch-star {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-dim);
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.branch-row:hover .branch-star,
+.branch-star:focus-visible,
+.branch-star.starred {
+  visibility: visible;
+}
+
+.branch-star.starred {
+  color: var(--yellow);
+}
+
+.branch-star:hover {
+  color: var(--yellow);
+}
+
 /* ---------- commit graph ---------- */
 
 .commit-graph {

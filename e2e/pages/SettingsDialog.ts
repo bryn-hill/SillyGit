@@ -19,6 +19,8 @@ export class SettingsDialog {
   readonly sprintStart: Locator
   readonly sprintNumber: Locator
   readonly mergeTool: Locator
+  readonly staleEnabled: Locator
+  readonly staleDays: Locator
   readonly mergeToolCommand: Locator
 
   constructor(private readonly page: Page) {
@@ -38,6 +40,8 @@ export class SettingsDialog {
     this.sprintLength = this.sprints.getByLabel('Sprints last')
     this.sprintStart = this.sprints.getByLabel('A sprint started on')
     this.sprintNumber = this.sprints.getByLabel('and was number')
+    this.staleEnabled = this.root.getByRole('checkbox', { name: 'Tag stale branches' })
+    this.staleDays = this.root.getByLabel('Stale after no commits for')
     this.mergeTool = this.root.getByLabel('External merge tool')
     this.mergeToolCommand = this.root.getByLabel('Merge tool command')
   }

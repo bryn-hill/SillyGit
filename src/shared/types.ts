@@ -24,6 +24,13 @@ export interface BranchInfo {
   hash?: string
   /** Local branches only: the remote branch it tracks, e.g. "origin/main". */
   upstream?: string
+  /** Local branches only: commits not on the upstream yet, and upstream commits not here (as of the last fetch). */
+  ahead?: number
+  behind?: number
+  /** Local branches only: the upstream was deleted on the remote (and pruned by a fetch). */
+  upstreamGone?: boolean
+  /** When the tip commit was made, in Unix seconds. */
+  lastCommitAt?: number
 }
 
 /** A git remote and the web page of its repository, when it's on a host we know. */

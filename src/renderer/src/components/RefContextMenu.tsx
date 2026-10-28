@@ -53,6 +53,9 @@ export interface RefActions {
   remoteInfo: (target: RefTarget) => BranchRemoteInfo | null
   /** Refreshes that cache in the background; the menu re-renders when it lands. */
   revalidate: () => void
+  /** Whether a branch is starred, which pins it to the top of the branch list. */
+  isFavourite: (name: string) => boolean
+  toggleFavourite: (name: string) => void
 }
 
 interface Props {
@@ -210,6 +213,17 @@ export default function RefContextMenu({
     sections.push(branchItems)
   } else if (target && !target.remote) {
     sections.push([{ id: 'rename', label: `Rename ${name}…`, onSelect: () => actions.renameBranch(target.name) }])
+  }
+
+  if (target) {
+    const starred = actions.isFavourite(target.name)
+    sections.push([
+      {
+        id: 'favourite',
+        label: starred ? `Remove ${name} from favourites` : `Add ${name} to favourites`,
+        onSelect: () => actions.toggleFavourite(target.name)
+      }
+    ])
   }
 
   const copyItems: ContextMenuItem[] = []

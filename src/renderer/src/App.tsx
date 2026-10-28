@@ -38,6 +38,7 @@ import { resolveBranchRemote } from '../../shared/branchRemote'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
 import { withPullRequestText } from '../../shared/quickActions'
 import { DEFAULT_SPRINT_SETTINGS, type SprintSettings } from '../../shared/sprints'
+import { DEFAULT_BRANCH_LIST_SETTINGS, toggleFavourite, type BranchListSettings } from '../../shared/branchStatus'
 import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName, type MergeToolSettings } from '../../shared/mergeTools'
 import type { ConflictSnapshot } from '../../shared/types'
 import CommandPalette, { type Command } from './components/CommandPalette'
@@ -126,6 +127,8 @@ export default function App(): JSX.Element {
   const [repoPath, setRepoPath] = useState<string | null>(null)
   const [status, setStatus] = useState<RepoStatus | null>(null)
   const [branches, setBranches] = useState<BranchInfo[]>([])
+  // When the branches were last listed, to age them against (stale tags) without reading the clock while rendering.
+  const [branchesListedAt, setBranchesListedAt] = useState(() => Date.now())
   const [remotes, setRemotes] = useState<RepoRemote[]>([])
   const [pullRequests, setPullRequests] = useState<OpenPullRequest[]>([])
   const [graphCommits, setGraphCommits] = useState<GraphCommit[]>([])
@@ -245,6 +248,17 @@ export default function App(): JSX.Element {
     window.api.setMergeToolSettings(next).then((res) => !res.ok && showError(res.error))
   }
 
+  // Stale tags in the branch list (global) and starred branches (per repo).
+  const [branchListSettings, setBranchListSettings] = useState<BranchListSettings>(DEFAULT_BRANCH_LIST_SETTINGS)
+  useEffect(() => {
+    window.api.getBranchListSettings().then(setBranchListSettings)
+  }, [])
+
+  const handleBranchListSettingsChange = (next: BranchListSettings): void => {
+    setBranchListSettings(next)
+    window.api.setBranchListSettings(next).then((res) => !res.ok && showError(res.error))
+  }
+
   const handleSprintSettingsChange = (next: SprintSettings): void => {
     setSprintSettings(next)
     window.api.setSprintSettings(next).then((res) => !res.ok && showError(res.error))
@@ -310,7 +324,10 @@ export default function App(): JSX.Element {
     if (statusRes.ok) setStatus(statusRes.data)
     else showError(statusRes.error)
     setOperation(operationRes.ok ? operationRes.data : null)
-    if (branchesRes.ok) setBranches(branchesRes.data)
+    if (branchesRes.ok) {
+      setBranches(branchesRes.data)
+      setBranchesListedAt(Date.now())
+    }
     if (graphRes.ok) setGraphCommits(graphRes.data)
     setStashes(stashesRes.ok ? stashesRes.data : [])
     setUndoLabel(undoRes.ok ? undoRes.data : null)
@@ -874,6 +891,30 @@ export default function App(): JSX.Element {
     if (repoPath) terminalRef.current?.stopRun(runKey(repoPath, runIsolated))
   }
 
+  const [savedFavourites, setSavedFavourites] = useState<{ repo: string; names: string[] } | null>(null)
+  const favourites = useMemo(
+    () => (savedFavourites && savedFavourites.repo === repoPath ? savedFavourites.names : []),
+    [savedFavourites, repoPath]
+  )
+
+  useEffect(() => {
+    if (!repoPath) return
+    let current = true
+    window.api.getFavouriteBranches(repoPath).then((names) => {
+      if (current) setSavedFavourites({ repo: repoPath, names })
+    })
+    return () => {
+      current = false
+    }
+  }, [repoPath])
+
+  const handleToggleFavourite = (name: string): void => {
+    if (!repoPath) return
+    const names = toggleFavourite(favourites, name)
+    setSavedFavourites({ repo: repoPath, names })
+    window.api.setFavouriteBranches(repoPath, names).then((res) => !res.ok && showError(res.error))
+  }
+
   useEffect(() => {
     if (!repoPath) return
     let current = true
@@ -1429,6 +1470,8 @@ export default function App(): JSX.Element {
       window.api.openExternal(url).then((r) => !r.ok && showError(r.error))
     },
     remoteInfo: (target) => resolveBranchRemote(target, branches, remotes, pullRequests),
+    isFavourite: (name) => favourites.includes(name),
+    toggleFavourite: handleToggleFavourite,
     revalidate: revalidatePullRequests
   }
 
@@ -2006,6 +2049,10 @@ export default function App(): JSX.Element {
                   actions={refActions}
                   stashes={stashes}
                   stashActions={stashActions}
+                  favourites={favourites}
+                  onToggleFavourite={handleToggleFavourite}
+                  branchListSettings={branchListSettings}
+                  listedAt={branchesListedAt}
                 />
                 <CommitGraph
                   repoPath={repoPath}
@@ -2067,6 +2114,8 @@ export default function App(): JSX.Element {
           onAutoFetchChange={handleAutoFetchChange}
           sprints={sprintSettings}
           onSprintsChange={handleSprintSettingsChange}
+          branchList={branchListSettings}
+          onBranchListChange={handleBranchListSettingsChange}
           mergeTool={mergeToolSettings}
           onMergeToolChange={handleMergeToolChange}
         />

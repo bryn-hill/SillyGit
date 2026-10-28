@@ -19,6 +19,7 @@ import type {
 } from '../shared/types'
 import * as diffSplit from '../shared/diffSplit'
 import { planUndo, type UndoPlan } from '../shared/undo'
+import { parseTrack } from '../shared/branchStatus'
 import { getOperationState, hasUnmergedPaths, runMayConflict } from './conflicts'
 import { repoNameFromUrl } from '../shared/clone'
 import { GitError, remoteEnv, runGit } from './gitExec'
@@ -184,21 +185,27 @@ export async function listBranches(repoPath: string): Promise<BranchInfo[]> {
   const out = await runGit(repoPath, [
     'branch',
     '--list',
-    '--format=%(HEAD)%09%(refname:short)%09%(objectname)%09%(upstream:short)'
+    '--format=%(HEAD)%09%(refname:short)%09%(objectname)%09%(upstream:short)%09%(upstream:track,nobracket)%09%(committerdate:unix)'
   ])
   const local = out
     .split('\n')
     .filter((l) => l.trim().length > 0)
-    .map((line) => {
-      const [head, name, hash, upstream] = line.split('\t')
-      return { name, current: head === '*', remote: false, hash, upstream: upstream || undefined }
+    .map((line): BranchInfo => {
+      const [head, name, hash, upstream, track, date] = line.split('\t')
+      const branch: BranchInfo = { name, current: head === '*', remote: false, hash, upstream: upstream || undefined }
+      if (upstream) {
+        const { ahead, behind, gone } = parseTrack(track ?? '')
+        Object.assign(branch, { ahead, behind, upstreamGone: gone })
+      }
+      if (date) branch.lastCommitAt = Number(date)
+      return branch
     })
 
   const remoteOut = await runGit(repoPath, [
     'branch',
     '--list',
     '--remotes',
-    '--format=%(refname:short)%09%(objectname)%09%(symref)'
+    '--format=%(refname:short)%09%(objectname)%09%(symref)%09%(committerdate:unix)'
   ])
   const remote = remoteOut
     .split('\n')
@@ -206,7 +213,7 @@ export async function listBranches(repoPath: string): Promise<BranchInfo[]> {
     .map((line) => line.split('\t'))
     // Skip symbolic refs such as origin/HEAD.
     .filter(([name, , symref]) => !symref && name.includes('/'))
-    .map(([name, hash]) => ({ name, current: false, remote: true, hash }))
+    .map(([name, hash, , date]) => ({ name, current: false, remote: true, hash, lastCommitAt: date ? Number(date) : undefined }))
 
   return [...local, ...remote]
 }

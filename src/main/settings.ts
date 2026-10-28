@@ -5,6 +5,7 @@ import type { SavedLayout, SavedTabs } from '../shared/types'
 import { normalizeNotificationSettings, type NotificationSettings } from '../shared/notifications'
 import { normalizeSprintSettings, type SprintSettings } from '../shared/sprints'
 import { normalizeMergeToolSettings, type MergeToolSettings } from '../shared/mergeTools'
+import { normalizeBranchListSettings, type BranchListSettings } from '../shared/branchStatus'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -28,6 +29,10 @@ interface StoredSettings {
   mergeTool?: Partial<MergeToolSettings>
   /** The Run button's command, per repo path. */
   runCommands?: Record<string, string>
+  /** Stale tags in the branch list. */
+  branchList?: Partial<BranchListSettings>
+  /** Starred branches, per repo path, in the order they were starred. */
+  favouriteBranches?: Record<string, string[]>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -153,6 +158,28 @@ export async function setRunCommand(repoPath: string, command: string): Promise<
     if (command.trim()) commands[repoPath] = command.trim()
     else delete commands[repoPath]
     current.runCommands = commands
+  })
+}
+
+export async function getBranchListSettings(): Promise<BranchListSettings> {
+  return normalizeBranchListSettings((await readSettings()).branchList)
+}
+
+export async function setBranchListSettings(next: BranchListSettings): Promise<BranchListSettings> {
+  return updateSettings((current) => (current.branchList = normalizeBranchListSettings(next)))
+}
+
+export async function getFavouriteBranches(repoPath: string): Promise<string[]> {
+  const list = (await readSettings()).favouriteBranches?.[repoPath]
+  return Array.isArray(list) ? list.filter((n) => typeof n === 'string') : []
+}
+
+export async function setFavouriteBranches(repoPath: string, names: string[]): Promise<void> {
+  await updateSettings((current) => {
+    const all = { ...current.favouriteBranches }
+    if (names.length > 0) all[repoPath] = [...new Set(names)]
+    else delete all[repoPath]
+    current.favouriteBranches = all
   })
 }
 

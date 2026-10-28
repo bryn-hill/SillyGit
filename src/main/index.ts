@@ -32,6 +32,7 @@ import { watchRepo, stopWatching } from './watcher'
 import { PrNotifier, type ShownNotification } from './prNotifications'
 import type { NotificationSettings } from '../shared/notifications'
 import type { SprintSettings } from '../shared/sprints'
+import type { BranchListSettings } from '../shared/branchStatus'
 import type { SubmitReviewInput } from '../shared/prReview'
 import type { RebaseStep } from '../shared/rebase'
 import { NO_SELF_UPDATE, type SelfUpdateStatus, type SelfUpdateStep } from '../shared/selfUpdate'
@@ -807,6 +808,18 @@ function registerIpcHandlers(): void {
   ipcMain.handle('settings:get-sprints', () => settings.getSprintSettings())
 
   ipcMain.handle('settings:set-sprints', (_e, next: SprintSettings) => wrap(() => settings.setSprintSettings(next)))
+
+  ipcMain.handle('settings:get-branch-list', () => settings.getBranchListSettings())
+
+  ipcMain.handle('settings:set-branch-list', (_e, next: BranchListSettings) =>
+    wrap(() => settings.setBranchListSettings(next))
+  )
+
+  ipcMain.handle('branches:get-favourites', (_e, repoPath: string) => settings.getFavouriteBranches(repoPath))
+
+  ipcMain.handle('branches:set-favourites', (_e, repoPath: string, names: string[]) =>
+    wrap(() => settings.setFavouriteBranches(repoPath, names))
+  )
 
   ipcMain.handle('notifications:get-settings', () => settings.getNotificationSettings())
 
