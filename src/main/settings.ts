@@ -26,6 +26,8 @@ interface StoredSettings {
   sprints?: Partial<SprintSettings>
   /** The external merge tool, if any. */
   mergeTool?: Partial<MergeToolSettings>
+  /** The Run button's command, per repo path. */
+  runCommands?: Record<string, string>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -139,6 +141,19 @@ export async function getMergeToolSettings(): Promise<MergeToolSettings> {
 
 export async function setMergeToolSettings(next: MergeToolSettings): Promise<MergeToolSettings> {
   return updateSettings((current) => (current.mergeTool = normalizeMergeToolSettings(next)))
+}
+
+export async function getRunCommand(repoPath: string): Promise<string | null> {
+  return (await readSettings()).runCommands?.[repoPath]?.trim() || null
+}
+
+export async function setRunCommand(repoPath: string, command: string): Promise<void> {
+  await updateSettings((current) => {
+    const commands = { ...current.runCommands }
+    if (command.trim()) commands[repoPath] = command.trim()
+    else delete commands[repoPath]
+    current.runCommands = commands
+  })
 }
 
 export async function getWorkspaceRepos(): Promise<string[]> {

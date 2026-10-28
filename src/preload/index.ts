@@ -258,14 +258,22 @@ const api = {
     ipcRenderer.invoke('session:save-layout', layout),
   getAutoFetchMinutes: (): Promise<number> => ipcRenderer.invoke('settings:get-auto-fetch'),
   setAutoFetchMinutes: (minutes: number): Wrapped<void> => ipcRenderer.invoke('settings:set-auto-fetch', minutes),
+  getRunCommand: (repoPath: string): Promise<{ command: string | null; suggestion: string }> =>
+    ipcRenderer.invoke('run:get-command', repoPath),
+  setRunCommand: (repoPath: string, command: string): Wrapped<void> =>
+    ipcRenderer.invoke('run:set-command', repoPath, command),
+  /** Gets a Run ready: checks out `commit` in the run checkout when it isn't a clean HEAD. */
+  planRun: (repoPath: string, commit: string | null): Wrapped<import('../shared/run').RunPlan> =>
+    ipcRenderer.invoke('run:plan', repoPath, commit),
   getWorkspaceRepos: (): Promise<string[]> => ipcRenderer.invoke('settings:get-workspace-repos'),
   addWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
     ipcRenderer.invoke('settings:add-workspace-repo', repoPath),
   removeWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
     ipcRenderer.invoke('settings:remove-workspace-repo', repoPath),
 
-  terminalCreate: (cwd: string | undefined, cols: number, rows: number): Promise<number> =>
-    ipcRenderer.invoke('terminal:create', cwd, cols, rows),
+  /** Opens a shell, or, with `command`, runs that command in a shell that exits when it does. */
+  terminalCreate: (cwd: string | undefined, cols: number, rows: number, command?: string): Promise<number> =>
+    ipcRenderer.invoke('terminal:create', cwd, cols, rows, command),
   terminalWrite: (id: number, data: string): void => ipcRenderer.send('terminal:write', id, data),
   terminalResize: (id: number, cols: number, rows: number): void =>
     ipcRenderer.send('terminal:resize', id, cols, rows),

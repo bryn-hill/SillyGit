@@ -221,3 +221,16 @@ describe('session', () => {
     expect(stored()).toEqual({ layout: { showTerminal: false } })
   })
 })
+
+describe('run commands', () => {
+  it('keeps one run command per repo and clears it when emptied', async () => {
+    expect(await settings.getRunCommand('/a')).toBeNull()
+    await settings.setRunCommand('/a', '  npm run dev ')
+    await settings.setRunCommand('/b', 'make run')
+    expect(await settings.getRunCommand('/a')).toBe('npm run dev')
+    expect(await settings.getRunCommand('/b')).toBe('make run')
+    await settings.setRunCommand('/a', '')
+    expect(await settings.getRunCommand('/a')).toBeNull()
+    expect(stored().runCommands).toEqual({ '/b': 'make run' })
+  })
+})

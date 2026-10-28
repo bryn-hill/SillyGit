@@ -14,6 +14,7 @@ import * as launchpad from './launchpad'
 import * as prReview from './prReview'
 import * as quickActions from './quickActions'
 import * as accounts from './accounts'
+import * as run from './run'
 import * as github from './github'
 import { AvatarResolver, type AvatarSources } from './avatars'
 import { githubAccess, remoteLocations } from './hosting'
@@ -661,6 +662,17 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:set-merge-tool', (_e, next: MergeToolSettings) =>
     wrap(() => settings.setMergeToolSettings(next))
+  )
+
+  ipcMain.handle('run:get-command', async (_e, repoPath: string) => ({
+    command: await settings.getRunCommand(repoPath),
+    suggestion: await run.suggestCommand(repoPath)
+  }))
+  ipcMain.handle('run:set-command', (_e, repoPath: string, command: string) =>
+    wrap(() => settings.setRunCommand(repoPath, command))
+  )
+  ipcMain.handle('run:plan', (_e, repoPath: string, commit: string | null) =>
+    wrap(() => run.planRun(repoPath, commit, join(app.getPath('userData'), 'run-checkouts')))
   )
 
   ipcMain.handle('settings:get-sprints', () => settings.getSprintSettings())

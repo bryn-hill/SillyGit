@@ -159,6 +159,13 @@ test.describe('top bar menus take clicks instead of dragging the window', () => 
     await expect(sillygit.page.getByRole('menu', { name: 'Pull options' })).toHaveCount(0)
   })
 
+  test('the run menu', async ({ sillygit, repo }) => {
+    await sillygit.openRepository(repo.path)
+    await sillygit.toolbarButton('Run options').click()
+    await expect(sillygit.page.getByRole('menu', { name: 'Run options' })).toBeVisible()
+    expect(await dragRegions(sillygit.page)).toEqual([])
+  })
+
   test('the repository menu', async ({ sillygit, repo }) => {
     await sillygit.openRepository(repo.path)
     await sillygit.repositoryCrumb.click()

@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX, type ReactNode } from 'react'
 import type { BranchInfo, PullMode, RepoStatus } from '../../../shared/types'
+import type { RunMode } from '../../../shared/run'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
@@ -34,6 +35,18 @@ interface Props {
   onToggleActions: () => void
   onCheckout: (branch: string) => void
   onOpenSettings: () => void
+  /** The repo's run command; null until one is set (Run then asks for it). */
+  runCommand: string | null
+  /** The commit Run acts on, or null to run the working tree. */
+  runCommit: string | null
+  runMode: RunMode
+  /** Whether the run the Run button would start is already going. */
+  running: boolean
+  preparingRun: boolean
+  /** Runs the way the Run menu last chose, or `mode` when picked from the menu. */
+  onRun: (mode?: RunMode) => void
+  onStopRun: () => void
+  onEditRunCommand: () => void
   terminalVisible: boolean
   onToggleTerminal: () => void
   claudeVisible: boolean
@@ -208,6 +221,46 @@ function ActionsIcon(): JSX.Element {
   )
 }
 
+function RunIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path d="M4.5 2.8v10.4L13 8 4.5 2.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function StopIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <rect x="3.5" y="3.5" width="9" height="9" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  )
+}
+
+const RUN_OPTIONS: { mode: RunMode; label: string; hint: string }[] = [
+  {
+    mode: 'isolated',
+    label: 'Run in isolation',
+    hint: 'Runs the selected commit in a separate checkout; your working tree is left alone'
+  },
+  {
+    mode: 'checkout',
+    label: 'Check out and run',
+    hint: 'Checks out the selected commit here, then runs it'
+  }
+]
+
+/** What the Run button's tooltip says it will do. */
+export function runTitle(command: string | null, commit: string | null, mode: RunMode, running: boolean): string {
+  const what = command ? `“${command}”` : 'a command (you’ll be asked which)'
+  if (!commit) return running ? 'Stop the working tree’s run' : `Run ${what} in the working tree`
+  const short = commit.slice(0, 7)
+  if (mode === 'isolated') {
+    return running ? 'Stop the isolated run' : `Run ${what} on ${short} in a separate checkout, leaving your working tree alone`
+  }
+  return running ? 'Stop the working tree’s run' : `Check out ${short} and run ${what}`
+}
+
 const PULL_OPTIONS: { mode: PullMode; label: string }[] = [
   { mode: 'ff', label: 'Pull (fast-forward if possible)' },
   { mode: 'ff-only', label: 'Pull (fast-forward only)' },
@@ -272,6 +325,14 @@ export default function TopBar({
   onToggleActions,
   onCheckout,
   onOpenSettings,
+  runCommand,
+  runCommit,
+  runMode,
+  running,
+  preparingRun,
+  onRun,
+  onStopRun,
+  onEditRunCommand,
   terminalVisible,
   onToggleTerminal,
   claudeVisible,
@@ -280,7 +341,8 @@ export default function TopBar({
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [showRepoMenu, setShowRepoMenu] = useState(false)
   const [showPullMenu, setShowPullMenu] = useState(false)
-  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu
+  const [showRunMenu, setShowRunMenu] = useState(false)
+  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showRunMenu
 
   // Escape closes whichever top-bar menu is open.
   useEffect(() => {
@@ -290,6 +352,7 @@ export default function TopBar({
       setShowBranchMenu(false)
       setShowRepoMenu(false)
       setShowPullMenu(false)
+      setShowRunMenu(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -492,6 +555,71 @@ export default function TopBar({
             title={stashCount > 0 ? 'Pop the most recent stash' : 'No stashes'}
           />
           <div className="toolbar-divider" />
+          <div className="tool-split">
+            <ToolButton
+              label={running ? 'Stop' : preparingRun ? 'Preparing' : 'Run'}
+              icon={running ? <StopIcon /> : <RunIcon />}
+              disabled={preparingRun}
+              active={running}
+              onClick={() => (running ? onStopRun() : onRun())}
+              title={runTitle(runCommand, runCommit, runMode, running)}
+            />
+            <button
+              className="tool-caret"
+              onClick={() => setShowRunMenu((v) => !v)}
+              title="Choose how to run, or change the run command"
+              aria-label="Run options"
+              aria-haspopup="menu"
+              aria-expanded={showRunMenu}
+            >
+              ▾
+            </button>
+            {showRunMenu && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setShowRunMenu(false)} />
+                <div className="branch-dropdown tool-menu" role="menu" aria-label="Run options">
+                  {RUN_OPTIONS.map((option) => (
+                    <div
+                      key={option.mode}
+                      role="menuitemradio"
+                      aria-checked={option.mode === runMode}
+                      className="branch-dropdown-item"
+                      title={option.hint}
+                      onClick={() => {
+                        setShowRunMenu(false)
+                        onRun(option.mode)
+                      }}
+                    >
+                      <span className="tool-menu-check">{option.mode === runMode ? '✓' : ''}</span>
+                      {option.label}
+                    </div>
+                  ))}
+                  <div className="dropdown-separator" />
+                  <div
+                    role="menuitem"
+                    className="branch-dropdown-item"
+                    onClick={() => {
+                      setShowRunMenu(false)
+                      onEditRunCommand()
+                    }}
+                  >
+                    <span className="tool-menu-check" />
+                    Edit run command…
+                  </div>
+                  <div className="dropdown-separator" />
+                  <div className="tool-menu-hint">
+                    {runCommand ? (
+                      <>
+                        Runs <code>{runCommand}</code>.{' '}
+                      </>
+                    ) : null}
+                    With a commit selected, the option picked here is what Run does. With the uncommitted changes row
+                    selected, Run runs your working tree.
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <ToolButton
             label="Terminal"
             icon={<TerminalIcon />}

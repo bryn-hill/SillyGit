@@ -2221,6 +2221,36 @@ button.ai-ask-button:focus-visible {
   background: var(--bg-hover);
 }
 
+.terminal-tab.running > svg:first-child {
+  color: var(--green, #50fa7b);
+}
+
+.terminal-tab[data-testid='run-tab'] .terminal-tab-title {
+  max-width: 260px;
+}
+
+.terminal-tab-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--red, #ff5555);
+  border-radius: 3px;
+}
+
+.terminal-tab-stop:hover {
+  background: var(--bg-hover);
+}
+
+.tool-menu-hint code {
+  font-family: 'SF Mono', Menlo, monospace;
+  color: var(--text);
+}
+
 .terminal-add-btn {
   flex-shrink: 0;
   width: 24px;

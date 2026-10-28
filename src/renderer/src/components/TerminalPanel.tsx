@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -56,13 +56,24 @@ function TerminalTabIcon(): JSX.Element {
   )
 }
 
-interface TerminalInstanceProps {
-  cwd: string | null
-  shown: boolean
-  onExit: () => void
+function RunTabIcon(): JSX.Element {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+      <path d="M5 3.5v9l7-4.5-7-4.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
-function TerminalInstance({ cwd, shown, onExit }: TerminalInstanceProps): JSX.Element {
+interface TerminalInstanceProps {
+  cwd: string | null
+  /** Runs this shell line instead of opening an interactive shell. */
+  command?: string
+  shown: boolean
+  onExit: (exitCode: number) => void
+  onPty?: (ptyId: number) => void
+}
+
+function TerminalInstance({ cwd, command, shown, onExit, onPty }: TerminalInstanceProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -113,19 +124,24 @@ function TerminalInstance({ cwd, shown, onExit }: TerminalInstanceProps): JSX.El
     const offData = window.api.onTerminalData((id, data) => {
       if (id === ptyIdRef.current) term.write(data)
     })
-    const offExit = window.api.onTerminalExit((id) => {
-      if (id === ptyIdRef.current) onExit()
+    const offExit = window.api.onTerminalExit((id, exitCode) => {
+      if (id !== ptyIdRef.current) return
+      ptyIdRef.current = null
+      if (command) term.write(`\r\n\x1b[2m[Process exited with code ${exitCode}]\x1b[0m\r\n`)
+      onExit(exitCode)
     })
     const inputDisposable = term.onData((data) => {
       if (ptyIdRef.current != null) window.api.terminalWrite(ptyIdRef.current, data)
     })
 
-    window.api.terminalCreate(cwd ?? undefined, term.cols, term.rows).then((id) => {
+    if (command) term.write(`\x1b[2m$ ${command.replace(/\n/g, ' ')}\x1b[0m\r\n`)
+    window.api.terminalCreate(cwd ?? undefined, term.cols, term.rows, command).then((id) => {
       if (disposed) {
         window.api.terminalKill(id)
         return
       }
       ptyIdRef.current = id
+      onPty?.(id)
     })
 
     const resizeObserver = new ResizeObserver(() => {
@@ -182,9 +198,32 @@ function TerminalInstance({ cwd, shown, onExit }: TerminalInstanceProps): JSX.El
   )
 }
 
+interface RunTab {
+  /** Identifies the run, e.g. the repo and whether it's isolated; starting the same run again replaces its tab. */
+  key: string
+  cwd: string
+  script: string
+  running: boolean
+}
+
 interface TabState {
   id: number
   title: string
+  run?: RunTab
+}
+
+export interface RunRequest {
+  key: string
+  title: string
+  cwd: string
+  script: string
+}
+
+export interface TerminalPanelHandle {
+  /** Runs `script` in its own tab, replacing the tab of an earlier run with the same key. */
+  startRun: (request: RunRequest) => void
+  /** Interrupts the run (Ctrl+C), then kills it if it hasn't stopped a few seconds later. */
+  stopRun: (key: string) => void
 }
 
 interface Props {
@@ -193,12 +232,62 @@ interface Props {
   height: number
   onToggle: () => void
   onHeightChange: (height: number) => void
+  /** The keys of the runs that are still going. */
+  onRunningChange?: (keys: string[]) => void
 }
 
-export default function TerminalPanel({ cwd, visible, height, onToggle, onHeightChange }: Props): JSX.Element {
+const STOP_GRACE_MS = 3000
+
+const TerminalPanel = forwardRef<TerminalPanelHandle, Props>(function TerminalPanel(
+  { cwd, visible, height, onToggle, onHeightChange, onRunningChange },
+  ref
+): JSX.Element {
   const [tabs, setTabs] = useState<TabState[]>([])
   const [activeId, setActiveId] = useState<number | null>(null)
   const nextIdRef = useRef(1)
+  // Each run tab's pty, so Stop can reach it.
+  const runPtys = useRef(new Map<number, number>())
+
+  // As a string, so the parent only hears about it when the set changes.
+  const runningKeys = JSON.stringify(tabs.filter((t) => t.run?.running).map((t) => t.run!.key))
+  useEffect(() => {
+    onRunningChange?.(JSON.parse(runningKeys) as string[])
+  }, [runningKeys, onRunningChange])
+
+  const stopRun = (key: string): void => {
+    const tab = tabs.find((t) => t.run?.key === key && t.run.running)
+    const ptyId = tab ? runPtys.current.get(tab.id) : undefined
+    if (!tab || ptyId == null) return
+    window.api.terminalWrite(ptyId, '\x03')
+    setTimeout(() => {
+      if (runPtys.current.get(tab.id) === ptyId) window.api.terminalKill(ptyId)
+    }, STOP_GRACE_MS)
+  }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      startRun: ({ key, title, cwd: runCwd, script }) => {
+        const id = nextIdRef.current++
+        const tab: TabState = { id, title, run: { key, cwd: runCwd, script, running: true } }
+        setTabs((prev) => {
+          const index = prev.findIndex((t) => t.run?.key === key)
+          if (index < 0) return [...prev, tab]
+          const next = [...prev]
+          next[index] = tab
+          return next
+        })
+        setActiveId(id)
+      },
+      stopRun
+    }),
+    [tabs]
+  )
+
+  const markRunExited = useCallback((id: number) => {
+    runPtys.current.delete(id)
+    setTabs((prev) => prev.map((t) => (t.id === id && t.run ? { ...t, run: { ...t.run, running: false } } : t)))
+  }, [])
 
   const addTab = useCallback(() => {
     const id = nextIdRef.current++
@@ -211,6 +300,7 @@ export default function TerminalPanel({ cwd, visible, height, onToggle, onHeight
   }, [visible, tabs.length, addTab])
 
   const closeTab = useCallback((id: number) => {
+    runPtys.current.delete(id)
     setTabs((prev) => {
       const next = prev.filter((t) => t.id !== id)
       setActiveId((current) => {
@@ -247,12 +337,28 @@ export default function TerminalPanel({ cwd, visible, height, onToggle, onHeight
           {tabs.map((tab) => (
             <div
               key={tab.id}
-              className={`terminal-tab ${tab.id === activeId ? 'active' : ''}`}
-              data-testid="terminal-tab"
+              className={`terminal-tab ${tab.id === activeId ? 'active' : ''} ${tab.run?.running ? 'running' : ''}`}
+              data-testid={tab.run ? 'run-tab' : 'terminal-tab'}
               onClick={() => setActiveId(tab.id)}
+              title={tab.run ? `${tab.run.script}\n${tab.run.cwd}` : undefined}
             >
-              <TerminalTabIcon />
+              {tab.run ? <RunTabIcon /> : <TerminalTabIcon />}
               <span className="terminal-tab-title">{tab.title}</span>
+              {tab.run?.running && (
+                <button
+                  className="terminal-tab-stop"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (tab.run) stopRun(tab.run.key)
+                  }}
+                  title="Stop"
+                  aria-label={`Stop ${tab.title}`}
+                >
+                  <svg width="9" height="9" viewBox="0 0 10 10">
+                    <rect x="1" y="1" width="8" height="8" rx="1" fill="currentColor" />
+                  </svg>
+                </button>
+              )}
               <button
                 className="terminal-tab-close"
                 onClick={(e) => {
@@ -277,14 +383,17 @@ export default function TerminalPanel({ cwd, visible, height, onToggle, onHeight
         {tabs.map((tab) => (
           <TerminalInstance
             key={tab.id}
-            cwd={cwd}
+            cwd={tab.run ? tab.run.cwd : cwd}
+            command={tab.run?.script}
             shown={visible && tab.id === activeId}
-            onExit={() => closeTab(tab.id)}
+            onExit={() => (tab.run ? markRunExited(tab.id) : closeTab(tab.id))}
+            onPty={tab.run ? (ptyId) => runPtys.current.set(tab.id, ptyId) : undefined}
           />
         ))}
       </div>
     </div>
   )
-}
+})
 
+export default TerminalPanel
 export { DEFAULT_HEIGHT }

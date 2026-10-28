@@ -10,12 +10,19 @@ function defaultShell(): string {
   return process.env.SHELL || '/bin/zsh'
 }
 
+/** The shell and arguments that run `command` and exit, loading the user's profile so PATH (nvm, Homebrew) matches their own terminal. */
+function commandShell(command: string): { file: string; args: string[] } {
+  if (process.platform === 'win32') return { file: process.env.COMSPEC || 'cmd.exe', args: ['/d', '/s', '/c', command] }
+  return { file: defaultShell(), args: ['-i', '-l', '-c', command] }
+}
+
 export function registerTerminalHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(
     'terminal:create',
-    (_e, cwd: string | undefined, cols: number, rows: number): number => {
+    (_e, cwd: string | undefined, cols: number, rows: number, command?: string): number => {
       const id = nextId++
-      const ptyProcess = pty.spawn(defaultShell(), [], {
+      const { file, args } = command ? commandShell(command) : { file: defaultShell(), args: [] }
+      const ptyProcess = pty.spawn(file, args, {
         name: 'xterm-256color',
         cols: cols > 0 ? cols : 80,
         rows: rows > 0 ? rows : 24,

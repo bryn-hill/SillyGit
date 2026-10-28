@@ -22,7 +22,11 @@ import MergeResolver from './components/MergeResolver'
 import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
 import PromptDialog, { type PromptRequest } from './components/PromptDialog'
-import TerminalPanel, { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from './components/TerminalPanel'
+import TerminalPanel, {
+  DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT,
+  type TerminalPanelHandle
+} from './components/TerminalPanel'
+import type { RunMode } from '../../shared/run'
 import ClaudePanel, { DEFAULT_CLAUDE_WIDTH } from './components/claude/ClaudePanel'
 import { layoutGraph } from './lib/graphLayout'
 import { repoDisplayName } from './lib/repoName'
@@ -86,6 +90,28 @@ function savePullMode(mode: PullMode): void {
   }
 }
 
+const RUN_MODE_KEY = 'sillygit.runMode'
+
+function loadRunMode(): RunMode {
+  try {
+    if (localStorage.getItem(RUN_MODE_KEY) === 'checkout') return 'checkout'
+  } catch {
+    // Storage can be unavailable; fall back to the default.
+  }
+  return 'isolated'
+}
+
+function saveRunMode(mode: RunMode): void {
+  try {
+    localStorage.setItem(RUN_MODE_KEY, mode)
+  } catch {
+    // Not remembering it is fine.
+  }
+}
+
+/** Identifies a repo's run in the terminal: its working tree, or its isolated checkout. */
+export const runKey = (repoPath: string, isolated: boolean): string => `${repoPath}\0${isolated ? 'isolated' : 'tree'}`
+
 export default function App(): JSX.Element {
   const [repoPath, setRepoPath] = useState<string | null>(null)
   const [status, setStatus] = useState<RepoStatus | null>(null)
@@ -134,6 +160,12 @@ export default function App(): JSX.Element {
   const [palette, setPalette] = useState<'modal' | 'dropdown' | null>(null)
   const showPalette = palette !== null
   const [showActivity, setShowActivity] = useState(false)
+  const terminalRef = useRef<TerminalPanelHandle | null>(null)
+  const [runningKeys, setRunningKeys] = useState<string[]>([])
+  const [runMode, setRunMode] = useState<RunMode>(loadRunMode)
+  const [preparingRun, setPreparingRun] = useState(false)
+  // The repo's Run command, or null until one is set.
+  const [runCommand, setRunCommand] = useState<string | null>(null)
   const [pullMode, setPullMode] = useState<PullMode>(loadPullMode)
   // Minutes between background fetches (0 = off), from settings.
   const [autoFetchMinutes, setAutoFetchMinutes] = useState<number | null>(null)
@@ -709,6 +741,101 @@ export default function App(): JSX.Element {
     })
   }
 
+  /** Asks for the repo's run command (prefilled with the current one or a guess) and saves it. */
+  const editRunCommand = async (): Promise<string | null> => {
+    if (!repoPath) return null
+    const { command, suggestion } = await window.api.getRunCommand(repoPath)
+    const next = await askText({
+      title: 'Run command',
+      label: `Command to run in ${repoDisplayName(repoPath)}`,
+      defaultValue: command ?? suggestion,
+      placeholder: 'npm run dev',
+      submitLabel: 'Save'
+    })
+    if (next == null) return null
+    const res = await window.api.setRunCommand(repoPath, next)
+    if (!res.ok) {
+      showError(res.error)
+      return null
+    }
+    setRunCommand(next)
+    return next
+  }
+
+  // The commit Run acts on: the selected one, if just one is selected. A
+  // clean HEAD is just the working tree, so that runs in the repo.
+  const runCommit =
+    selection.type === 'commit' && !(selection.hash === headHash && !hasWorkingChanges) ? selection.hash : null
+  const runIsolated = !!runCommit && runMode === 'isolated'
+  const runRunning = !!repoPath && runningKeys.includes(runKey(repoPath, runIsolated))
+
+  /**
+   * Runs the repo's run command. With a commit selected it runs that commit:
+   * in isolation (a separate checkout, leaving the working tree alone), or by
+   * checking it out here first. Otherwise it runs the working tree as it is.
+   */
+  const handleRun = async (mode: RunMode = runMode): Promise<void> => {
+    if (!repoPath || preparingRun) return
+    if (mode !== runMode) {
+      setRunMode(mode)
+      saveRunMode(mode)
+    }
+    const repo = repoPath
+    const command = (await window.api.getRunCommand(repo)).command ?? (await editRunCommand())
+    if (!command) return
+    const commit = runCommit
+    const isolated = !!commit && mode === 'isolated'
+    if (commit && !isolated && commit !== headHash) {
+      if (hasWorkingChanges) {
+        showError('Commit or stash your changes before checking out another commit, or choose Run in isolation.')
+        return
+      }
+      let checkedOut = false
+      await withBusy(async () => {
+        const res = await window.api.checkout(repo, commit)
+        if (!res.ok) showError(res.error)
+        else checkedOut = true
+        await refresh(repo)
+      })
+      if (!checkedOut) return
+    }
+    setPreparingRun(true)
+    setError(null)
+    try {
+      const res = await window.api.planRun(repo, isolated ? commit : null)
+      if (!res.ok) {
+        showError(res.error)
+        return
+      }
+      const name = repoDisplayName(repo)
+      terminalRef.current?.startRun({
+        key: runKey(repo, isolated),
+        title: isolated ? `Run ${name} @ ${commit!.slice(0, 7)} (isolated)` : `Run ${name}`,
+        cwd: res.data.cwd,
+        script: res.data.script
+      })
+      setShowTerminal(true)
+    } finally {
+      setPreparingRun(false)
+    }
+  }
+
+  const handleStopRun = (): void => {
+    if (repoPath) terminalRef.current?.stopRun(runKey(repoPath, runIsolated))
+  }
+
+  useEffect(() => {
+    setRunCommand(null)
+    if (!repoPath) return
+    let current = true
+    window.api.getRunCommand(repoPath).then(({ command }) => {
+      if (current) setRunCommand(command)
+    })
+    return () => {
+      current = false
+    }
+  }, [repoPath])
+
   const handleCreateBranch = (branch: string): void => {
     if (!repoPath) return
     withBusy(async () => {
@@ -1195,6 +1322,12 @@ export default function App(): JSX.Element {
         setSelection({ type: 'working' })
       })
       add('amend', 'Amend last commit', startAmend)
+      add('run', 'Run', () => void handleRun())
+      if (runCommit) {
+        add('run-isolated', 'Run selected commit in isolation', () => void handleRun('isolated'))
+        add('run-checkout', 'Check out selected commit and run', () => void handleRun('checkout'))
+      }
+      add('run-command', 'Edit run command…', () => void editRunCommand())
       add('apply-patch', 'Apply patch…', handleApplyPatch)
       if (hasWorkingChanges && !operation) {
         add('stash', 'Stash changes', handleStash)
@@ -1411,13 +1544,21 @@ export default function App(): JSX.Element {
         onStashPop={handleStashPop}
         onCheckout={handleCheckout}
         onOpenSettings={() => setShowSettings(true)}
+        runCommand={runCommand}
+        runCommit={runCommit}
+        runMode={runMode}
+        running={runRunning}
+        preparingRun={preparingRun}
+        onRun={(mode) => void handleRun(mode)}
+        onStopRun={handleStopRun}
+        onEditRunCommand={() => void editRunCommand()}
         terminalVisible={showTerminal}
         onToggleTerminal={() => setShowTerminal((v) => !v)}
         claudeVisible={showClaude}
         onToggleClaude={() => setShowClaude((v) => !v)}
       />
       {error && (
-        <div className="error-banner" onClick={() => setError(null)}>
+        <div className="error-banner" role="alert" onClick={() => setError(null)}>
           {error}
         </div>
       )}
@@ -1565,6 +1706,8 @@ export default function App(): JSX.Element {
             )}
           </div>
           <TerminalPanel
+            ref={terminalRef}
+            onRunningChange={setRunningKeys}
             cwd={repoPath}
             visible={showTerminal}
             height={terminalHeight}

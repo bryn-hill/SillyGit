@@ -80,6 +80,19 @@ export class SillyGitApp {
     await this.page.getByRole('menu', { name: 'Pull options' }).getByText(item, { exact: true }).click()
   }
 
+  /** Opens the Run button's menu and picks `item`, e.g. "Run in isolation". */
+  async runMenu(item: string): Promise<void> {
+    await this.toolbarButton('Run options').click()
+    await this.page.getByRole('menu', { name: 'Run options' }).getByText(item, { exact: true }).click()
+  }
+
+  /** Answers the "Run command" prompt that the first Run (or Edit run command…) shows. */
+  async setRunCommand(command: string): Promise<void> {
+    const prompt = this.page.getByRole('dialog', { name: 'Run command' })
+    await prompt.getByRole('textbox').fill(command)
+    await prompt.getByRole('button', { name: 'Save' }).click()
+  }
+
   /** Opens `repoPath` through the "Open Repository" button, with the folder picker stubbed. */
   async openRepository(repoPath: string): Promise<void> {
     await this.electronApp.evaluate(({ dialog }, path) => {
