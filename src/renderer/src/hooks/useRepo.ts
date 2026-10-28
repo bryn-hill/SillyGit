@@ -264,3 +264,5 @@ export function useRepo({
     fetchRemotes
   }
 }
+
+export type Repo = ReturnType<typeof useRepo>

@@ -6,11 +6,12 @@ import { DEFAULT_CLAUDE_WIDTH } from '../components/claude/ClaudePanel'
 
 /**
  * The terminal and Claude panels and the graph's Branch / Tag column, saved
- * between launches. Changes are saved only once `restored` is set (after the
- * previous session's layout has been put back), so the defaults never
- * overwrite it. Ctrl+` toggles the terminal and Ctrl/Cmd+Esc the Claude panel.
+ * between launches. Changes are saved only once `restore` has put back the
+ * previous session's layout, so the defaults never overwrite it. Ctrl+`
+ * toggles the terminal and Ctrl/Cmd+Esc the Claude panel.
  */
-export function usePanelLayout(restored: boolean) {
+export function usePanelLayout() {
+  const [restored, setRestored] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const [terminalHeight, setTerminalHeight] = useState(DEFAULT_TERMINAL_HEIGHT)
   const [showClaude, setShowClaude] = useState(false)
@@ -48,6 +49,7 @@ export function usePanelLayout(restored: boolean) {
     if (layout.showClaude !== undefined) setShowClaude(layout.showClaude)
     if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
     if (layout.refColumnWidth) setRefColumnWidth(layout.refColumnWidth)
+    setRestored(true)
   }
 
   return {
@@ -64,3 +66,5 @@ export function usePanelLayout(restored: boolean) {
     restore
   }
 }
+
+export type PanelLayout = ReturnType<typeof usePanelLayout>
