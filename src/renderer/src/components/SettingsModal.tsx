@@ -325,7 +325,12 @@ function MergeToolSection({
 }): JSX.Element {
   // A draft, so the command isn't saved on every keystroke.
   const [command, setCommand] = useState(mergeTool.customCommand)
-  useEffect(() => setCommand(mergeTool.customCommand), [mergeTool.customCommand])
+  // Take a saved command that changed elsewhere, while rendering rather than in an effect.
+  const [savedCommand, setSavedCommand] = useState(mergeTool.customCommand)
+  if (savedCommand !== mergeTool.customCommand) {
+    setSavedCommand(mergeTool.customCommand)
+    setCommand(mergeTool.customCommand)
+  }
   const preset = mergeToolPreset(mergeTool.tool)
   return (
     <section className="settings-section" aria-label="Merge tool">
@@ -374,8 +379,13 @@ function SprintsSection({
   // Drafts, so a half-typed date or number isn't thrown away mid-edit.
   const [startDate, setStartDate] = useState(sprints.startDate)
   const [startNumber, setStartNumber] = useState(String(sprints.startNumber))
-  useEffect(() => setStartDate(sprints.startDate), [sprints.startDate])
-  useEffect(() => setStartNumber(String(sprints.startNumber)), [sprints.startNumber])
+  // Take saved values that changed elsewhere, while rendering rather than in an effect.
+  const [saved, setSaved] = useState(sprints)
+  if (saved.startDate !== sprints.startDate || saved.startNumber !== sprints.startNumber) {
+    if (saved.startDate !== sprints.startDate) setStartDate(sprints.startDate)
+    if (saved.startNumber !== sprints.startNumber) setStartNumber(String(sprints.startNumber))
+    setSaved(sprints)
+  }
 
   const today = localDay(new Date().toISOString())
   const current = today === null ? null : sprintAt(sprintIndexOfDay(today, sprints), sprints)

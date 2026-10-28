@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { ROW_HEIGHT, WipGraphCell } from './GraphCell'
 import type { Selection } from '../App'
@@ -133,7 +133,8 @@ export default function CommitGraph({
 
   // --- Search -------------------------------------------------------------
   const [query, setQuery] = useState('')
-  const [hits, setHits] = useState<CommitSearchHit[] | null>(null)
+  const [found, setFound] = useState<CommitSearchHit[] | null>(null)
+  const hits = query.trim() ? found : null
   const [hitIndex, setHitIndex] = useState(0)
   const hitSet = useMemo(() => (hits ? new Set(hits.map((h) => h.hash)) : null), [hits])
 
@@ -143,29 +144,32 @@ export default function CommitGraph({
     searchRef.current?.select()
   }, [searchFocusToken])
 
+  const jumpToFirstHit = useEffectEvent((hit: CommitSearchHit) => onJumpToCommit(hit))
+
   useEffect(() => {
     const q = query.trim()
-    if (!q) {
-      setHits(null)
-      return
-    }
+    if (!q) return
     let cancelled = false
     const timer = setTimeout(() => {
       window.api.searchCommits(repoPath, q).then((res) => {
         if (cancelled) return
-        const found = res.ok ? res.data : []
-        setHits(found)
+        const results = res.ok ? res.data : []
+        setFound(results)
         setHitIndex(0)
-        if (found.length > 0) onJumpToCommit(found[0])
+        if (results.length > 0) jumpToFirstHit(results[0])
       })
     }, 200)
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-    // onJumpToCommit changes every render; only a new query should search.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, repoPath])
+
+  const changeQuery = (next: string): void => {
+    setQuery(next)
+    // Don't flash the last search's results when a new one starts from empty.
+    if (!next.trim()) setFound(null)
+  }
 
   const stepHit = (delta: number): void => {
     if (!hits || hits.length === 0) return
@@ -387,14 +391,14 @@ export default function CommitGraph({
             aria-label="Search commits"
             placeholder="Search commits"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => changeQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
                 stepHit(e.shiftKey ? -1 : 1)
               } else if (e.key === 'Escape') {
                 e.preventDefault()
-                setQuery('')
+                changeQuery('')
                 e.currentTarget.blur()
               }
             }}

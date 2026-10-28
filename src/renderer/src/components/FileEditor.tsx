@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type JSX } from 'react'
 import type { EditableFile } from '../../../shared/types'
 import { monaco } from '../lib/monaco'
 
@@ -6,7 +6,7 @@ interface Props {
   repoPath: string
   path: string
   /** Unsaved text from the last time this file was open, restored on top of the file on disk. */
-  draft?: string
+  loadDraft: () => string | undefined
   /** Reports unsaved text when the editor goes away (a tab switch, Launchpad), or null when there is none. */
   onDraftChange: (draft: string | null) => void
   onClose: () => void
@@ -25,7 +25,7 @@ function formatSize(bytes: number): string {
 export default function FileEditor({
   repoPath,
   path,
-  draft,
+  loadDraft,
   onDraftChange,
   onClose,
   onSaved,
@@ -77,19 +77,18 @@ export default function FileEditor({
     onSaved()
   }, [repoPath, path, onSaved])
 
-  const saveRef = useRef(save)
-  saveRef.current = save
-  const onDraftChangeRef = useRef(onDraftChange)
-  onDraftChangeRef.current = onDraftChange
-  const draftRef = useRef(draft)
+  // Called from Monaco commands and DOM listeners that live as long as the editor.
+  const saveFromEditor = useEffectEvent(() => void save())
+  const keepDraft = useEffectEvent((next: string | null) => onDraftChange(next))
+  const restoreDraft = useEffectEvent(() => loadDraft())
   const closing = useRef(false)
 
   const requestClose = useCallback((): void => {
     if (dirty && !window.confirm(`Discard unsaved changes to ${path}?`)) return
     closing.current = true
-    onDraftChangeRef.current(null)
+    onDraftChange(null)
     onClose()
-  }, [dirty, path, onClose])
+  }, [dirty, path, onClose, onDraftChange])
 
   const content = file?.kind === 'text' ? file.content : null
   const absolutePath = file?.absolutePath
@@ -114,12 +113,6 @@ export default function FileEditor({
     })
     editorRef.current = editor
     savedVersion.current = model.getAlternativeVersionId()
-    // Bring back edits left unsaved when the editor was last hidden.
-    const restored = draftRef.current
-    if (restored != null && restored !== content) {
-      model.pushEditOperations([], [{ range: model.getFullModelRange(), text: restored }], () => null)
-      setDirty(true)
-    }
     setLanguage(monaco.languages.getLanguages().find((l) => l.id === model.getLanguageId())?.aliases?.[0] ?? model.getLanguageId())
     setEol(model.getEOL() === '\r\n' ? 'CRLF' : 'LF')
 
@@ -130,13 +123,19 @@ export default function FileEditor({
       }),
       editor.onDidChangeCursorPosition((e) => setCursor({ line: e.position.lineNumber, column: e.position.column }))
     ]
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveRef.current())
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveFromEditor())
+    // Bring back edits left unsaved when the editor was last hidden; the
+    // content listener above marks the file dirty.
+    const restored = restoreDraft()
+    if (restored != null && restored !== content) {
+      model.pushEditOperations([], [{ range: model.getFullModelRange(), text: restored }], () => null)
+    }
     editor.focus()
 
     return () => {
       if (!closing.current) {
         const unsaved = model.getAlternativeVersionId() !== savedVersion.current
-        onDraftChangeRef.current(unsaved ? model.getValue() : null)
+        keepDraft(unsaved ? model.getValue() : null)
       }
       subs.forEach((s) => s.dispose())
       editor.dispose()
@@ -175,7 +174,7 @@ export default function FileEditor({
       if (e.key === 'Escape' && !root.querySelector('.monaco-editor')?.contains(e.target as Node)) requestClose()
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
-        void saveRef.current()
+        saveFromEditor()
       }
     }
     root.addEventListener('keydown', onKey)

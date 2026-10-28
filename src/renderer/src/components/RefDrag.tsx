@@ -42,18 +42,6 @@ export default function RefDragLayer({
   const [ghost, setGhost] = useState<Ghost | null>(null)
   const cleanup = useRef<(() => void) | null>(null)
   const onDropRef = useRef(onDrop)
-  onDropRef.current = onDrop
-
-  useEffect(() => {
-    active = { begin }
-  })
-  useEffect(
-    () => () => {
-      active = { begin: () => {} }
-      cleanup.current?.()
-    },
-    []
-  )
 
   const begin = (e: PointerEvent, source: DragSource): void => {
     if (e.button !== 0 || e.ctrlKey || cleanup.current) return
@@ -142,6 +130,19 @@ export default function RefDragLayer({
       cleanup.current = null
     }
   }
+
+  // The latest begin and onDrop, for drags started from other components.
+  useEffect(() => {
+    onDropRef.current = onDrop
+    active = { begin }
+  })
+  useEffect(
+    () => () => {
+      active = { begin: () => {} }
+      cleanup.current?.()
+    },
+    []
+  )
 
   if (!ghost) return null
   return (

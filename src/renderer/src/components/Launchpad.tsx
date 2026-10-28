@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import type { LaunchpadBucketId, LaunchpadData, LaunchpadPullRequest } from '../../../shared/types'
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
 import { timeAgo } from '../lib/timeAgo'
@@ -98,8 +98,10 @@ function UnavailableNotice({
 
 export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onOpenTerminal }: Props): JSX.Element {
   const [data, setData] = useState<LaunchpadData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // The request the last answer was for, and its error; loading until it's the current one.
+  const [answered, setAnswered] = useState<{ request: string; error: string | null } | null>(null)
+  const [reloads, setReloads] = useState(0)
+  const [actionError, setError] = useState<string | null>(null)
   const [mergingNumber, setMergingNumber] = useState<number | null>(null)
   const [workspaceRepos, setWorkspaceRepos] = useState<string[]>([])
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
@@ -118,18 +120,27 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
     [repoPath, openRepos, workspaceRepos]
   )
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const request = `${reloads}\0${allRepoPaths.join('\0')}`
+  const loading = answered?.request !== request
+  const error = actionError ?? (loading ? null : answered.error)
+
+  const load = (): void => {
     setError(null)
-    const res = await window.api.launchpadGetData(allRepoPaths)
-    setLoading(false)
-    if (res.ok) setData(res.data)
-    else setError(res.error)
-  }, [allRepoPaths])
+    setReloads((n) => n + 1)
+  }
 
   useEffect(() => {
-    if (workspaceLoaded) load()
-  }, [workspaceLoaded, load])
+    if (!workspaceLoaded) return
+    let cancelled = false
+    window.api.launchpadGetData(allRepoPaths).then((res) => {
+      if (cancelled) return
+      if (res.ok) setData(res.data)
+      setAnswered({ request, error: res.ok ? null : res.error })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceLoaded, allRepoPaths, request])
 
   const handleMerge = (pr: LaunchpadPullRequest): void => {
     const ok = window.confirm(`Merge #${pr.number} "${pr.title}" into ${pr.baseRefName}?`)
@@ -155,6 +166,7 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
       setError(res.error)
       return
     }
+    setError(null)
     setWorkspaceRepos(res.data)
   }
 
@@ -168,6 +180,7 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
   if (reviewing)
     return (
       <PullRequestReview
+        key={`${reviewing.repoPath}#${reviewing.number}`}
         repoPath={reviewing.repoPath}
         number={reviewing.number}
         title={reviewing.title}

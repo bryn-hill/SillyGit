@@ -49,8 +49,8 @@ export default function CommitFullView({
   const [detail, setDetail] = useState<CommitDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [diffText, setDiffText] = useState('')
-  const [diffLoading, setDiffLoading] = useState(false)
+  // The loaded diff and the file it's for; it's still loading while that's not the selected file.
+  const [diff, setDiff] = useState<{ path: string; text: string } | null>(null)
   const [highlightTarget, setHighlightTarget] = useState<{ file: string; line?: number } | null>(
     null
   )
@@ -58,24 +58,16 @@ export default function CommitFullView({
   const [commitAi, setCommitAi] = useState<AiRun>(idleAiRun)
   const [fileAiPath, setFileAiPath] = useState<string | null>(null)
   const [fileAi, setFileAi] = useState<AiRun>(idleAiRun)
-  const currentHashRef = useRef(hash)
+  // The parent keys this view by commit, so a different commit starts from fresh state.
+  const [firstPath] = useState(initialPath)
 
   useEffect(() => {
-    currentHashRef.current = hash
     let cancelled = false
-    setDetail(null)
-    setError(null)
-    setSelectedPath(null)
-    setDiffText('')
-    setHighlightTarget(null)
-    setCommitAi(idleAiRun)
-    setFileAiPath(null)
-    setFileAi(idleAiRun)
     window.api.commitDetail(repoPath, hash).then((res) => {
       if (cancelled) return
       if (res.ok) {
         setDetail(res.data)
-        const initial = res.data.files.find((f) => f.path === initialPath) ?? res.data.files[0]
+        const initial = res.data.files.find((f) => f.path === firstPath) ?? res.data.files[0]
         if (initial) setSelectedPath(initial.path)
       } else {
         setError(res.error)
@@ -84,16 +76,14 @@ export default function CommitFullView({
     return () => {
       cancelled = true
     }
-  }, [repoPath, hash])
+  }, [repoPath, hash, firstPath])
 
   useEffect(() => {
     if (!selectedPath) return
     let cancelled = false
-    setDiffLoading(true)
     window.api.commitFileDiff(repoPath, hash, selectedPath).then((res) => {
       if (cancelled) return
-      setDiffLoading(false)
-      setDiffText(res.ok ? res.data : `Unable to load diff: ${res.error}`)
+      setDiff({ path: selectedPath, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
     })
     return () => {
       cancelled = true
@@ -109,10 +99,8 @@ export default function CommitFullView({
   }, [onClose])
 
   const runCommitAi = async (): Promise<void> => {
-    const requestHash = hash
     setCommitAi({ state: 'loading', result: null, error: null })
     const res = await window.api.aiReviewCommit(repoPath, hash)
-    if (currentHashRef.current !== requestHash) return
     setCommitAi(
       res.ok
         ? { state: 'done', result: res.data, error: null }
@@ -121,11 +109,9 @@ export default function CommitFullView({
   }
 
   const runFileAi = async (path: string): Promise<void> => {
-    const requestHash = hash
     setFileAiPath(path)
     setFileAi({ state: 'loading', result: null, error: null })
     const res = await window.api.aiReviewFile(repoPath, hash, path)
-    if (currentHashRef.current !== requestHash) return
     setFileAi(
       res.ok
         ? { state: 'done', result: res.data, error: null }
@@ -164,14 +150,14 @@ export default function CommitFullView({
           <div className="commit-fullview-diff" data-testid="diff">
             {!selectedPath ? (
               <div className="commit-fullview-empty">No file changes in this commit.</div>
-            ) : diffLoading ? (
+            ) : diff?.path !== selectedPath ? (
               <div className="commit-fullview-empty">Loading diff…</div>
             ) : (
               <FileDiffViewer
                 repoPath={repoPath}
                 hash={hash}
                 path={selectedPath}
-                diffText={diffText}
+                diffText={diff.text}
                 highlightLine={highlightTarget?.file === selectedPath ? highlightTarget.line : undefined}
                 onNavigateToCommit={onNavigateToCommit}
                 onWorkingTreeChanged={onWorkingTreeChanged}

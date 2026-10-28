@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type JSX, type MouseEvent } from 'react'
+import { Fragment, useEffect, useEffectEvent, useMemo, useState, type JSX, type MouseEvent } from 'react'
 import {
   checksSummary,
   REVIEW_EVENT_LABELS,
@@ -399,31 +399,38 @@ export default function PullRequestReview({ repoPath, number, title, onBack }: P
   const [composer, setComposer] = useState<Composer | null>(null)
   const [drafts, setDrafts] = useState<DraftReviewComment[]>(saved?.comments ?? [])
   const [reviewBody, setReviewBody] = useState(saved?.body ?? '')
-  const [event, setEvent] = useState<ReviewEvent>(saved?.event ?? 'COMMENT')
+  const [chosenEvent, setEvent] = useState<ReviewEvent>(saved?.event ?? 'COMMENT')
+  // You can only comment on your own pull request.
+  const isOwn = !!detail && detail.author === detail.viewer
+  const event = isOwn ? 'COMMENT' : chosenEvent
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     draftsByPr.set(key, { comments: drafts, body: reviewBody, event })
   }, [key, drafts, reviewBody, event])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const res = await window.api.prGetDetail(repoPath, number)
+  const showDetail = (res: Awaited<ReturnType<typeof window.api.prGetDetail>>): void => {
     setLoading(false)
     if (res.ok) {
       setDetail(res.data)
       setError(null)
     } else setError(res.error)
+  }
+  const showFirstDetail = useEffectEvent(showDetail)
+
+  const load = async (): Promise<void> => {
+    setLoading(true)
+    showDetail(await window.api.prGetDetail(repoPath, number))
+  }
+
+  // Launchpad keys this view by pull request, so this loads once; Refresh and actions reload.
+  useEffect(() => {
+    let cancelled = false
+    window.api.prGetDetail(repoPath, number).then((res) => !cancelled && showFirstDetail(res))
+    return () => {
+      cancelled = true
+    }
   }, [repoPath, number])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  const isOwn = !!detail && detail.author === detail.viewer
-  useEffect(() => {
-    if (isOwn && event !== 'COMMENT') setEvent('COMMENT')
-  }, [isOwn, event])
 
   const files = detail?.files ?? []
   const currentFile = files.find((f) => f.path === filePath) ?? files[0]

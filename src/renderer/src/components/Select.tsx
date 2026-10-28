@@ -47,6 +47,8 @@ export default function Select<T extends string | number>({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const [pos, setPos] = useState<{ left: number; top: number; minWidth: number; maxHeight: number } | null>(null)
+  // The list's accessible name: the aria-label, or else the text of the button's <label>.
+  const [listLabel, setListLabel] = useState<string | undefined>(ariaLabel)
   const typed = useRef({ text: '', at: 0 })
 
   const selectedIndex = options.findIndex((o) => o.value === value)
@@ -56,6 +58,7 @@ export default function Select<T extends string | number>({
     if (disabled || options.length === 0) return
     setActive(Math.max(0, selectedIndex))
     setPos(null)
+    setListLabel(ariaLabel ?? buttonRef.current?.labels?.[0]?.textContent ?? undefined)
     setOpen(true)
   }
 
@@ -217,7 +220,7 @@ export default function Select<T extends string | number>({
             ref={listRef}
             id={listId}
             role="listbox"
-            aria-label={ariaLabel ?? buttonRef.current?.labels?.[0]?.textContent ?? undefined}
+            aria-label={listLabel}
             className="select-list"
             style={
               pos

@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -238,10 +238,15 @@ interface Props {
 
 const STOP_GRACE_MS = 3000
 
-const TerminalPanel = forwardRef<TerminalPanelHandle, Props>(function TerminalPanel(
-  { cwd, visible, height, onToggle, onHeightChange, onRunningChange },
+export default function TerminalPanel({
+  cwd,
+  visible,
+  height,
+  onToggle,
+  onHeightChange,
+  onRunningChange,
   ref
-): JSX.Element {
+}: Props & { ref?: Ref<TerminalPanelHandle> }): JSX.Element {
   const [tabs, setTabs] = useState<TabState[]>([])
   const [activeId, setActiveId] = useState<number | null>(null)
   const nextIdRef = useRef(1)
@@ -254,15 +259,18 @@ const TerminalPanel = forwardRef<TerminalPanelHandle, Props>(function TerminalPa
     onRunningChange?.(JSON.parse(runningKeys) as string[])
   }, [runningKeys, onRunningChange])
 
-  const stopRun = (key: string): void => {
-    const tab = tabs.find((t) => t.run?.key === key && t.run.running)
-    const ptyId = tab ? runPtys.current.get(tab.id) : undefined
-    if (!tab || ptyId == null) return
-    window.api.terminalWrite(ptyId, '\x03')
-    setTimeout(() => {
-      if (runPtys.current.get(tab.id) === ptyId) window.api.terminalKill(ptyId)
-    }, STOP_GRACE_MS)
-  }
+  const stopRun = useCallback(
+    (key: string): void => {
+      const tab = tabs.find((t) => t.run?.key === key && t.run.running)
+      const ptyId = tab ? runPtys.current.get(tab.id) : undefined
+      if (!tab || ptyId == null) return
+      window.api.terminalWrite(ptyId, '\x03')
+      setTimeout(() => {
+        if (runPtys.current.get(tab.id) === ptyId) window.api.terminalKill(ptyId)
+      }, STOP_GRACE_MS)
+    },
+    [tabs]
+  )
 
   useImperativeHandle(
     ref,
@@ -281,7 +289,7 @@ const TerminalPanel = forwardRef<TerminalPanelHandle, Props>(function TerminalPa
       },
       stopRun
     }),
-    [tabs]
+    [stopRun]
   )
 
   const markRunExited = useCallback((id: number) => {
@@ -393,7 +401,6 @@ const TerminalPanel = forwardRef<TerminalPanelHandle, Props>(function TerminalPa
       </div>
     </div>
   )
-})
+}
 
-export default TerminalPanel
 export { DEFAULT_HEIGHT }

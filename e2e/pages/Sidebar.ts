@@ -14,7 +14,7 @@ export class Sidebar {
 
   /** Opens the REMOTE section, which starts collapsed. */
   async expandRemotes(): Promise<void> {
-    await this.root.locator('.tree-group-header', { hasText: 'REMOTE' }).click()
+    await this.root.getByRole('button', { name: 'REMOTE', exact: true }).click()
   }
 
   /** Right-clicks a branch and picks `item` from its menu. */

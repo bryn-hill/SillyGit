@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState, type JSX } from 'react'
 import Markdown from './Markdown'
 import PromptBox, { type PromptBoxHandle, type PromptImage } from './PromptBox'
 import { PermissionCard, ThinkingBlock, TodoList, ToolRow } from './ChatItems'
@@ -99,10 +99,8 @@ function ChatView({
   const promptRef = useRef<PromptBoxHandle>(null)
   const titled = useRef(!!resume)
   const filesRef = useRef<Promise<string[]> | null>(null)
-  const onFilesChangedRef = useRef(onFilesChanged)
-  onFilesChangedRef.current = onFilesChanged
-  const onTitleRef = useRef(onTitle)
-  onTitleRef.current = onTitle
+  const filesChanged = useEffectEvent(() => onFilesChanged())
+  const setTitle = useEffectEvent((title: string) => onTitle(title))
 
   useEffect(() => {
     let disposed = false
@@ -118,11 +116,11 @@ function ChatView({
         !ev.isError &&
         FILE_CHANGING_TOOLS.has(toolNames.get(ev.toolUseId) ?? '')
       ) {
-        onFilesChangedRef.current()
+        filesChanged()
       }
       if (ev.kind === 'user' && !titled.current) {
         titled.current = true
-        onTitleRef.current(ev.text.split('\n')[0].slice(0, 40) || 'New chat')
+        setTitle(ev.text.split('\n')[0].slice(0, 40) || 'New chat')
       }
       dispatch(ev)
     }

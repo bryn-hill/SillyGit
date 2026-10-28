@@ -3,6 +3,7 @@ import DiffBlock from '../DiffBlock'
 import Markdown from './Markdown'
 import type { ChatItem } from '../../lib/claudeChat'
 import type { ClaudePermissionDecision, ClaudeQuestion } from '../../../../shared/claude'
+import { pressable } from '../../lib/pressable'
 
 type ToolItem = Extract<ChatItem, { type: 'tool' }>
 type PermissionItem = Extract<ChatItem, { type: 'permission' }>
@@ -125,7 +126,7 @@ export function ToolRow({ repoPath, item, childItems }: ToolRowProps): JSX.Eleme
 
   return (
     <div className={`claude-tool status-${status}`}>
-      <div className="claude-tool-header" onClick={() => setOpen((v) => !v)}>
+      <div className="claude-tool-header" aria-expanded={open} {...pressable(() => setOpen((v) => !v))}>
         <span className="claude-tool-dot" />
         <span className="claude-tool-name">{item.name}</span>
         <span className="claude-tool-summary">{toolSummary(repoPath, item.name, item.input)}</span>
@@ -177,7 +178,7 @@ export function ThinkingBlock({ text, streaming }: { text: string; streaming: bo
   if (!text && !streaming) return null
   return (
     <div className="claude-thinking">
-      <div className="claude-thinking-header" onClick={() => setOpen((v) => !v)}>
+      <div className="claude-thinking-header" aria-expanded={open} {...pressable(() => setOpen((v) => !v))}>
         <Chevron open={open} />
         <span>{streaming ? 'Thinking…' : 'Thought'}</span>
       </div>

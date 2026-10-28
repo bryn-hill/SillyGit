@@ -76,7 +76,7 @@ interface HunkListProps {
   lang: string | null
   showWhitespace: boolean
   activeHunkIndex: number
-  hunkRefs: React.MutableRefObject<Array<HTMLDivElement | null>>
+  hunkRefs: React.RefObject<Array<HTMLDivElement | null>>
   reverting: string | null
   /** Undefined hides the per-hunk revert button. */
   revert?: HunkRevert
@@ -244,10 +244,14 @@ export default function FileDiffViewer({
   const [wrapLines, setWrapLines] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
-  const [effectiveDiffText, setEffectiveDiffText] = useState(diffText)
+  // The whitespace-ignoring diff, for the diff text it was asked for alongside.
+  const [wsDiff, setWsDiff] = useState<{ source: string; text: string } | null>(null)
+  const effectiveDiffText = ignoreWhitespace && wsDiff?.source === diffText ? wsDiff.text : diffText
 
-  const [fileContent, setFileContent] = useState<string | null>(null)
-  const [fileLoading, setFileLoading] = useState(false)
+  // The whole file, for the request it answers; anything else means it's still loading.
+  const fileRequest = `${repoPath}\0${hash}\0${staged}\0${path}`
+  const [file, setFile] = useState<{ request: string; diffText: string; content: string } | null>(null)
+  const fileLoaded = file?.request === fileRequest && file.diffText === diffText
 
   const [activeHunkIndex, setActiveHunkIndex] = useState(0)
   const [reverting, setReverting] = useState<string | null>(null)
@@ -256,27 +260,31 @@ export default function FileDiffViewer({
 
   const lang = languageForPath(path)
 
-  // New file or commit selected — reset per-file state.
-  useEffect(() => {
+  // New file or commit selected: reset per-file state while rendering, as
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  // suggests, so the old file's settings never paint for the new one.
+  const [shownFile, setShownFile] = useState(fileRequest)
+  if (shownFile !== fileRequest) {
+    setShownFile(fileRequest)
     setMode('diff')
     setIgnoreWhitespace(false)
-    setEffectiveDiffText(diffText)
     setActiveHunkIndex(0)
     setRevertStatus(null)
-    hunkRefs.current = []
-  }, [repoPath, hash, staged, path]) // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
-  useEffect(() => {
-    if (highlightLine == null) return
-    setMode('diff')
-    setLayout('unified')
-  }, [highlightLine, repoPath, hash, path])
-
-  useEffect(() => {
-    if (!ignoreWhitespace) {
-      setEffectiveDiffText(diffText)
-      return
+  // Jumping to a line needs the unified diff to show it in.
+  const highlightRequest = highlightLine == null ? null : `${fileRequest}\0${highlightLine}`
+  const [shownHighlight, setShownHighlight] = useState<string | null>(null)
+  if (shownHighlight !== highlightRequest) {
+    setShownHighlight(highlightRequest)
+    if (highlightRequest != null) {
+      setMode('diff')
+      setLayout('unified')
     }
+  }
+
+  useEffect(() => {
+    if (!ignoreWhitespace) return
     let cancelled = false
     const request =
       hash == null
@@ -284,7 +292,7 @@ export default function FileDiffViewer({
         : window.api.commitFileDiff(repoPath, hash, path, true, oldPath)
     request.then((res) => {
       if (cancelled) return
-      if (res.ok) setEffectiveDiffText(res.data)
+      if (res.ok) setWsDiff({ source: diffText, text: res.data })
     })
     return () => {
       cancelled = true
@@ -294,7 +302,6 @@ export default function FileDiffViewer({
   useEffect(() => {
     if (mode !== 'file') return
     let cancelled = false
-    setFileLoading(true)
     // An uncommitted change shows the file as staged (`:path` is the index copy) or on disk.
     const request =
       hash != null
@@ -304,13 +311,12 @@ export default function FileDiffViewer({
           : window.api.workingFile(repoPath, path)
     request.then((res) => {
       if (cancelled) return
-      setFileLoading(false)
-      setFileContent(res.ok ? res.data : `Unable to load file: ${res.error}`)
+      setFile({ request: fileRequest, diffText, content: res.ok ? res.data : `Unable to load file: ${res.error}` })
     })
     return () => {
       cancelled = true
     }
-  }, [mode, repoPath, hash, staged, path, diffText])
+  }, [mode, repoPath, hash, staged, path, diffText, fileRequest])
 
   useEffect(() => {
     if (!revertStatus) return
@@ -454,9 +460,9 @@ export default function FileDiffViewer({
       <div className={`diff-body ${wrapLines ? 'wrap' : ''}`} data-testid="diff-scroller">
         {mode === 'file' ? (
           <FileViewPane
-            content={fileContent}
+            content={fileLoaded ? file.content : null}
             lang={lang}
-            loading={fileLoading}
+            loading={!fileLoaded}
             showWhitespace={showWhitespace}
           />
         ) : layout === 'unified' ? (

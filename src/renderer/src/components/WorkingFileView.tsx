@@ -34,21 +34,20 @@ export default function WorkingFileView({
   onOpenFileView,
   onWorkingTreeChanged
 }: Props): JSX.Element {
-  const [diffText, setDiffText] = useState<string | null>(null)
-
-  useEffect(() => {
-    setDiffText(null)
-  }, [repoPath, path, staged])
+  // The diff and the file it's for; a refresh of the same file keeps showing the old one meanwhile.
+  const file = `${repoPath}\0${path}\0${staged}`
+  const [diff, setDiff] = useState<{ file: string; text: string } | null>(null)
+  const diffText = diff?.file === file ? diff.text : null
 
   useEffect(() => {
     let cancelled = false
     window.api.diff(repoPath, path, staged, untracked).then((res) => {
-      if (!cancelled) setDiffText(res.ok ? res.data : `Unable to load diff: ${res.error}`)
+      if (!cancelled) setDiff({ file, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
     })
     return () => {
       cancelled = true
     }
-  }, [repoPath, path, staged, untracked, refreshKey])
+  }, [repoPath, path, staged, untracked, refreshKey, file])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

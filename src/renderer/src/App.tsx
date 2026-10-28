@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type JSX } from 'react'
 import type {
   BranchInfo,
   OpenPullRequest,
@@ -151,6 +151,12 @@ export default function App(): JSX.Element {
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
   /** A file's history or blame, shown in place of the graph. */
   const [fileView, setFileView] = useState<FileViewTarget | null>(null)
+  // Bumped on every open, so the view starts fresh even for the same file.
+  const [fileViewOpens, setFileViewOpens] = useState(0)
+  const showFileView = (target: FileViewTarget): void => {
+    setFileView(target)
+    setFileViewOpens((n) => n + 1)
+  }
   // An uncommitted file's diff shown in place of the graph, from the unstaged or staged list.
   const [workingDiff, setWorkingDiff] = useState<{ path: string; staged: boolean } | null>(null)
   // History or Blame as last picked in the open file view, kept when another file is picked beside it.
@@ -188,7 +194,9 @@ export default function App(): JSX.Element {
   const [runMode, setRunMode] = useState<RunMode>(loadRunMode)
   const [preparingRun, setPreparingRun] = useState(false)
   // The repo's Run command, or null until one is set.
-  const [runCommand, setRunCommand] = useState<string | null>(null)
+  // The repo's saved Run command, for the repo it was read for.
+  const [savedRun, setSavedRun] = useState<{ repo: string; command: string | null } | null>(null)
+  const runCommand = savedRun && savedRun.repo === repoPath ? savedRun.command : null
   const [pullMode, setPullMode] = useState<PullMode>(loadPullMode)
   // Minutes between background fetches (0 = off), from settings.
   const [autoFetchMinutes, setAutoFetchMinutes] = useState<number | null>(null)
@@ -230,9 +238,7 @@ export default function App(): JSX.Element {
   }, [])
   const externalToolName = mergeToolName(mergeToolSettings)
   // Undo only makes sense while the merge (or rebase…) that the files belong to is still going.
-  useEffect(() => {
-    if (!operation) setConflictUndo(null)
-  }, [operation])
+  if (!operation && conflictUndo) setConflictUndo(null)
 
   const handleMergeToolChange = (next: MergeToolSettings): void => {
     setMergeToolSettings(next)
@@ -243,27 +249,6 @@ export default function App(): JSX.Element {
     setSprintSettings(next)
     window.api.setSprintSettings(next).then((res) => !res.ok && showError(res.error))
   }
-
-  // Reopen whatever was open when the app last quit.
-  useEffect(() => {
-    window.api.getSession().then((session) => {
-      const { layout } = session
-      if (layout.showTerminal !== undefined) setShowTerminal(layout.showTerminal)
-      if (layout.terminalHeight) setTerminalHeight(layout.terminalHeight)
-      if (layout.showClaude !== undefined) setShowClaude(layout.showClaude)
-      if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
-      if (layout.refColumnWidth) setRefColumnWidth(layout.refColumnWidth)
-      setRecentRepos(session.recentRepos)
-      setTabs(session.openTabs)
-      setPinnedTabs(session.pinnedTabs)
-      if (session.repoPath) setRepoPath(session.repoPath)
-      if (session.missingRepo) {
-        setNotice(`Couldn't reopen ${session.missingRepo}: the folder is gone or is no longer a git repository.`)
-        window.api.forgetRecentRepo(session.missingRepo)
-      }
-      setSessionRestored(true)
-    })
-  }, [])
 
   useEffect(() => {
     if (!sessionRestored) return
@@ -304,8 +289,8 @@ export default function App(): JSX.Element {
   // newest one's answers are applied, and never one for a repo that's closed.
   const graphLimitRef = useRef(GRAPH_PAGE)
   const refreshSeq = useRef(0)
+  // The repo showing, for async work to check it's still wanted; showRepo keeps it current.
   const openRepo = useRef<string | null>(null)
-  openRepo.current = repoPath
   const tabSnapshots = useRef(new Map<string, TabSnapshot>())
 
   const refresh = useCallback(async (path: string) => {
@@ -344,13 +329,19 @@ export default function App(): JSX.Element {
     })
   }, [])
 
-  // A different repo (tab) is showing: put up what it showed last time, or
-  // nothing, so another repo's commits never show under its name, then refresh.
-  useEffect(() => {
+  /**
+   * Shows a different repo (tab): puts up what it showed last time, or
+   * nothing, so another repo's commits never show under its name. The effect
+   * below then refreshes it.
+   */
+  const showRepo = (path: string | null): void => {
+    if (path === repoPath) return
+    openRepo.current = path
+    setRepoPath(path)
     graphLimitRef.current = GRAPH_PAGE
     setGraphLimit(GRAPH_PAGE)
     setAmend(false)
-    const snapshot = repoPath ? tabSnapshots.current.get(repoPath) : undefined
+    const snapshot = path ? tabSnapshots.current.get(path) : undefined
     setStatus(snapshot?.status ?? null)
     setBranches(snapshot?.branches ?? [])
     setGraphCommits(snapshot?.graphCommits ?? [])
@@ -364,8 +355,34 @@ export default function App(): JSX.Element {
     setFileView(null)
     setWorkingDiff(null)
     setResolvingPath(null)
+    setPullRequests([])
+  }
+
+  useEffect(() => {
     if (repoPath) refresh(repoPath)
   }, [repoPath, refresh])
+
+  // Reopen whatever was open when the app last quit.
+  const restoreRepo = useEffectEvent((path: string) => showRepo(path))
+  useEffect(() => {
+    window.api.getSession().then((session) => {
+      const { layout } = session
+      if (layout.showTerminal !== undefined) setShowTerminal(layout.showTerminal)
+      if (layout.terminalHeight) setTerminalHeight(layout.terminalHeight)
+      if (layout.showClaude !== undefined) setShowClaude(layout.showClaude)
+      if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
+      if (layout.refColumnWidth) setRefColumnWidth(layout.refColumnWidth)
+      setRecentRepos(session.recentRepos)
+      setTabs(session.openTabs)
+      setPinnedTabs(session.pinnedTabs)
+      if (session.repoPath) restoreRepo(session.repoPath)
+      if (session.missingRepo) {
+        setNotice(`Couldn't reopen ${session.missingRepo}: the folder is gone or is no longer a git repository.`)
+        window.api.forgetRecentRepo(session.missingRepo)
+      }
+      setSessionRestored(true)
+    })
+  }, [])
 
   // Remember each tab's selection for when it's switched back to.
   useEffect(() => {
@@ -454,7 +471,6 @@ export default function App(): JSX.Element {
   }, [repoPath])
 
   useEffect(() => {
-    setPullRequests([])
     prFetch.current = { repo: null, inFlight: false }
     revalidatePullRequests()
     window.addEventListener('focus', revalidatePullRequests)
@@ -485,13 +501,12 @@ export default function App(): JSX.Element {
 
   // Prefill the commit message with git's prepared merge message, once per
   // operation, without overwriting anything the user typed.
-  const prefilledFor = useRef<string | null>(null)
-  useEffect(() => {
-    const key = operation ? `${operation.kind}:${operation.incomingLabel}` : null
-    if (key === prefilledFor.current) return
-    prefilledFor.current = key
+  const operationKey = operation ? `${operation.kind}:${operation.incomingLabel}` : null
+  const [prefilledFor, setPrefilledFor] = useState<string | null>(null)
+  if (operationKey !== prefilledFor) {
+    setPrefilledFor(operationKey)
     if (operation?.message) setCommitMessage((m) => (m.trim() ? m : operation.message!))
-  }, [operation])
+  }
 
   const wipConflictLabel = useMemo(() => {
     if (!operation || conflictCount === 0) return null
@@ -503,29 +518,28 @@ export default function App(): JSX.Element {
 
   const commitByHash = useMemo(() => new Map(graphCommits.map((c) => [c.hash, c])), [graphCommits])
 
-  useEffect(() => {
-    if (graphRows.length === 0 || selection.type === 'none') return
+  // Keep the selection on something that exists, fixed up while rendering so a
+  // stale selection never paints.
+  const fixedSelection = ((): Selection => {
+    if (graphRows.length === 0 || selection.type === 'none') return selection
     if (selection.type === 'commits') {
       // Drop commits that went away (e.g. after a rebase).
       const kept = selection.hashes.filter((h) => commitByHash.has(h))
-      if (kept.length !== selection.hashes.length) {
-        setSelection(
-          kept.length > 1
-            ? { type: 'commits', hashes: kept, anchor: kept.includes(selection.anchor) ? selection.anchor : kept[0] }
-            : kept.length === 1
-              ? { type: 'commit', hash: kept[0] }
-              : { type: 'none' }
-        )
-      }
-      return
+      if (kept.length === selection.hashes.length) return selection
+      return kept.length > 1
+        ? { type: 'commits', hashes: kept, anchor: kept.includes(selection.anchor) ? selection.anchor : kept[0] }
+        : kept.length === 1
+          ? { type: 'commit', hash: kept[0] }
+          : { type: 'none' }
     }
     const selectedExists = selection.type === 'commit' && commitByHash.has(selection.hash)
     if (!hasWorkingChanges && (selection.type === 'working' || !selectedExists)) {
-      setSelection({ type: 'commit', hash: graphRows[0].commit.hash })
-    } else if (hasWorkingChanges && selection.type === 'commit' && !selectedExists) {
-      setSelection({ type: 'working' })
+      return { type: 'commit', hash: graphRows[0].commit.hash }
     }
-  }, [hasWorkingChanges, selection, graphRows, commitByHash])
+    if (hasWorkingChanges && selection.type === 'commit' && !selectedExists) return { type: 'working' }
+    return selection
+  })()
+  if (fixedSelection !== selection) setSelection(fixedSelection)
 
   // ArrowUp/ArrowDown move the selection through the graph (WIP row first, then commits).
   useEffect(() => {
@@ -579,16 +593,16 @@ export default function App(): JSX.Element {
    * `replace`, the current tab now showing `path` (unless that tab is pinned).
    */
   const switchToRepo = async (path: string, replace = false): Promise<void> => {
+    // The replaced tab's snapshot goes here, not in the updater below: updaters must be pure.
+    const replacing = replace && !!repoPath && !pinnedTabs.includes(repoPath) && !tabs.includes(path)
+    if (replacing) tabSnapshots.current.delete(repoPath)
     setTabs((current) => {
       if (current.includes(path)) return current
       const at = repoPath ? current.indexOf(repoPath) : -1
-      if (replace && at !== -1 && !pinnedTabs.includes(repoPath!)) {
-        tabSnapshots.current.delete(repoPath!)
-        return current.map((p, i) => (i === at ? path : p))
-      }
+      if (replacing && at !== -1) return current.map((p, i) => (i === at ? path : p))
       return [...current, path]
     })
-    setRepoPath(path)
+    showRepo(path)
     setShowLaunchpad(false)
     setError(null)
     setNotice(null)
@@ -637,7 +651,7 @@ export default function App(): JSX.Element {
         [...tabs.slice(0, index)].reverse().find((p) => !paths.includes(p)) ??
         null
       if (next) handleOpenRecentRepo(next)
-      else setRepoPath(null)
+      else showRepo(null)
     }
   }
 
@@ -794,7 +808,7 @@ export default function App(): JSX.Element {
       showError(res.error)
       return null
     }
-    setRunCommand(next)
+    setSavedRun({ repo: repoPath, command: next })
     return next
   }
 
@@ -861,11 +875,10 @@ export default function App(): JSX.Element {
   }
 
   useEffect(() => {
-    setRunCommand(null)
     if (!repoPath) return
     let current = true
     window.api.getRunCommand(repoPath).then(({ command }) => {
-      if (current) setRunCommand(command)
+      if (current) setSavedRun({ repo: repoPath, command })
     })
     return () => {
       current = false
@@ -1431,22 +1444,23 @@ export default function App(): JSX.Element {
     setShowLaunchpad(false)
     setRebaseEditor(null)
     fileViewMode.current = mode
-    setFileView({ path, ref, mode })
+    showFileView({ path, ref, mode })
   }
 
   // Keep an open working diff on its file as it's staged or unstaged; close it once the file has no changes left.
-  useEffect(() => {
-    if (!workingDiff || !status) return
+  // Fixed up while rendering, so the diff never paints for a side the file has left.
+  if (workingDiff && status) {
     const listed = (staged: boolean): boolean =>
       (staged ? status.staged : status.unstaged).some((f) => f.path === workingDiff.path)
-    if (listed(workingDiff.staged)) return
-    setWorkingDiff(listed(!workingDiff.staged) ? { ...workingDiff, staged: !workingDiff.staged } : null)
-  }, [status, workingDiff])
+    if (!listed(workingDiff.staged)) {
+      setWorkingDiff(listed(!workingDiff.staged) ? { ...workingDiff, staged: !workingDiff.staged } : null)
+    }
+  }
 
   /** Opens a working change's diff full window; with history or blame open, switches that to the file instead. */
   const openWorkingFile = (file: FileStatus, staged: boolean): void => {
     if (fileView) {
-      setFileView({ path: file.path, ref: null, mode: fileViewMode.current })
+      showFileView({ path: file.path, ref: null, mode: fileViewMode.current })
       setWorkingDiff({ path: file.path, staged })
       return
     }
@@ -1461,7 +1475,7 @@ export default function App(): JSX.Element {
 
   const openCommitFile = (hash: string, path: string): void => {
     if (fileView) {
-      setFileView({ path, ref: hash, mode: fileViewMode.current })
+      showFileView({ path, ref: hash, mode: fileViewMode.current })
       return
     }
     closeEditor()
@@ -1661,10 +1675,9 @@ export default function App(): JSX.Element {
     return commands.sort((a, b) => a.label.localeCompare(b.label))
   }
 
-  // App-wide shortcuts. A ref keeps the listener's view of state current
-  // without re-registering it on every render.
-  const shortcutHandlers = useRef<(e: KeyboardEvent) => void>(() => {})
-  shortcutHandlers.current = (e: KeyboardEvent): void => {
+  // App-wide shortcuts. An effect event sees current state without
+  // re-registering the listener on every render.
+  const onShortcut = useEffectEvent((e: KeyboardEvent): void => {
     if (prompt || showSettings || showActivity) return
     const key = e.key.toLowerCase()
     if ((isPrimary(e) && key === 'k') || (isPrimary(e, true) && key === 'p')) {
@@ -1701,9 +1714,9 @@ export default function App(): JSX.Element {
       e.preventDefault()
       setShowSettings(true)
     }
-  }
+  })
   useEffect(() => {
-    const handler = (e: KeyboardEvent): void => shortcutHandlers.current(e)
+    const handler = (e: KeyboardEvent): void => onShortcut(e)
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
@@ -1873,7 +1886,7 @@ export default function App(): JSX.Element {
               </div>
             ) : resolvingPath ? (
               <MergeResolver
-                key={resolvingPath}
+                key={`${repoPath}\0${resolvingPath}`}
                 repoPath={repoPath}
                 path={resolvingPath}
                 onClose={() => setResolvingPath(null)}
@@ -1897,6 +1910,7 @@ export default function App(): JSX.Element {
             ) : fileView ? (
               <div className="main-layout file-focus">
                 <FileHistoryView
+                  key={`${repoPath}\0${fileViewOpens}`}
                   repoPath={repoPath}
                   target={fileView}
                   onClose={() => setFileView(null)}
@@ -1930,7 +1944,7 @@ export default function App(): JSX.Element {
                     key={`${repoPath}\0${editingPath}`}
                     repoPath={repoPath}
                     path={editingPath}
-                    draft={editorDrafts.current.get(`${repoPath}\0${editingPath}`)}
+                    loadDraft={() => editorDrafts.current.get(`${repoPath}\0${editingPath}`)}
                     onDraftChange={(draft) => {
                       const key = `${repoPath}\0${editingPath}`
                       if (draft == null) editorDrafts.current.delete(key)
@@ -1962,6 +1976,7 @@ export default function App(): JSX.Element {
               </div>
             ) : fullScreenHash ? (
               <CommitFullView
+                key={`${repoPath}\0${fullScreenHash}`}
                 repoPath={repoPath}
                 hash={fullScreenHash}
                 initialPath={fullScreenPath}
@@ -2056,7 +2071,11 @@ export default function App(): JSX.Element {
           onMergeToolChange={handleMergeToolChange}
         />
       )}
-      {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}
+      {palette && (
+        // The commands' run handlers touch refs, but only when picked, never while rendering.
+        // eslint-disable-next-line react-hooks/refs
+        <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />
+      )}
       {showUpdate && selfUpdate && (
         <UpdateDialog status={selfUpdate.status} step={selfUpdate.step} onClose={() => setShowUpdate(false)} />
       )}

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type JSX, type Ref } from 'react'
 import {
   PERMISSION_MODES,
   type ClaudeCommand,
@@ -88,10 +88,19 @@ function readImage(file: File): Promise<PromptImage> {
   })
 }
 
-const PromptBox = forwardRef<PromptBoxHandle, Props>(function PromptBox(
-  { busy, mode, model, models, commands, loadFiles, onSend, onInterrupt, onModeChange, onModelChange },
+export default function PromptBox({
+  busy,
+  mode,
+  model,
+  models,
+  commands,
+  loadFiles,
+  onSend,
+  onInterrupt,
+  onModeChange,
+  onModelChange,
   ref
-) {
+}: Props & { ref?: Ref<PromptBoxHandle> }): JSX.Element {
   const [value, setValue] = useState('')
   const [caret, setCaret] = useState(0)
   const [images, setImages] = useState<PromptImage[]>([])
@@ -156,7 +165,13 @@ const PromptBox = forwardRef<PromptBoxHandle, Props>(function PromptBox(
     return []
   }, [dismissed, slash, mention, files, commands])
 
-  useEffect(() => setSelected(0), [suggestions.length, slash, mention?.query])
+  // A new list of suggestions starts at the top.
+  const listKey = `${suggestions.length}\0${slash}\0${mention?.query}`
+  const [shownList, setShownList] = useState(listKey)
+  if (shownList !== listKey) {
+    setShownList(listKey)
+    setSelected(0)
+  }
 
   const accept = (s: Suggestion): void => {
     let next: string
@@ -356,6 +371,4 @@ const PromptBox = forwardRef<PromptBoxHandle, Props>(function PromptBox(
       </div>
     </div>
   )
-})
-
-export default PromptBox
+}

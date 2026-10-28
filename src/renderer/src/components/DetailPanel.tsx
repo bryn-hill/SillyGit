@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import type { CommitDetail, FileStatus, GraphCommit, OperationState, RepoStatus } from '../../../shared/types'
 import type { Selection } from '../App'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
@@ -6,6 +6,7 @@ import { isPrimary, MOD } from '../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
 import Avatar from './Avatar'
 import { fileMenuSections } from './fileMenu'
+import { pressable } from '../lib/pressable'
 
 const OPERATION_NAMES: Record<OperationState['kind'], string> = {
   merge: 'Merge',
@@ -94,24 +95,24 @@ function WorkingDirectoryView({
 }: WorkingProps): JSX.Element {
   const [conflictMenu, setConflictMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   // Conflicted files picked with Cmd/Ctrl- or Shift-click, for bulk actions.
-  const [selectedConflicts, setSelectedConflicts] = useState<string[]>([])
+  const [pickedConflicts, setSelectedConflicts] = useState<string[]>([])
   const [conflictAnchor, setConflictAnchor] = useState<string | null>(null)
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; isStaged: boolean } | null>(null)
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null)
-  const [suggestions, setSuggestions] = useState<QuickMessage[]>([])
+  const [indexSuggestions, setSuggestions] = useState<QuickMessage[]>([])
   const [packageVersion, setPackageVersion] = useState<string | null>(null)
 
   const staged = status?.staged ?? []
   const unstaged = status?.unstaged ?? []
   const conflicted = status?.conflicted ?? []
   const conflictedKey = conflicted.map((f) => f.path).join('\0')
-  // Forget selected files once they're resolved.
-  useEffect(() => {
+  // Selected files drop out once they're resolved.
+  const selectedConflicts = useMemo(() => {
     const paths = new Set(conflictedKey.split('\0'))
-    setSelectedConflicts((sel) => (sel.every((p) => paths.has(p)) ? sel : sel.filter((p) => paths.has(p))))
-  }, [conflictedKey])
+    return pickedConflicts.every((p) => paths.has(p)) ? pickedConflicts : pickedConflicts.filter((p) => paths.has(p))
+  }, [pickedConflicts, conflictedKey])
   const selectedSet = new Set(selectedConflicts)
 
   const clickConflict = (e: React.MouseEvent, path: string): void => {
@@ -151,11 +152,10 @@ function WorkingDirectoryView({
 
   // Rule-based suggestions are cheap (no AI), so recompute whenever the index changes.
   const stagedKey = staged.map((f) => `${f.index}${f.path}`).join('\n')
+  const suggestions = stagedKey ? indexSuggestions : []
   useEffect(() => {
     let cancelled = false
-    if (!stagedKey) {
-      setSuggestions([])
-    } else {
+    if (stagedKey) {
       window.api.quickSuggestMessages(repoPath).then((res) => !cancelled && setSuggestions(res.ok ? res.data : []))
     }
     window.api.quickPackageVersion(repoPath).then((res) => !cancelled && setPackageVersion(res.ok ? res.data : null))
@@ -593,10 +593,9 @@ function CommitDetailView({
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Keyed by commit, so this only ever loads one.
   useEffect(() => {
     let cancelled = false
-    setDetail(null)
-    setError(null)
     window.api.commitDetail(repoPath, hash).then((res) => {
       if (cancelled) return
       if (res.ok) setDetail(res.data)
@@ -716,7 +715,7 @@ function MultiCommitView({
           const commit = lookup(hash)
           return (
             <li key={hash}>
-              <div className="file-row" title="Show only this commit" onClick={() => actions.select(hash)}>
+              <div className="file-row" title="Show only this commit" {...pressable(() => actions.select(hash))}>
                 <span className="multi-commit-sha">{hash.slice(0, 7)}</span>
                 <span className="file-path">{commit?.subject ?? ''}</span>
               </div>
@@ -761,6 +760,7 @@ export default function DetailPanel(props: Props): JSX.Element {
     const { hash } = props.selection
     return (
       <CommitDetailView
+        key={`${props.repoPath}\0${hash}`}
         repoPath={props.repoPath}
         hash={hash}
         activePath={props.activeFile?.path ?? null}

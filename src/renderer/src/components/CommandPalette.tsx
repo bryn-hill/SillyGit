@@ -67,7 +67,6 @@ export default function CommandPalette({ commands, onClose, variant = 'modal' }:
       .map((r) => r.command)
   }, [level, path, query])
 
-  useEffect(() => setActive(0), [query, path])
 
   // Clicking into a sub-list moves focus to the list; typing should still search.
   useEffect(() => inputRef.current?.focus(), [path])
@@ -81,13 +80,17 @@ export default function CommandPalette({ commands, onClose, variant = 'modal' }:
     if (command.children) {
       setPath((p) => [...p, command.label])
       setQuery('')
+      setActive(0)
       return
     }
     onClose()
     command.run?.()
   }
 
-  const back = (): void => setPath((p) => p.slice(0, -1))
+  const back = (): void => {
+    setPath((p) => p.slice(0, -1))
+    setActive(0)
+  }
 
   const placeholder =
     path.length > 0
@@ -117,7 +120,10 @@ export default function CommandPalette({ commands, onClose, variant = 'modal' }:
             placeholder={placeholder}
             aria-label="Command"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActive(0)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault()

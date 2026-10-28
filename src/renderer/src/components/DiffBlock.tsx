@@ -19,26 +19,24 @@ export default function DiffBlock({ diffText, highlightLine }: Props): JSX.Eleme
   const containerRef = useRef<HTMLPreElement>(null)
   const lines = diffText.split('\n')
 
+  // Number the new-file side of each hunk as we go.
+  const rendered: Array<{ line: string; cls: string; lineNum: number | undefined; key: number }> = []
   let newLineNum = 0
   let inHunk = false
-  const rendered = lines.map((line, i) => {
+  lines.forEach((line, i) => {
     const cls = lineClass(line)
+    let lineNum: number | undefined
+    const hunkMatch = cls === 'diff-hunk-header' && line.match(HUNK_HEADER_RE)
     if (line.startsWith('diff --git ')) {
       inHunk = false
-      return { line, cls, lineNum: undefined, key: i }
-    }
-    const hunkMatch = cls === 'diff-hunk-header' && line.match(HUNK_HEADER_RE)
-    if (hunkMatch) {
+    } else if (hunkMatch) {
       inHunk = true
       newLineNum = Number(hunkMatch[1])
-      return { line, cls, lineNum: undefined, key: i }
+    } else if (inHunk && (cls === 'diff-add' || cls === 'diff-context')) {
+      lineNum = newLineNum
+      newLineNum += 1
     }
-    if (!inHunk || (cls !== 'diff-add' && cls !== 'diff-context')) {
-      return { line, cls, lineNum: undefined, key: i }
-    }
-    const lineNum = newLineNum
-    newLineNum += 1
-    return { line, cls, lineNum, key: i }
+    rendered.push({ line, cls, lineNum, key: i })
   })
 
   useEffect(() => {

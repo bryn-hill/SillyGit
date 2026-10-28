@@ -3,6 +3,7 @@ import type { BranchInfo, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { dropTarget, useRefDrag } from './RefDrag'
+import { pressable } from '../lib/pressable'
 
 interface TreeNode {
   name: string
@@ -250,24 +251,24 @@ export default function Sidebar({
         </div>
       )}
       <div className="sidebar-scroll" data-drag-scroll="">
-        <div className="tree-group-header" onClick={() => toggle('local-root')}>
-          <span className="tree-caret">{collapsed.has('local-root') ? '▸' : '▾'}</span>
+        <div className="tree-group-header" aria-expanded={!collapsed.has('local-root')} {...pressable(() => toggle('local-root'))}>
+          <span className="tree-caret" aria-hidden="true">{collapsed.has('local-root') ? '▸' : '▾'}</span>
           LOCAL
         </div>
         {!collapsed.has('local-root') && (
           <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} onSelect={selectBranch} onCheckout={checkoutBranch} onContextMenu={openMenu} />
         )}
 
-        <div className="tree-group-header" onClick={() => toggle('remote-root')}>
-          <span className="tree-caret">{collapsed.has('remote-root') ? '▸' : '▾'}</span>
+        <div className="tree-group-header" aria-expanded={!collapsed.has('remote-root')} {...pressable(() => toggle('remote-root'))}>
+          <span className="tree-caret" aria-hidden="true">{collapsed.has('remote-root') ? '▸' : '▾'}</span>
           REMOTE
         </div>
         {!collapsed.has('remote-root') && (
           <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} onSelect={selectBranch} onCheckout={checkoutBranch} onContextMenu={openMenu} />
         )}
 
-        <div className="tree-group-header" onClick={() => toggle('stash-root')}>
-          <span className="tree-caret">{collapsed.has('stash-root') ? '▸' : '▾'}</span>
+        <div className="tree-group-header" aria-expanded={!collapsed.has('stash-root')} {...pressable(() => toggle('stash-root'))}>
+          <span className="tree-caret" aria-hidden="true">{collapsed.has('stash-root') ? '▸' : '▾'}</span>
           STASHES
           {stashes.length > 0 && <span className="tree-group-count">{stashes.length}</span>}
         </div>

@@ -69,31 +69,32 @@ export default function FileHistoryView({
   const [entries, setEntries] = useState<FileHistoryEntry[] | null>(null)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [selectedHash, setSelectedHash] = useState<string | null>(target.ref)
-  const [diffText, setDiffText] = useState<string | null>(null)
+  // The selected version's diff, for the version it belongs to.
+  const [diff, setDiff] = useState<{ version: string; text: string } | null>(null)
 
   // Blame: which version of the file is blamed, which can step back past a change.
   const [blameAt, setBlameAt] = useState<{ ref: string | null; path: string }>({ ref: target.ref, path: target.path })
-  const [blame, setBlame] = useState<BlameLine[] | null>(null)
-  const [content, setContent] = useState<string | null>(null)
-  const [blameError, setBlameError] = useState<string | null>(null)
+  // Blame for the version it was loaded for; it's loading while that isn't blameAt.
+  const [blamed, setBlamed] = useState<{
+    at: typeof blameAt
+    blame: BlameLine[] | null
+    content: string | null
+    error: string | null
+  } | null>(null)
+  const loadedBlame = blamed?.at === blameAt ? blamed : null
+  const blame = loadedBlame?.blame ?? null
+  const content = loadedBlame?.content ?? null
+  const blameError = loadedBlame?.error ?? null
   const [hoverHash, setHoverHash] = useState<string | null>(null)
   const [lineMenu, setLineMenu] = useState<{ x: number; y: number; line: BlameLine } | null>(null)
 
   useEffect(() => {
-    setModeState(target.mode)
-    setLimit(PAGE)
-    setSelectedHash(target.ref)
-    setBlameAt({ ref: target.ref, path: target.path })
-  }, [repoPath, target])
-
-  useEffect(() => {
     if (mode !== 'history') return
     let cancelled = false
-    setHistoryError(null)
     window.api.fileHistory(repoPath, target.path, target.ref ?? 'HEAD', limit).then((res) => {
       if (cancelled) return
+      setHistoryError(res.ok ? null : res.error)
       if (res.ok) setEntries(res.data)
-      else setHistoryError(res.error)
     })
     return () => {
       cancelled = true
@@ -101,37 +102,36 @@ export default function FileHistoryView({
   }, [mode, repoPath, target, limit])
 
   const selected = entries?.find((e) => e.hash === selectedHash) ?? entries?.[0] ?? null
+  const selectedHashShown = selected?.hash
+  const selectedPath = selected?.path
+  const selectedOldPath = selected?.oldPath
+  const version = selected ? `${repoPath}\0${selected.hash}\0${selected.path}\0${selected.oldPath ?? ''}` : null
+  const diffText = diff && diff.version === version ? diff.text : null
 
   useEffect(() => {
-    if (mode !== 'history' || !selected) return
+    if (mode !== 'history' || !version || !selectedHashShown || !selectedPath) return
     let cancelled = false
-    setDiffText(null)
-    window.api.commitFileDiff(repoPath, selected.hash, selected.path, false, selected.oldPath).then((res) => {
-      if (!cancelled) setDiffText(res.ok ? res.data : `Unable to load diff: ${res.error}`)
+    window.api.commitFileDiff(repoPath, selectedHashShown, selectedPath, false, selectedOldPath).then((res) => {
+      if (!cancelled) setDiff({ version, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
     })
     return () => {
       cancelled = true
     }
-  }, [mode, repoPath, selected?.hash, selected?.path, selected?.oldPath]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, repoPath, version, selectedHashShown, selectedPath, selectedOldPath])
 
   useEffect(() => {
     if (mode !== 'blame') return
     let cancelled = false
-    setBlame(null)
-    setContent(null)
-    setBlameError(null)
-    const { ref, path } = blameAt
+    const at = blameAt
+    const { ref, path } = at
     Promise.all([
       window.api.blame(repoPath, ref, path),
       ref ? window.api.fileAtRef(repoPath, ref, path) : window.api.workingFile(repoPath, path)
     ]).then(([blameRes, contentRes]) => {
       if (cancelled) return
-      if (!blameRes.ok) setBlameError(blameRes.error)
-      else if (!contentRes.ok) setBlameError(contentRes.error)
-      else {
-        setBlame(blameRes.data)
-        setContent(contentRes.data)
-      }
+      if (!blameRes.ok) setBlamed({ at, blame: null, content: null, error: blameRes.error })
+      else if (!contentRes.ok) setBlamed({ at, blame: null, content: null, error: contentRes.error })
+      else setBlamed({ at, blame: blameRes.data, content: contentRes.data, error: null })
     })
     return () => {
       cancelled = true

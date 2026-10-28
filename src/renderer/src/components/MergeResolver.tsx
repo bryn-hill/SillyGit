@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type JSX } from 'react'
 import type { AiHunkResolution, ConflictFileContent, RenameKeep } from '../../../shared/types'
 import {
   buildOutput,
@@ -388,16 +388,11 @@ export default function MergeResolver({
     [repoPath, path, onResolved, onError]
   )
 
+  const autoSave = useEffectEvent((content: string) => save(content, 'Merge tool automatically resolved your conflict'))
+
+  // The parent keys this by file, so it starts from fresh state for each one.
   useEffect(() => {
     let cancelled = false
-    setFile(null)
-    setLoadError(null)
-    setPicks({})
-    setCustom({})
-    setProposals({})
-    setAiSummary(null)
-    setEditedOutput(null)
-    setCurrent(0)
     window.api.conflictFile(repoPath, path).then((res) => {
       if (cancelled) return
       if (!res.ok) {
@@ -406,7 +401,7 @@ export default function MergeResolver({
       }
       // When the 3-way merge comes out clean, there is nothing to pick.
       if (res.data.kind === 'text' && conflictHunks(parseConflictMarkers(res.data.marked, res.data.markerSize)).length === 0) {
-        save(res.data.marked, 'Merge tool automatically resolved your conflict')
+        autoSave(res.data.marked)
         return
       }
       setFile(res.data)
