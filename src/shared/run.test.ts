@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRunScript, installCommandFor, lockfileFor, shellQuote, suggestRunCommand } from './run'
+import { buildRunScript, installCommandFor, lockfileFor, shellQuote, splitLeadingCd, suggestRunCommand } from './run'
 
 describe('installCommandFor', () => {
   it('picks the package manager from the lockfile', () => {
@@ -51,5 +51,18 @@ describe('buildRunScript', () => {
 
   it('quotes for a POSIX shell', () => {
     expect(shellQuote("a'b")).toBe(`'a'\\''b'`)
+  })
+})
+
+describe('splitLeadingCd', () => {
+  it('splits off a leading cd into a folder', () => {
+    expect(splitLeadingCd('cd web && npm run dev')).toEqual({ dir: 'web', dirToken: 'web', rest: 'npm run dev' })
+    expect(splitLeadingCd(`cd 'my app' && npm start`)).toEqual({ dir: 'my app', dirToken: `'my app'`, rest: 'npm start' })
+    expect(splitLeadingCd('cd "a b"&&make')).toEqual({ dir: 'a b', dirToken: '"a b"', rest: 'make' })
+  })
+
+  it('leaves other commands alone', () => {
+    expect(splitLeadingCd('npm run dev').dir).toBeNull()
+    expect(splitLeadingCd('cd web; npm run dev').dir).toBeNull()
   })
 })

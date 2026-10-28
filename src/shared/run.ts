@@ -59,6 +59,17 @@ export function suggestRunCommand(packageJson: string | null, files: string[]): 
   return ''
 }
 
+/**
+ * Splits a leading `cd <folder> &&` off a run command, so dependencies can be
+ * installed in the folder the command actually runs in. `dir` is null when
+ * the command doesn't start with one.
+ */
+export function splitLeadingCd(command: string): { dir: string | null; dirToken: string; rest: string } {
+  const match = /^\s*cd\s+("([^"]+)"|'([^']+)'|([^\s;&|]+))\s*&&\s*([\s\S]+)$/.exec(command)
+  if (!match) return { dir: null, dirToken: '', rest: command }
+  return { dir: match[2] ?? match[3] ?? match[4], dirToken: match[1], rest: match[5] }
+}
+
 /** Quotes `value` for a POSIX shell. */
 export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
