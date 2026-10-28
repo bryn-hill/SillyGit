@@ -27,7 +27,12 @@ export type ConflictPicks = Record<number, PickedLine[]>
 /** One line of the output, with where it came from so the UI can colour it and offer removal. */
 export interface OutputLine {
   text: string
-  origin: 'common' | 'base' | 'marker' | ConflictSide
+  /**
+   * 'custom' lines come from a resolution typed in or accepted from AI;
+   * 'proposal' lines are an AI suggestion still waiting to be accepted, and
+   * the '-header' origins are display-only rows that introduce a hunk.
+   */
+  origin: 'common' | 'base' | 'marker' | 'custom' | 'proposal' | 'custom-header' | 'proposal-header' | ConflictSide
   hunkId?: number
   index?: number
 }
@@ -156,8 +161,29 @@ export function isHunkResolved(picks: ConflictPicks, id: number): boolean {
   return (picks[id] ?? []).length > 0
 }
 
-export function unresolvedCount(segments: ConflictSegment[], picks: ConflictPicks): number {
-  return conflictHunks(segments).filter((h) => !isHunkResolved(picks, h.id)).length
+/**
+ * Whole-hunk resolutions that aren't made of picked lines (an accepted AI
+ * suggestion), keyed by hunk id. An entry, even an empty list, resolves the
+ * hunk and takes precedence over its picks.
+ */
+export type CustomResolutions = Record<number, string[]>
+
+export function unresolvedCount(segments: ConflictSegment[], picks: ConflictPicks, custom: CustomResolutions = {}): number {
+  return conflictHunks(segments).filter((h) => !(h.id in custom) && !isHunkResolved(picks, h.id)).length
+}
+
+/** Drops the custom resolution of every hunk whose picks changed, so picking lines takes over from it. */
+export function dropCustomForChangedPicks(
+  custom: CustomResolutions,
+  before: ConflictPicks,
+  after: ConflictPicks
+): CustomResolutions {
+  const next = { ...custom }
+  for (const key of Object.keys(next)) {
+    const id = Number(key)
+    if (JSON.stringify(before[id] ?? []) !== JSON.stringify(after[id] ?? [])) delete next[id]
+  }
+  return next
 }
 
 export interface OutputOptions {
@@ -171,6 +197,11 @@ export interface OutputOptions {
   incomingLabel?: string
   /** Length of the markers written for unresolved hunks (default 7). */
   markerSize?: number
+  custom?: CustomResolutions
+  /** Display only: suggestions shown in place of unresolved hunks. Never pass these when saving. */
+  proposals?: CustomResolutions
+  /** Display only: add a header row before each custom or proposed hunk. */
+  headers?: boolean
 }
 
 /**
@@ -188,8 +219,13 @@ export function buildOutputLines(
       for (const text of s.lines) out.push({ text, origin: 'common' })
       continue
     }
+    const custom = options.custom?.[s.id]
+    const proposal = options.proposals?.[s.id]
     const picked = picks[s.id] ?? []
-    if (picked.length > 0) {
+    if (custom) {
+      if (options.headers) out.push({ text: '', origin: 'custom-header', hunkId: s.id })
+      custom.forEach((text, index) => out.push({ text, origin: 'custom', hunkId: s.id, index }))
+    } else if (picked.length > 0) {
       for (const p of picked) out.push({ text: s[p.side][p.index], origin: p.side, hunkId: s.id, index: p.index })
     } else if (options.unresolved === 'markers') {
       const marker = (text: string): void => {
@@ -201,6 +237,9 @@ export function buildOutputLines(
       marker(`${'='.repeat(size)}\n`)
       s.theirs.forEach((text, index) => out.push({ text, origin: 'theirs', hunkId: s.id, index }))
       marker(`${'>'.repeat(size)} ${options.incomingLabel ?? 'incoming'}\n`)
+    } else if (proposal) {
+      if (options.headers) out.push({ text: '', origin: 'proposal-header', hunkId: s.id })
+      proposal.forEach((text, index) => out.push({ text, origin: 'proposal', hunkId: s.id, index }))
     } else {
       s.base.forEach((text) => out.push({ text, origin: 'base', hunkId: s.id }))
     }
@@ -208,7 +247,7 @@ export function buildOutputLines(
   // Every line but the very last needs a terminator, or it would run into the next one.
   const eol = out.some((l) => l.text.endsWith('\r\n')) ? '\r\n' : '\n'
   return out.map((l, i) =>
-    i < out.length - 1 && !l.text.endsWith('\n') ? { ...l, text: l.text + eol } : l
+    i < out.length - 1 && !l.text.endsWith('\n') && !l.origin.endsWith('-header') ? { ...l, text: l.text + eol } : l
   )
 }
 

@@ -22,6 +22,7 @@ import {
   type SprintSettings
 } from '../../../shared/sprints'
 import Avatar from './Avatar'
+import { MERGE_TOOL_PRESETS, mergeToolPreset, type MergeToolId, type MergeToolSettings } from '../../../shared/mergeTools'
 import { resetAvatars } from '../lib/avatars'
 
 interface Props {
@@ -30,6 +31,8 @@ interface Props {
   onAutoFetchChange: (minutes: number) => void
   sprints: SprintSettings
   onSprintsChange: (next: SprintSettings) => void
+  mergeTool: MergeToolSettings
+  onMergeToolChange: (next: MergeToolSettings) => void
 }
 
 const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
@@ -314,6 +317,59 @@ function NotificationsSection(): JSX.Element {
   )
 }
 
+function MergeToolSection({
+  mergeTool,
+  onChange
+}: {
+  mergeTool: MergeToolSettings
+  onChange: (next: MergeToolSettings) => void
+}): JSX.Element {
+  // A draft, so the command isn't saved on every keystroke.
+  const [command, setCommand] = useState(mergeTool.customCommand)
+  useEffect(() => setCommand(mergeTool.customCommand), [mergeTool.customCommand])
+  const preset = mergeToolPreset(mergeTool.tool)
+  return (
+    <section className="settings-section" aria-label="Merge tool">
+      <label className="modal-label" htmlFor="merge-tool">
+        External merge tool
+      </label>
+      <select
+        id="merge-tool"
+        value={mergeTool.tool}
+        onChange={(e) => onChange({ ...mergeTool, tool: e.target.value as MergeToolId })}
+      >
+        {MERGE_TOOL_PRESETS.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      {mergeTool.tool === 'custom' && (
+        <input
+          aria-label="Merge tool command"
+          className="settings-command"
+          placeholder="mytool --merge $LOCAL $REMOTE $BASE -o $MERGED"
+          value={command}
+          spellCheck={false}
+          onChange={(e) => setCommand(e.target.value)}
+          onBlur={() => command !== mergeTool.customCommand && onChange({ ...mergeTool, customCommand: command })}
+        />
+      )}
+      <div className="modal-hint">
+        {mergeTool.tool === 'none'
+          ? 'Conflicts open in the built-in merge tool only.'
+          : mergeTool.tool === 'git'
+            ? "Runs git mergetool with the tool from your git config's merge.tool."
+            : mergeTool.tool === 'custom'
+              ? '$LOCAL is the current side, $REMOTE the incoming side, $BASE the common ancestor and $MERGED the file to save.'
+              : `Runs: ${preset?.command}`}{' '}
+        {mergeTool.tool !== 'none' &&
+          'Conflicted files get "Open in…" (also in the merge tool, or press ⌘D / Ctrl+D). Closing the tool with no conflict markers left marks the file resolved.'}
+      </div>
+    </section>
+  )
+}
+
 function SprintsSection({
   sprints,
   onChange
@@ -401,7 +457,9 @@ export default function SettingsModal({
   autoFetchMinutes,
   onAutoFetchChange,
   sprints,
-  onSprintsChange
+  onSprintsChange,
+  mergeTool,
+  onMergeToolChange
 }: Props): JSX.Element {
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -463,6 +521,8 @@ export default function SettingsModal({
           </section>
 
           <SprintsSection sprints={sprints} onChange={onSprintsChange} />
+
+          <MergeToolSection mergeTool={mergeTool} onChange={onMergeToolChange} />
 
           <section className="settings-section">
             <label className="modal-label" htmlFor="auto-fetch">

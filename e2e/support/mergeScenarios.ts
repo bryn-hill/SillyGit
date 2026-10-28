@@ -331,3 +331,23 @@ export function kitchenSink(repo: FixtureRepo): void {
   repo.writeFile('added.txt', 'main\n')
   commitAll(repo, 'Main sink')
 }
+
+/**
+ * Branch `feature` conflicts with main in three text files, `a.txt`, `b.txt`
+ * and `c.txt`. Each also has a change on main (line 1) and on feature
+ * (line 5) that don't conflict, so taking one side must keep the other's.
+ */
+export function multiFileConflict(repo: FixtureRepo): void {
+  const base = numbered(5)
+  for (const name of ['a', 'b', 'c']) repo.writeFile(`${name}.txt`, base)
+  commitAll(repo, 'Add a, b and c')
+  const edit = (who: string): string => base.replace('line 3\n', `line 3 (${who})\n`)
+  branchWith(
+    repo,
+    'feature',
+    Object.fromEntries(['a', 'b', 'c'].map((n) => [`${n}.txt`, edit('feature').replace('line 5\n', 'line 5 (feature)\n')])),
+    'Edit a, b and c on feature'
+  )
+  for (const name of ['a', 'b', 'c']) repo.writeFile(`${name}.txt`, edit('main').replace('line 1\n', 'line 1 (main)\n'))
+  commitAll(repo, 'Edit a, b and c on main')
+}

@@ -30,6 +30,8 @@ import { resolveBranchRemote } from '../../shared/branchRemote'
 import type { RefActions, RefTarget } from './components/RefContextMenu'
 import { withPullRequestText } from '../../shared/quickActions'
 import { DEFAULT_SPRINT_SETTINGS, type SprintSettings } from '../../shared/sprints'
+import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName, type MergeToolSettings } from '../../shared/mergeTools'
+import type { ConflictSnapshot } from '../../shared/types'
 import CommandPalette, { type Command } from './components/CommandPalette'
 import ActivityLog from './components/ActivityLog'
 import type { ClickModifiers } from './components/CommitGraph'
@@ -95,6 +97,10 @@ export default function App(): JSX.Element {
   const [commitMessage, setCommitMessage] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // The last bulk conflict action (take a side, mark resolved), for Undo.
+  const [conflictUndo, setConflictUndo] = useState<{ repoPath: string; snapshot: ConflictSnapshot; message: string } | null>(
+    null
+  )
   const [operation, setOperation] = useState<OperationState | null>(null)
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   // The file open in the editor, per repo tab, and unsaved text left in files
@@ -151,6 +157,21 @@ export default function App(): JSX.Element {
   useEffect(() => {
     window.api.getSprintSettings().then(setSprintSettings)
   }, [])
+
+  const [mergeToolSettings, setMergeToolSettings] = useState<MergeToolSettings>(DEFAULT_MERGE_TOOL_SETTINGS)
+  useEffect(() => {
+    window.api.getMergeToolSettings().then(setMergeToolSettings)
+  }, [])
+  const externalToolName = mergeToolName(mergeToolSettings)
+  // Undo only makes sense while the merge (or rebase…) that the files belong to is still going.
+  useEffect(() => {
+    if (!operation) setConflictUndo(null)
+  }, [operation])
+
+  const handleMergeToolChange = (next: MergeToolSettings): void => {
+    setMergeToolSettings(next)
+    window.api.setMergeToolSettings(next).then((res) => !res.ok && showError(res.error))
+  }
 
   const handleSprintSettingsChange = (next: SprintSettings): void => {
     setSprintSettings(next)
@@ -812,15 +833,18 @@ export default function App(): JSX.Element {
     })
   }
 
+  const fileCount = (n: number): string => (n === 1 ? '1 file' : `${n} files`)
+
   const handleTakeSide = (paths: string[], side: 'current' | 'incoming'): void => {
     if (!repoPath) return
     withBusy(async () => {
-      for (const path of paths) {
-        const res = await window.api.takeSide(repoPath, path, side)
-        if (!res.ok) {
-          showError(res.error)
-          break
-        }
+      // All or nothing, and undoable: taking a side overwrites the working file.
+      const res = await window.api.takeSideMany(repoPath, paths, side)
+      if (!res.ok) showError(res.error)
+      else {
+        const label = side === 'current' ? operation?.currentLabel ?? 'current' : operation?.incomingLabel ?? 'incoming'
+        setConflictUndo({ repoPath, snapshot: res.data, message: `Took ${side} (${label}) for ${fileCount(paths.length)}.` })
+        if (resolvingPath && paths.includes(resolvingPath)) setResolvingPath(null)
       }
       await refresh(repoPath)
     })
@@ -829,10 +853,50 @@ export default function App(): JSX.Element {
   const handleMarkResolved = (paths: string[]): void => {
     if (!repoPath) return
     withBusy(async () => {
+      const marked = await window.api.pathsWithMarkers(repoPath, paths)
+      if (marked.ok && marked.data.length > 0) {
+        const list = marked.data.slice(0, 8).join('\n')
+        const more = marked.data.length > 8 ? `\n…and ${marked.data.length - 8} more` : ''
+        const ok = window.confirm(
+          `${marked.data.length === 1 ? 'This file still has' : `${marked.data.length} files still have`} conflict markers:\n\n${list}${more}\n\nMark ${paths.length === 1 ? 'it' : 'them'} resolved anyway? The markers would be committed as they are.`
+        )
+        if (!ok) return
+      }
       const res = await window.api.markResolved(repoPath, paths)
       if (!res.ok) showError(res.error)
+      else if (paths.length > 1) {
+        setConflictUndo({ repoPath, snapshot: res.data, message: `Marked ${fileCount(paths.length)} resolved.` })
+      }
       await refresh(repoPath)
     })
+  }
+
+  const handleUndoConflictAction = (): void => {
+    const undo = conflictUndo
+    if (!undo) return
+    setConflictUndo(null)
+    withBusy(async () => {
+      const res = await window.api.restoreConflicts(undo.repoPath, undo.snapshot)
+      if (!res.ok) showError(res.error)
+      await refresh(undo.repoPath)
+    })
+  }
+
+  const handleOpenExternal = async (path: string): Promise<void> => {
+    if (!repoPath || !externalToolName) return
+    const repo = repoPath
+    setNotice(`Opened ${path} in ${externalToolName}. Save and close it there to finish.`)
+    const res = await window.api.openInMergeTool(repo, path)
+    if (!res.ok) {
+      setNotice(null)
+      showError(res.error)
+    } else if (res.data.resolved) {
+      setNotice(`Resolved ${path} in ${externalToolName}.`)
+      setResolvingPath((p) => (p === path ? null : p))
+    } else {
+      setNotice(res.data.reason ?? `${path} is still conflicted.`)
+    }
+    await refresh(repo)
   }
 
   const handleStash = (): void => {
@@ -1294,6 +1358,8 @@ export default function App(): JSX.Element {
             onOpenConflict: setResolvingPath,
             onTakeSide: handleTakeSide,
             onMarkResolved: handleMarkResolved,
+            externalToolName,
+            onOpenExternal: (path) => void handleOpenExternal(path),
             onContinue: handleContinue,
             onAbort: handleAbort,
             onSkip: handleSkip
@@ -1360,6 +1426,17 @@ export default function App(): JSX.Element {
           {notice}
         </div>
       )}
+      {conflictUndo && conflictUndo.repoPath === repoPath && (
+        <div className="notice-banner conflict-undo-banner" role="status" aria-label="Undo conflict action">
+          {conflictUndo.message}
+          <button className="link-button" onClick={handleUndoConflictAction}>
+            Undo
+          </button>
+          <button className="icon-button" title="Dismiss" onClick={() => setConflictUndo(null)}>
+            ✕
+          </button>
+        </div>
+      )}
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
@@ -1404,6 +1481,8 @@ export default function App(): JSX.Element {
                   refresh(repoPath)
                 }}
                 onError={showError}
+                externalToolName={externalToolName}
+                onOpenExternal={(path) => void handleOpenExternal(path)}
               />
             ) : editingPath ? (
               <div className="main-layout">
@@ -1512,6 +1591,8 @@ export default function App(): JSX.Element {
           onAutoFetchChange={handleAutoFetchChange}
           sprints={sprintSettings}
           onSprintsChange={handleSprintSettingsChange}
+          mergeTool={mergeToolSettings}
+          onMergeToolChange={handleMergeToolChange}
         />
       )}
       {palette && <CommandPalette commands={paletteCommands()} variant={palette} onClose={() => setPalette(null)} />}

@@ -260,6 +260,44 @@ export interface RenameConflict {
 /** Which name to keep when resolving a rename conflict ('none' deletes the file). */
 export type RenameKeep = 'current' | 'incoming' | 'both' | 'none'
 
+/**
+ * How conflicted files looked before a bulk action, so it can be undone: each
+ * path's index stages and its working-tree content (as a blob written to the
+ * object store), or null where the file was missing.
+ */
+export interface ConflictSnapshot {
+  files: {
+    path: string
+    stages: { stage: number; mode: string; sha: string }[]
+    worktree: { sha: string; executable: boolean } | null
+  }[]
+}
+
+/** What happened after an external merge tool closed. */
+export interface MergeToolResult {
+  /** True when the file came back without conflict markers and was staged. */
+  resolved: boolean
+  /** Why it wasn't marked resolved, for the user. */
+  reason?: string
+}
+
+/** Claude's suggested resolution of one conflict hunk, for the user to accept or reject. */
+export interface AiHunkResolution {
+  /** The hunk's id as numbered by parseConflictMarkers. */
+  hunkId: number
+  /** The lines that replace the hunk, each with its terminator. */
+  lines: string[]
+  confidence: 'high' | 'medium' | 'low'
+  explanation: string
+}
+
+export interface AiConflictResolution {
+  /** How many hunks the file had when Claude saw it, to catch a file that changed since. */
+  hunkCount: number
+  resolutions: AiHunkResolution[]
+  summary?: string
+}
+
 /** Panel layout saved between launches. */
 export interface SavedLayout {
   showTerminal: boolean

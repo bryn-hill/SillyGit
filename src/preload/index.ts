@@ -122,8 +122,21 @@ const api = {
     ipcRenderer.invoke('git:resolve-rename', repoPath, path, keep),
   deleteConflictedFile: (repoPath: string, path: string): Wrapped<void> =>
     ipcRenderer.invoke('git:delete-conflicted-file', repoPath, path),
-  markResolved: (repoPath: string, paths: string[]): Wrapped<void> =>
+  markResolved: (repoPath: string, paths: string[]): Wrapped<import('../shared/types').ConflictSnapshot> =>
     ipcRenderer.invoke('git:mark-resolved', repoPath, paths),
+  takeSideMany: (
+    repoPath: string,
+    paths: string[],
+    side: 'current' | 'incoming'
+  ): Wrapped<import('../shared/types').ConflictSnapshot> => ipcRenderer.invoke('git:take-side-many', repoPath, paths, side),
+  restoreConflicts: (repoPath: string, snapshot: import('../shared/types').ConflictSnapshot): Wrapped<void> =>
+    ipcRenderer.invoke('git:restore-conflicts', repoPath, snapshot),
+  pathsWithMarkers: (repoPath: string, paths: string[]): Wrapped<string[]> =>
+    ipcRenderer.invoke('git:paths-with-markers', repoPath, paths),
+  openInMergeTool: (repoPath: string, path: string): Wrapped<import('../shared/types').MergeToolResult> =>
+    ipcRenderer.invoke('git:open-in-merge-tool', repoPath, path),
+  aiResolveConflicts: (repoPath: string, path: string): Wrapped<import('../shared/types').AiConflictResolution> =>
+    ipcRenderer.invoke('ai:resolve-conflicts', repoPath, path),
   resetTo: (repoPath: string, hash: string, mode: 'soft' | 'mixed' | 'hard'): Wrapped<void> =>
     ipcRenderer.invoke('git:reset-to', repoPath, hash, mode),
   createBranchAt: (
@@ -162,6 +175,11 @@ const api = {
     ipcRenderer.invoke('accounts:add', input),
   removeAccount: (id: string): Wrapped<import('../shared/accounts').ProviderAccount[]> =>
     ipcRenderer.invoke('accounts:remove', id),
+  getMergeToolSettings: (): Promise<import('../shared/mergeTools').MergeToolSettings> =>
+    ipcRenderer.invoke('settings:get-merge-tool'),
+  setMergeToolSettings: (
+    next: import('../shared/mergeTools').MergeToolSettings
+  ): Wrapped<import('../shared/mergeTools').MergeToolSettings> => ipcRenderer.invoke('settings:set-merge-tool', next),
   getSprintSettings: (): Promise<import('../shared/sprints').SprintSettings> =>
     ipcRenderer.invoke('settings:get-sprints'),
   setSprintSettings: (

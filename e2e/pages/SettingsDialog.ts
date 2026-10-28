@@ -18,6 +18,8 @@ export class SettingsDialog {
   readonly sprintLength: Locator
   readonly sprintStart: Locator
   readonly sprintNumber: Locator
+  readonly mergeTool: Locator
+  readonly mergeToolCommand: Locator
 
   constructor(private readonly page: Page) {
     this.root = page.getByRole('dialog', { name: 'Settings' })
@@ -36,6 +38,8 @@ export class SettingsDialog {
     this.sprintLength = this.sprints.getByLabel('Sprints last')
     this.sprintStart = this.sprints.getByLabel('A sprint started on')
     this.sprintNumber = this.sprints.getByLabel('and was number')
+    this.mergeTool = this.root.getByLabel('External merge tool')
+    this.mergeToolCommand = this.root.getByLabel('Merge tool command')
   }
 
   notificationKind(label: string): Locator {
