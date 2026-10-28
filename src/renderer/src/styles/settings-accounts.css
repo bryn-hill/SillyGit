@@ -1,0 +1,112 @@
+/* ---------- settings: accounts ---------- */
+
+.settings-modal {
+  width: 460px;
+  max-height: calc(100vh - 80px);
+}
+
+.settings-modal .modal-body {
+  overflow-y: auto;
+  gap: 14px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-inline {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.settings-checkbox input {
+  width: 15px;
+}
+
+.settings-suboptions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.settings-suboptions .settings-inline {
+  align-items: center;
+  font-size: 12.5px;
+}
+
+
+.account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.account-row-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+.account-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.account-provider-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.account-provider-tabs button {
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
+.account-provider-tabs button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.account-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

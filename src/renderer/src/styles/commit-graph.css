@@ -1,0 +1,275 @@
+/* ---------- commit graph ---------- */
+
+.commit-graph {
+  width: 420px;
+  min-width: 260px;
+  flex: 1 1 420px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.commit-graph-header {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 0 2px;
+  min-height: 34px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.col-graph {
+  width: 56px;
+  padding-left: 4px;
+}
+
+.commit-graph-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.graph-row {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.graph-row:hover {
+  background: var(--bg-hover);
+}
+
+.graph-row.selected,
+.graph-row.context-target {
+  background: var(--bg-elevated);
+  border-left-color: var(--accent);
+}
+
+.graph-svg {
+  flex-shrink: 0;
+  display: block;
+}
+
+.graph-row-message {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px 0 4px;
+  overflow: hidden;
+}
+
+.graph-row-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.graph-row-meta {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding-left: 8px;
+}
+
+.wip-row .wip-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Branch / Tag column: one pill per row in the lane's colour, "+N" for the
+   rest, and a line over to the commit. Pills set --lane. */
+.ref-cell {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-left: 6px;
+  overflow: hidden;
+}
+
+.ref-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--lane) 28%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--lane) 45%, transparent);
+}
+
+.ref-badge.ref-head {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--lane) 45%, var(--bg));
+  border-color: var(--lane);
+}
+
+.ref-badge.ref-remote {
+  color: color-mix(in srgb, var(--text) 80%, var(--lane));
+}
+
+.ref-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ref-pill-check,
+.ref-pill-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.ref-pill-remote:hover {
+  opacity: 1;
+  color: var(--lane);
+}
+
+.ref-connector {
+  flex: 1 1 0;
+  min-width: 6px;
+  height: 2px;
+  opacity: 0.8;
+}
+
+.ref-overflow {
+  flex-shrink: 0;
+  display: inline-flex;
+  margin-left: 3px;
+}
+
+.ref-overflow-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.ref-overflow-chip:hover,
+.ref-overflow-chip[aria-expanded='true'] {
+  background: var(--bg-hover);
+}
+
+.ref-overflow-list {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 360px;
+  padding: 6px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Bridges the gap under the chip so the list stays open on the way down. */
+.ref-overflow-list::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  height: 4px;
+}
+
+.ref-overflow-list .ref-badge {
+  max-width: 100%;
+}
+
+.col-refs {
+  position: relative;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.col-resize-handle:hover {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+body.col-resizing,
+body.col-resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+/* Dragging a branch or commit onto another branch (components/RefDrag.tsx). */
+body.ref-dragging,
+body.ref-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+[data-drop-over] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.graph-row[data-drop-over] {
+  border-radius: 0;
+  background: var(--bg-hover);
+}
+
+.ref-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 360px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  opacity: 0.85;
+}
+
+.ref-drag-ghost.has-target {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.ref-drag-ghost-target {
+  color: var(--accent);
+}

@@ -1,0 +1,96 @@
+:root {
+  --bg: #282a36;
+  --bg-elevated: #313343;
+  --bg-hover: #3b3d52;
+  --border: #44475a;
+  --text: #f8f8f2;
+  --text-dim: #6272a4;
+  --accent: #bd93f9;
+  --accent-ink: #282a36;
+  --green: #50fa7b;
+  --red: #ff5555;
+  --orange: #ffb86c;
+  --yellow: #f1fa8c;
+  --cyan: #8be9fd;
+  --pink: #ff79c6;
+  /* Dark scrollbars, date pickers and other native bits. */
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.subtle {
+  background: transparent;
+}
+
+button.link-button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+}
+
+button.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+button.icon-button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+}

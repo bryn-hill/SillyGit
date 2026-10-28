@@ -1,0 +1,155 @@
+/* --- Command palette --- */
+
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  z-index: 30;
+}
+
+.palette {
+  width: min(560px, calc(100vw - 32px));
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.palette-backdrop-dropdown {
+  background: transparent;
+  justify-content: flex-end;
+  padding: 54px 14px 0;
+}
+
+.palette-dropdown {
+  width: min(620px, calc(100vw - 28px));
+  border-color: var(--accent);
+}
+
+.palette-dropdown .palette-list {
+  max-height: min(60vh, 520px);
+}
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.palette-crumb {
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  border: none;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.palette-more {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.palette-shortcut + .palette-more {
+  margin-left: 6px;
+}
+
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  background: transparent;
+  outline: none;
+}
+
+.palette-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.palette-item.active {
+  background: var(--bg-hover);
+}
+
+.palette-group {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.palette-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.palette-shortcut {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.palette-empty {
+  padding: 10px 14px;
+  color: var(--text-dim);
+}
+
+/* Author avatars: a picture when one is found, coloured initials otherwise. */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.graph-cell {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.graph-cell .graph-node-avatar {
+  position: absolute;
+  pointer-events: none;
+}

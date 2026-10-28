@@ -1,0 +1,269 @@
+/* ---------- breadcrumb (top bar, left) ---------- */
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.breadcrumb-segment-wrap {
+  position: relative;
+}
+
+.breadcrumb-segment {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 9px 3px 8px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.breadcrumb-segment:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.breadcrumb-segment svg {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.breadcrumb-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.breadcrumb-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.breadcrumb-value {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.breadcrumb-chevron {
+  display: flex;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.caret {
+  color: var(--text-dim);
+  font-size: 9px;
+  margin-left: 2px;
+}
+
+/* ---------- action button groups (top bar, right) ---------- */
+
+.button-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.button-group button {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+}
+
+.button-group button:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.button-group button svg {
+  color: var(--text-dim);
+}
+
+/* ---------- GitKraken-style toolbar (top bar, middle) ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.top-bar button.tool-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 46px;
+  padding: 3px 6px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.top-bar button.tool-button:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.top-bar button.tool-button:disabled {
+  opacity: 0.38;
+}
+
+.tool-label {
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.tool-icon {
+  position: relative;
+  display: flex;
+}
+
+.tool-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.tool-button-active .tool-icon,
+.tool-button-active .tool-label {
+  color: var(--accent);
+}
+
+.tool-badge {
+  position: absolute;
+  top: -4px;
+  left: calc(100% + 1px);
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+}
+
+.tool-split {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.top-bar button.tool-caret {
+  align-self: flex-end;
+  padding: 0 3px 4px;
+  margin-left: -4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.top-bar button.tool-caret:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.top-bar button.tool-caret:disabled {
+  opacity: 0.38;
+}
+
+.tool-menu .branch-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-menu .branch-dropdown-item[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tool-menu-check {
+  width: 13px;
+  color: var(--accent);
+}
+
+.tool-menu-hint {
+  padding: 4px 8px 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: normal;
+  max-width: 230px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.branch-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 11;
+  padding: 4px;
+}
+
+.branch-dropdown-item {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.branch-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.branch-dropdown-item.current {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dropdown-separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}

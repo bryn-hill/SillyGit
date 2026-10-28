@@ -1,0 +1,117 @@
+/* ---------- merge animation, Mini Metro style: flat lines grow into a station ---------- */
+
+.merge-burst {
+  /* No z-index: later rows' commit avatars sit on top, like stations on a line. */
+  position: absolute;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Thick, flat, round-capped like a metro line, then thins to the graph's 2px. */
+.merge-burst-line {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1 1;
+  animation:
+    merge-line-grow 460ms cubic-bezier(0.65, 0, 0.35, 1) var(--line-delay, 0ms) both,
+    merge-line-settle 300ms ease-in-out 720ms forwards;
+}
+
+/* A white station with a thick ring in the branch's colour. */
+.merge-burst-station {
+  fill: #fff;
+  stroke-width: 3.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    merge-station-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) 400ms both,
+    merge-fade-out 260ms ease-in 800ms forwards;
+}
+
+.merge-burst-pulse {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: merge-pulse 420ms ease-out 480ms forwards;
+}
+
+.merge-burst-node {
+  opacity: 0;
+  animation: merge-fade-in 1ms linear 1050ms forwards;
+}
+
+.merge-burst-join {
+  opacity: 0;
+  animation: merge-fade-in 1ms linear 460ms forwards;
+}
+
+@keyframes merge-line-grow {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes merge-line-settle {
+  to {
+    stroke-width: 2;
+    opacity: 0;
+  }
+}
+
+@keyframes merge-station-pop {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes merge-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes merge-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes merge-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* No movement: the station shows straight away and fades into the graph. */
+@media (prefers-reduced-motion: reduce) {
+  .merge-burst-line,
+  .merge-burst-pulse {
+    display: none;
+  }
+  .merge-burst-station {
+    animation: merge-fade-out 600ms ease-in 300ms forwards;
+  }
+  .merge-burst-node {
+    animation: merge-fade-in 1ms linear 900ms forwards;
+  }
+  .merge-burst-join {
+    animation: none;
+    opacity: 1;
+  }
+}

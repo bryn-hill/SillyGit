@@ -1,0 +1,164 @@
+/* ---------- sidebar: branch tree ---------- */
+
+.sidebar {
+  width: 230px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 10px 6px;
+}
+
+.filter-input {
+  flex: 1;
+}
+
+.new-branch-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+
+.new-branch-row input {
+  flex: 1;
+}
+
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.tree-group-header {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-row:hover {
+  background: var(--bg-hover);
+}
+
+.tree-caret {
+  width: 12px;
+  display: inline-block;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.tree-caret-spacer {
+  width: 12px;
+  display: inline-block;
+}
+
+.folder-icon {
+  font-size: 11px;
+}
+
+.branch-row.current {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.current-dot {
+  color: var(--accent);
+  width: 12px;
+  display: inline-block;
+  font-size: 9px;
+}
+
+.branch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-weight: 400;
+}
+
+.branch-tag {
+  font-size: 10px;
+  line-height: 15px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.branch-tag-gone {
+  color: #ff8a8a;
+  background: rgba(255, 85, 85, 0.14);
+}
+
+.branch-tag-stale {
+  color: #9aa3c7;
+  background: rgba(98, 114, 164, 0.22);
+}
+
+.tidy-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 8px 6px;
+  padding: 4px 4px 4px 8px;
+  border-radius: 6px;
+  background: rgba(189, 147, 249, 0.1);
+  font-size: 12px;
+  color: #9aa3c7;
+}
+
+.tidy-banner-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tidy-banner-review {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 5px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+button.tidy-banner-dismiss {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+}

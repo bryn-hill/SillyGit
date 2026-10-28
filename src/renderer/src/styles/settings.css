@@ -1,0 +1,76 @@
+/* ---------- settings modal ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  /* The title strip and toolbar under the backdrop drag the window on macOS,
+     and a drag region wins over whatever sits on top of it: without this,
+     clicks there (like the file editor's close button) move or zoom the
+     window instead. */
+  -webkit-app-region: no-drag;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.modal {
+  width: 380px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-body input:not([type='checkbox']) {
+  width: 100%;
+}
+
+.modal-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.modal-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.modal-error {
+  font-size: 12px;
+  color: var(--red);
+}
+
+.modal-saved {
+  font-size: 12px;
+  color: var(--green);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}

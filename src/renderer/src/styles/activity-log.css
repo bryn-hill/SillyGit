@@ -1,0 +1,93 @@
+/* --- Activity log --- */
+
+.activity-modal {
+  width: min(760px, calc(100vw - 48px));
+  max-height: 80vh;
+}
+
+.activity-modal .modal-body {
+  min-height: 0;
+  flex: 1;
+}
+
+.activity-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-toolbar .settings-checkbox {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 120px;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.activity-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-entry:last-child {
+  border-bottom: none;
+}
+
+.activity-time,
+.activity-meta {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-meta {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.activity-repo {
+  color: var(--text);
+}
+
+.activity-status.ok {
+  color: var(--green);
+}
+
+.activity-status.failed {
+  color: var(--red);
+}
+
+.activity-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.activity-command {
+  word-break: break-all;
+}
+
+.activity-error {
+  margin-top: 2px;
+  color: var(--red);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.activity-empty {
+  padding: 12px;
+  color: var(--text-dim);
+}

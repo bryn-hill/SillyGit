@@ -1,0 +1,86 @@
+/* ---------- commit context menu ---------- */
+
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+/* Menus can hang over the title strip or toolbar, which drag the window on
+   macOS; a drag region there would take the clicks meant for the menu. */
+.context-menu,
+.context-menu-backdrop {
+  -webkit-app-region: no-drag;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 101;
+  min-width: 220px;
+  max-width: 420px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  font-size: 12px;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}
+
+.context-menu-item {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.context-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu-item.danger {
+  color: var(--red);
+}
+
+.context-menu-item.disabled {
+  color: var(--text-dim);
+  cursor: default;
+  pointer-events: none;
+}
+
+.context-menu-arrow {
+  opacity: 0.6;
+}
+
+.context-menu-submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  min-width: 220px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+}
+
+.context-menu-item.has-submenu:hover > .context-menu-submenu {
+  display: block;
+}
