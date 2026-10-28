@@ -1,0 +1,134 @@
+import { useState, type JSX } from 'react'
+import type { FileStatus } from '../../../../shared/types'
+import ContextMenu from '../ContextMenu'
+import { fileMenuSections } from '../fileMenu'
+import type { ActiveFile, OpenFileView } from './types'
+
+function statusLabel(code: string): string {
+  return code === '?' ? 'U' : code
+}
+
+/** The Unstaged or Staged list of working changes, with Stage All / Unstage All and each file's menu. */
+export default function ChangeList({
+  staged,
+  files,
+  activeFile,
+  onOpenFile,
+  onEditFile,
+  onDiscard,
+  onStage,
+  onUnstage,
+  onOpenFileView,
+  onCopyText
+}: {
+  /** Which list this is. */
+  staged: boolean
+  files: FileStatus[]
+  activeFile: ActiveFile | null
+  onOpenFile: (file: FileStatus, staged: boolean) => void
+  onEditFile: (path: string) => void
+  onDiscard: (file: FileStatus) => void
+  onStage: (paths: string[]) => void
+  onUnstage: (paths: string[]) => void
+  onOpenFileView: OpenFileView
+  onCopyText: (text: string) => void
+}): JSX.Element {
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus } | null>(null)
+
+  const renderRow = (file: FileStatus): JSX.Element => {
+    const key = `${staged ? 's' : 'u'}:${file.path}`
+    const active = activeFile?.path === file.path && !!activeFile.staged === staged
+    return (
+      <li key={key}>
+        <div
+          className={`file-row ${active ? 'active' : ''}`}
+          aria-current={active}
+          onClick={() => onOpenFile(file, staged)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setFileMenu({ x: e.clientX, y: e.clientY, file })
+          }}
+        >
+          <span className={`status-code code-${statusLabel(file.index !== '.' && staged ? file.index : file.worktree)}`}>
+            {statusLabel(file.index !== '.' && staged ? file.index : file.worktree)}
+          </span>
+          <span className="file-path">{file.path}</span>
+          <span className="file-actions">
+            {(staged ? file.index : file.worktree) !== 'D' && (
+              <button
+                className="icon-button"
+                title="Edit file"
+                aria-label={`Edit ${file.path}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditFile(file.path)
+                }}
+              >
+                ✎
+              </button>
+            )}
+            {!staged && (
+              <button
+                className="icon-button"
+                title="Discard changes"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDiscard(file)
+                }}
+              >
+                ↺
+              </button>
+            )}
+            <button
+              className="icon-button"
+              title={staged ? 'Unstage' : 'Stage'}
+              onClick={(e) => {
+                e.stopPropagation()
+                staged ? onUnstage([file.path]) : onStage([file.path])
+              }}
+            >
+              {staged ? '−' : '+'}
+            </button>
+          </span>
+        </div>
+      </li>
+    )
+  }
+
+  return (
+    <div className="detail-section">
+      <div className="detail-section-header">
+        <span>
+          {staged ? 'Staged' : 'Unstaged'} ({files.length})
+        </span>
+        {files.length > 0 && (
+          <button
+            className="link-button"
+            onClick={() => (staged ? onUnstage : onStage)(files.map((f) => f.path))}
+          >
+            {staged ? 'Unstage All' : 'Stage All'}
+          </button>
+        )}
+      </div>
+      <ul className="file-list">{files.map(renderRow)}</ul>
+      {fileMenu && (
+        <ContextMenu
+          x={fileMenu.x}
+          y={fileMenu.y}
+          sections={fileMenuSections({
+            path: fileMenu.file.path,
+            deleted: (staged ? fileMenu.file.index : fileMenu.file.worktree) === 'D',
+            // A newly added file has no commits to blame or list yet.
+            untracked: fileMenu.file.untracked || fileMenu.file.index === 'A',
+            onOpenDiff: () => onOpenFile(fileMenu.file, staged),
+            onEdit: () => onEditFile(fileMenu.file.path),
+            onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
+            onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
+            onCopyPath: () => onCopyText(fileMenu.file.path)
+          })}
+          onClose={() => setFileMenu(null)}
+        />
+      )}
+    </div>
+  )
+}
