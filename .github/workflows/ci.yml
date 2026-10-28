@@ -46,6 +46,8 @@ jobs:
 
       - run: npm run typecheck
 
+      - run: npm run lint
+
       - run: npm test
 
       # Electron needs an X server even with its window hidden.
