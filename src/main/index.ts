@@ -232,12 +232,12 @@ let updateStep: SelfUpdateStep | null = null
 
 /** The checkout SillyGit runs from; null for a packaged build. E2E tests point it at a scratch clone. */
 function selfUpdateCheckout(): Promise<string | null> {
-  updateCheckout ??= (async () => {
-    const override = process.env['SILLYGIT_UPDATE_CHECKOUT']
-    if (override) return override
-    if (app.isPackaged || isE2E) return null
-    return selfUpdate.findCheckout(app.getAppPath())
-  })()
+  updateCheckout ??= selfUpdate.resolveCheckout({
+    isPackaged: app.isPackaged,
+    isE2E,
+    override: process.env['SILLYGIT_UPDATE_CHECKOUT'],
+    appPath: app.getAppPath()
+  })
   return updateCheckout
 }
 
@@ -990,7 +990,8 @@ app.whenReady().then(() => {
   if (!app.isPackaged) app.dock?.setIcon(icon)
   createWindow()
   if (!isE2E) startPrNotifications()
-  if (!isE2E || process.env['SILLYGIT_UPDATE_CHECKOUT']) startUpdateChecks()
+  // A packaged build has no checkout to update, so don't fetch for one.
+  if (!app.isPackaged && (!isE2E || process.env['SILLYGIT_UPDATE_CHECKOUT'])) startUpdateChecks()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

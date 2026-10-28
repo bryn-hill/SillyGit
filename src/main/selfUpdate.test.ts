@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { applyUpdate, checkForUpdate, findCheckout } from './selfUpdate'
+import { applyUpdate, checkForUpdate, findCheckout, resolveCheckout } from './selfUpdate'
 import { blockedReason, needsInstall, type SelfUpdateStep } from '../shared/selfUpdate'
 
 let root: string
@@ -65,6 +65,24 @@ describe('findCheckout', () => {
   it('finds the top of the checkout from a folder inside it, and null outside one', async () => {
     expect(await findCheckout(app)).toBe(git(app, 'rev-parse', '--show-toplevel'))
     expect(await findCheckout(tmpdir())).toBeNull()
+  })
+})
+
+describe('resolveCheckout', () => {
+  const source = { isPackaged: false, isE2E: false, override: undefined, appPath: '' }
+
+  it('uses the checkout SillyGit runs from', async () => {
+    expect(await resolveCheckout({ ...source, appPath: app })).toBe(git(app, 'rev-parse', '--show-toplevel'))
+  })
+
+  it('is null for a packaged build, even from inside a checkout or with an override', async () => {
+    expect(await resolveCheckout({ ...source, isPackaged: true, appPath: app })).toBeNull()
+    expect(await resolveCheckout({ ...source, isPackaged: true, override: app })).toBeNull()
+  })
+
+  it('is null in e2e runs unless a test points it at a checkout', async () => {
+    expect(await resolveCheckout({ ...source, isE2E: true, appPath: app })).toBeNull()
+    expect(await resolveCheckout({ ...source, isE2E: true, override: dev })).toBe(dev)
   })
 })
 

@@ -1579,7 +1579,7 @@ export default function App(): JSX.Element {
         // eslint-disable-next-line react-hooks/refs
         <CommandPalette commands={commands()} variant={palette} onClose={() => setPalette(null)} />
       )}
-      {showUpdate && selfUpdate && (
+      {showUpdate && selfUpdate?.status.supported && (
         <UpdateDialog status={selfUpdate.status} step={selfUpdate.step} onClose={() => setShowUpdate(false)} />
       )}
       {showActivity && <ActivityLog repoPath={repoPath} onClose={() => setShowActivity(false)} />}
