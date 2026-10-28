@@ -87,6 +87,41 @@ describe('planRun', () => {
     expect(readFileSync(join(again.cwd, 'a.txt'), 'utf8')).toBe('one\n')
   })
 
+  it('runs from the same folder inside the checkout when the repo was opened at a subfolder', async () => {
+    mkdirSync(join(dir, 'app'))
+    commit('app/package.json', '{"scripts":{"dev":"vite"}}', 'App')
+    const head = git(dir, 'rev-parse', 'HEAD')
+    commit('app/package.json', '{"scripts":{"dev":"vite --port 2"}}', 'Port')
+    const app = join(dir, 'app')
+    runCommands.set(app, 'npm run dev')
+    writeFileSync(join(app, '.env'), 'SECRET=1\n')
+
+    const plan = await planRun(app, head, runRoot)
+
+    expect(plan.cwd).toBe(join(runCheckoutPath(runRoot, app), 'app'))
+    expect(readFileSync(join(plan.cwd, 'package.json'), 'utf8')).toContain('"vite"')
+    expect(readFileSync(join(plan.cwd, '.env'), 'utf8')).toBe('SECRET=1\n')
+  })
+
+  it('says so when the subfolder the repo was opened at is not in that commit', async () => {
+    const first = commit('a.txt', 'one\n', 'First')
+    mkdirSync(join(dir, 'app'))
+    commit('app/package.json', '{}', 'App')
+    runCommands.set(join(dir, 'app'), 'npm run dev')
+
+    await expect(planRun(join(dir, 'app'), first, runRoot)).rejects.toThrow(/app doesn't exist at commit/)
+  })
+
+  it('starts over when an earlier checkout failed part way and left a folder behind', async () => {
+    const first = commit('a.txt', 'one\n', 'First')
+    const checkout = runCheckoutPath(runRoot, dir)
+    mkdirSync(checkout, { recursive: true })
+    writeFileSync(join(checkout, 'leftover.txt'), 'x')
+
+    const plan = await planRun(dir, first, runRoot)
+    expect(readFileSync(join(plan.cwd, 'a.txt'), 'utf8')).toBe('one\n')
+  })
+
   it('copies untracked .env files into the checkout, but not tracked ones', async () => {
     commit('.env.example', 'EXAMPLE=1\n', 'Example env')
     const head = git(dir, 'rev-parse', 'HEAD')

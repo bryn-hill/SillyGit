@@ -49,14 +49,23 @@ async function checkOutForRun(repoPath: string, checkout: string, commit: string
       await fs.rm(checkout, { recursive: true, force: true })
     }
   }
+  // A folder left by a checkout that failed part way would make `worktree add` refuse.
+  await fs.rm(checkout, { recursive: true, force: true })
   // Clears the record of a checkout whose folder was deleted.
   await runGit(repoPath, ['worktree', 'prune'])
   await fs.mkdir(join(checkout, '..'), { recursive: true })
   await runGit(repoPath, ['worktree', 'add', '--force', '--detach', checkout, commit])
 }
 
+/** Makes sure the checkout really is on `commit`, so a run never starts in a half-made folder. */
+async function verifyCheckout(checkout: string, commit: string): Promise<void> {
+  const head = (await runGit(checkout, ['rev-parse', 'HEAD']).catch(() => '')).trim()
+  const wanted = (await runGit(checkout, ['rev-parse', `${commit}^{commit}`]).catch(() => commit)).trim()
+  if (head !== wanted) throw new Error(`Couldn't check out ${commit.slice(0, 7)} for the run in ${checkout}`)
+}
+
 /**
- * Copies the repo's untracked root `.env*` files into the checkout, since a
+ * Copies the untracked `.env*` files next to the repo's run folder into the checkout's, since a
  * dev server usually can't start without them and they're never committed.
  */
 async function copyEnvFiles(repoPath: string, checkout: string): Promise<void> {
@@ -98,7 +107,15 @@ export async function planRun(repoPath: string, commit: string | null, runRoot: 
 
   const checkout = runCheckoutPath(runRoot, repoPath)
   await checkOutForRun(repoPath, checkout, commit)
-  await copyEnvFiles(repoPath, checkout)
-  const script = buildRunScript(command, await installStep(checkout), process.platform)
-  return { cwd: checkout, script, command, commit }
+  await verifyCheckout(checkout, commit)
+  // A repo opened at a folder inside the git repository runs from that same
+  // folder in the checkout, which holds the whole repository.
+  const prefix = (await runGit(repoPath, ['rev-parse', '--show-prefix'])).trim().replace(/\/$/, '')
+  const cwd = prefix ? join(checkout, prefix) : checkout
+  if (!existsSync(cwd)) {
+    throw new Error(`${prefix} doesn't exist at commit ${commit.slice(0, 7)}, so there's nothing to run there`)
+  }
+  await copyEnvFiles(repoPath, cwd)
+  const script = buildRunScript(command, await installStep(cwd), process.platform)
+  return { cwd, script, command, commit }
 }

@@ -134,7 +134,7 @@ function TerminalInstance({ cwd, command, shown, onExit, onPty }: TerminalInstan
       if (ptyIdRef.current != null) window.api.terminalWrite(ptyIdRef.current, data)
     })
 
-    if (command) term.write(`\x1b[2m$ ${command.replace(/\n/g, ' ')}\x1b[0m\r\n`)
+    if (command) term.write(`\x1b[2m${cwd ?? ''}\r\n$ ${command.replace(/\n/g, ' ')}\x1b[0m\r\n`)
     window.api.terminalCreate(cwd ?? undefined, term.cols, term.rows, command).then((id) => {
       if (disposed) {
         window.api.terminalKill(id)
