@@ -1374,19 +1374,17 @@ body.ref-dragging * {
 }
 
 .commit-fullview-sidebar {
-  /* The commit and its files sit left of the diff, like the side bar beside a file view. */
-  order: -1;
   width: 380px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  border-right: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 
-/* A file's diff, history or blame with the side bar's file list kept on its left to pick another file. */
+/* A file's diff, history or blame with the side bar's file list kept on its right to pick another file. */
 .main-layout.file-focus > .detail-panel {
-  border-right: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 
 .working-file-view .commit-fullview-diff {

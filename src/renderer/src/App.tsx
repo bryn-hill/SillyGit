@@ -1877,7 +1877,6 @@ export default function App(): JSX.Element {
               />
             ) : fileView ? (
               <div className="main-layout file-focus">
-                {(selection.type === 'working' || selection.type === 'commit') && detailPanel}
                 <FileHistoryView
                   repoPath={repoPath}
                   target={fileView}
@@ -1903,6 +1902,7 @@ export default function App(): JSX.Element {
                   }}
                   onWorkingTreeChanged={() => refresh(repoPath)}
                 />
+                {(selection.type === 'working' || selection.type === 'commit') && detailPanel}
               </div>
             ) : editingPath ? (
               <div className="main-layout">
@@ -1926,7 +1926,6 @@ export default function App(): JSX.Element {
               </div>
             ) : workingDiff && selection.type === 'working' ? (
               <div className="main-layout file-focus">
-                {detailPanel}
                 <WorkingFileView
                   repoPath={repoPath}
                   path={workingDiff.path}
@@ -1940,6 +1939,7 @@ export default function App(): JSX.Element {
                   onOpenFileView={openFileView}
                   onWorkingTreeChanged={() => refresh(repoPath)}
                 />
+                {detailPanel}
               </div>
             ) : fullScreenHash ? (
               <CommitFullView

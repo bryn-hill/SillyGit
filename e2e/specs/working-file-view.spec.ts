@@ -8,7 +8,7 @@ test.describe('a changed file in the working directory', () => {
     await sillygit.details.listedFile('Unstaged', 'hello.txt').click()
   })
 
-  test('opens its diff full window with the changes still listed on the left', async ({ sillygit }) => {
+  test('opens its diff full window with the changes still listed on the right', async ({ sillygit }) => {
     const view = sillygit.workingFile
     await view.expectShowing('hello.txt', 'changed')
     await expect(view.side).toHaveText('Unstaged changes')
@@ -17,7 +17,7 @@ test.describe('a changed file in the working directory', () => {
 
     const list = await sillygit.details.root.boundingBox()
     const diff = await view.diff.boundingBox()
-    expect(list!.x + list!.width).toBeLessThanOrEqual(diff!.x + 1)
+    expect(diff!.x + diff!.width).toBeLessThanOrEqual(list!.x + 1)
   })
 
   test('picking another file in the list shows that file instead', async ({ sillygit }) => {
@@ -73,7 +73,7 @@ test.describe('a changed file in the working directory', () => {
   })
 })
 
-test("a commit's files sit left of its diff, and its history keeps them there", async ({ sillygit, repo }) => {
+test("a commit's files sit right of its diff, and its history keeps them there", async ({ sillygit, repo }) => {
   repo.writeFile('hello.txt', 'hello\nthere\n')
   repo.writeFile('notes.txt', 'some notes\n')
   repo.git('add', '-A')
@@ -85,7 +85,7 @@ test("a commit's files sit left of its diff, and its history keeps them there", 
   await commit.expectShowing('hello.txt', 'there')
   const files = await commit.file('notes.txt').boundingBox()
   const diff = await commit.diff.boundingBox()
-  expect(files!.x + files!.width).toBeLessThanOrEqual(diff!.x + 1)
+  expect(diff!.x + diff!.width).toBeLessThanOrEqual(files!.x + 1)
 
   await commit.diff.getByRole('button', { name: 'History', exact: true }).click()
   const history = sillygit.fileHistory
