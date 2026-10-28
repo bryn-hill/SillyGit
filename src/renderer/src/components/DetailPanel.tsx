@@ -6,6 +6,7 @@ import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { isPrimary, MOD } from '../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../shared/quickActions'
 import Avatar from './Avatar'
+import { fileMenuSections } from './fileMenu'
 
 const OPERATION_NAMES: Record<OperationState['kind'], string> = {
   merge: 'Merge',
@@ -60,6 +61,8 @@ interface WorkingProps {
   operation: OperationState | null
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
+  onOpenFileView: (path: string, ref: string | null, mode: 'history' | 'blame') => void
+  onCopyText: (text: string) => void
 }
 
 function WorkingDirectoryView({
@@ -75,12 +78,15 @@ function WorkingDirectoryView({
   onAmendChange,
   operation,
   conflictActions,
-  onEditFile
+  onEditFile,
+  onOpenFileView,
+  onCopyText
 }: WorkingProps): JSX.Element {
   const [conflictMenu, setConflictMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   // Conflicted files picked with Cmd/Ctrl- or Shift-click, for bulk actions.
   const [selectedConflicts, setSelectedConflicts] = useState<string[]>([])
   const [conflictAnchor, setConflictAnchor] = useState<string | null>(null)
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; isStaged: boolean } | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [diffText, setDiffText] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -224,7 +230,14 @@ function WorkingDirectoryView({
     const key = `${isStaged ? 's' : 'u'}:${file.path}`
     return (
       <li key={key}>
-        <div className="file-row" onClick={() => toggleExpand(file, isStaged)}>
+        <div
+          className="file-row"
+          onClick={() => toggleExpand(file, isStaged)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setFileMenu({ x: e.clientX, y: e.clientY, file, isStaged })
+          }}
+        >
           <span className={`status-code code-${statusLabel(file.index !== '.' && isStaged ? file.index : file.worktree)}`}>
             {statusLabel(file.index !== '.' && isStaged ? file.index : file.worktree)}
           </span>
@@ -488,6 +501,24 @@ function WorkingDirectoryView({
           onClose={() => setConflictMenu(null)}
         />
       )}
+      {fileMenu && (
+        <ContextMenu
+          x={fileMenu.x}
+          y={fileMenu.y}
+          sections={fileMenuSections({
+            path: fileMenu.file.path,
+            deleted: (fileMenu.isStaged ? fileMenu.file.index : fileMenu.file.worktree) === 'D',
+            // A newly added file has no commits to blame or list yet.
+            untracked: fileMenu.file.untracked || fileMenu.file.index === 'A',
+            onOpenDiff: () => void toggleExpand(fileMenu.file, fileMenu.isStaged),
+            onEdit: () => onEditFile(fileMenu.file.path),
+            onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
+            onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
+            onCopyPath: () => onCopyText(fileMenu.file.path)
+          })}
+          onClose={() => setFileMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -552,13 +583,18 @@ function OperationCommitBox({
 function CommitDetailView({
   repoPath,
   hash,
-  onOpenFileDiff
+  onOpenFileDiff,
+  onOpenFileView,
+  onCopyText
 }: {
   repoPath: string
   hash: string
   onOpenFileDiff: (path: string) => void
+  onOpenFileView: (path: string, ref: string | null, mode: 'history' | 'blame') => void
+  onCopyText: (text: string) => void
 }): JSX.Element {
   const [detail, setDetail] = useState<CommitDetail | null>(null)
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -614,7 +650,14 @@ function CommitDetailView({
         <ul className="file-list">
           {detail.files.map((f) => (
             <li key={f.path}>
-              <div className="file-row" onClick={() => onOpenFileDiff(f.path)}>
+              <div
+                className="file-row"
+                onClick={() => onOpenFileDiff(f.path)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0] })
+                }}
+              >
                 <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
                 <span className="file-path">{f.path}</span>
               </div>
@@ -622,6 +665,21 @@ function CommitDetailView({
           ))}
         </ul>
       </div>
+      {fileMenu && (
+        <ContextMenu
+          x={fileMenu.x}
+          y={fileMenu.y}
+          sections={fileMenuSections({
+            path: fileMenu.path,
+            deleted: fileMenu.status === 'D',
+            onOpenDiff: () => onOpenFileDiff(fileMenu.path),
+            onBlame: () => onOpenFileView(fileMenu.path, hash, 'blame'),
+            onHistory: () => onOpenFileView(fileMenu.path, hash, 'history'),
+            onCopyPath: () => onCopyText(fileMenu.path)
+          })}
+          onClose={() => setFileMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -691,6 +749,8 @@ interface Props {
   operation: OperationState | null
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
+  onOpenFileView: (path: string, ref: string | null, mode: 'history' | 'blame') => void
+  onCopyText: (text: string) => void
 }
 
 export default function DetailPanel(props: Props): JSX.Element {
@@ -704,6 +764,8 @@ export default function DetailPanel(props: Props): JSX.Element {
         repoPath={props.repoPath}
         hash={hash}
         onOpenFileDiff={(path) => props.onOpenCommitFileDiff(hash, path)}
+        onOpenFileView={props.onOpenFileView}
+        onCopyText={props.onCopyText}
       />
     )
   }
@@ -722,6 +784,8 @@ export default function DetailPanel(props: Props): JSX.Element {
       operation={props.operation}
       conflictActions={props.conflictActions}
       onEditFile={props.onEditFile}
+      onOpenFileView={props.onOpenFileView}
+      onCopyText={props.onCopyText}
     />
   )
 }

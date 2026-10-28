@@ -142,8 +142,31 @@ export interface BlameLine {
   lineNo: number
   hash: string
   author: string
+  authorEmail: string
   date: string
   summary: string
+  /** The file's path in that commit, which differs from today's after a rename. */
+  path: string
+  /** The commit (and path) the line's file came from before `hash`, to blame what came before. */
+  previous?: { hash: string; path: string }
+  /** A line in the working tree that hasn't been committed yet. */
+  uncommitted: boolean
+}
+
+/** A commit that changed a file, from `git log --follow`. */
+export interface FileHistoryEntry {
+  hash: string
+  author: string
+  authorEmail: string
+  /** ISO 8601 author date. */
+  date: string
+  subject: string
+  /** The file's path in this commit. */
+  path: string
+  /** The path before this commit, when it renamed or copied the file. */
+  oldPath?: string
+  /** A, M, D, R or C; empty for a merge that didn't change the file itself. */
+  status: string
 }
 
 export type LaunchpadBucketId =

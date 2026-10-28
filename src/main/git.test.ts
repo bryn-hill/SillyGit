@@ -253,6 +253,31 @@ describe('logs', () => {
     commitFile('other.txt', 'x\n', 'Unrelated')
     const history = await git.getFileHistory(dir, 'b.txt', 'HEAD')
     expect(history.map((c) => c.subject)).toEqual(['Rename a to b', 'Grow a', 'First'])
+    expect(history.map((c) => [c.status, c.path, c.oldPath])).toEqual([
+      ['R', 'b.txt', 'a.txt'],
+      ['M', 'a.txt', undefined],
+      ['A', 'a.txt', undefined]
+    ])
+    expect(history[0]).toMatchObject({ author: 'Ada Lovelace', authorEmail: 'ada@example.com' })
+    expect(history[0].date).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+  })
+
+  it('shows the file diff of a renaming commit as a rename when given both paths', async () => {
+    commitFile('a.txt', 'one\ntwo\nthree\nfour\n', 'Grow a')
+    run('mv', 'a.txt', 'b.txt')
+    write('b.txt', 'one\ntwo\nthree\nfour!\n')
+    run('add', '-A')
+    run('commit', '-q', '-m', 'Rename and edit')
+    const diff = await git.getCommitFileDiff(dir, 'HEAD', 'b.txt', false, 'a.txt')
+    expect(diff).toContain('rename from a.txt')
+    expect(diff).toContain('+four!')
+    expect(diff).not.toContain('+one')
+  })
+
+  it('lists tracked files', async () => {
+    commitFile('dir with space.txt', 'x\n', 'Add')
+    write('untracked.txt', 'u\n')
+    expect(await git.listTrackedFiles(dir)).toEqual(['a.txt', 'dir with space.txt'])
   })
 })
 
@@ -340,6 +365,26 @@ describe('getBlame', () => {
     const blame = await git.getBlame(dir, 'HEAD', 'c.txt')
     expect(blame.map((b) => b.summary)).toEqual(['Three lines', 'Change the middle', 'Three lines'])
     expect(blame[0].hash).toBe(blame[2].hash)
+  })
+
+  it('gives the author email, the path in each commit and the commit before', async () => {
+    const first = run('rev-parse', 'HEAD')
+    run('mv', 'a.txt', 'b.txt')
+    run('commit', '-q', '-m', 'Rename')
+    const edit = commitFile('b.txt', 'one\ntwo\n', 'Add two')
+    const blame = await git.getBlame(dir, 'HEAD', 'b.txt')
+    expect(blame[0]).toMatchObject({ hash: first, path: 'a.txt', authorEmail: 'ada@example.com', uncommitted: false })
+    expect(blame[0].previous).toBeUndefined()
+    expect(blame[1]).toMatchObject({ hash: edit, path: 'b.txt' })
+    expect(blame[1].previous?.path).toBe('b.txt')
+    expect(blame[1].previous?.hash).toBe(run('rev-parse', 'HEAD~1'))
+  })
+
+  it('blames the working tree when no ref is given, marking uncommitted lines', async () => {
+    write('a.txt', 'one\nnot yet\n')
+    const blame = await git.getBlame(dir, null, 'a.txt')
+    expect(blame.map((b) => b.uncommitted)).toEqual([false, true])
+    expect(blame[1].hash).toMatch(/^0+$/)
   })
 })
 

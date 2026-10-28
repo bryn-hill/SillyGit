@@ -18,6 +18,7 @@ import Sidebar from './components/Sidebar'
 import CommitGraph, { DEFAULT_REF_COLUMN_WIDTH } from './components/CommitGraph'
 import DetailPanel from './components/DetailPanel'
 import CommitFullView from './components/CommitFullView'
+import FileHistoryView, { type FileViewMode, type FileViewTarget } from './components/FileHistoryView'
 import MergeResolver from './components/MergeResolver'
 import Launchpad from './components/Launchpad'
 import SettingsModal from './components/SettingsModal'
@@ -110,6 +111,10 @@ export default function App(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
+  /** A file's history or blame, shown in place of the graph. */
+  const [fileView, setFileView] = useState<FileViewTarget | null>(null)
+  /** Tracked files, loaded when the Actions list opens, for its Blame and File history pickers. */
+  const [trackedFiles, setTrackedFiles] = useState<string[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [prompt, setPrompt] = useState<(PromptRequest & { resolve: (value: string | null) => void }) | null>(null)
   const [showLaunchpad, setShowLaunchpad] = useState(false)
@@ -295,6 +300,7 @@ export default function App(): JSX.Element {
     setRedoLabel(snapshot?.redoLabel ?? null)
     setSelection(snapshot?.selection ?? { type: 'working' })
     setFullScreenHash(null)
+    setFileView(null)
     setResolvingPath(null)
     if (repoPath) refresh(repoPath)
   }, [repoPath, refresh])
@@ -742,6 +748,7 @@ export default function App(): JSX.Element {
       // After the refresh, so the WIP row exists to select.
       if (res.ok && res.data.conflicts) {
         setFullScreenHash(null)
+        setFileView(null)
         setSelection({ type: 'working' })
       }
     })
@@ -773,6 +780,7 @@ export default function App(): JSX.Element {
             : `Applied ${res.data.file}. Its changes are staged.`
         )
         setFullScreenHash(null)
+        setFileView(null)
         setShowLaunchpad(false)
         setSelection({ type: 'working' })
       }
@@ -975,6 +983,7 @@ export default function App(): JSX.Element {
       }
     }
     setFullScreenHash(null)
+    setFileView(null)
     setSelection({ type: 'commit', hash: hit.hash })
   }
 
@@ -1150,8 +1159,34 @@ export default function App(): JSX.Element {
     select: (hash: string) => setSelection({ type: 'commit', hash })
   }
 
+  /** Shows a file's history or blame in place of the graph; a null `ref` starts from the working tree. */
+  const openFileView = (path: string, ref: string | null, mode: FileViewMode): void => {
+    setShowLaunchpad(false)
+    setFileView({ path, ref, mode })
+  }
+
+  const showCommitInGraph = (hash: string): void => {
+    setFileView(null)
+    setFullScreenHash(null)
+    closeEditor()
+    void handleSelectBranchCommit(hash)
+  }
+
+  // The Actions list's Blame and File history pickers list every tracked file.
+  useEffect(() => {
+    if (!palette || !repoPath) return
+    let cancelled = false
+    window.api.trackedFiles(repoPath).then((res) => {
+      if (!cancelled) setTrackedFiles(res.ok ? res.data : [])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [palette, repoPath])
+
   const focusSearch = (): void => {
     setFullScreenHash(null)
+    setFileView(null)
     setShowLaunchpad(false)
     setResolvingPath(null)
     setSearchFocusToken((n) => n + 1)
@@ -1159,6 +1194,7 @@ export default function App(): JSX.Element {
 
   const startAmend = (): void => {
     setFullScreenHash(null)
+    setFileView(null)
     setShowLaunchpad(false)
     setSelection({ type: 'working' })
     handleAmendChange(true)
@@ -1191,10 +1227,21 @@ export default function App(): JSX.Element {
       add('search', 'Search commits', focusSearch, `${MOD}F`)
       add('commit', 'Go to uncommitted changes', () => {
         setFullScreenHash(null)
+        setFileView(null)
         setShowLaunchpad(false)
         setSelection({ type: 'working' })
       })
       add('amend', 'Amend last commit', startAmend)
+      addList(
+        'blame',
+        'Blame file',
+        trackedFiles.map((path) => ({ id: path, label: path, run: () => openFileView(path, null, 'blame') }))
+      )
+      addList(
+        'file-history',
+        'File history',
+        trackedFiles.map((path) => ({ id: path, label: path, run: () => openFileView(path, null, 'history') }))
+      )
       add('apply-patch', 'Apply patch…', handleApplyPatch)
       if (hasWorkingChanges && !operation) {
         add('stash', 'Stash changes', handleStash)
@@ -1365,6 +1412,8 @@ export default function App(): JSX.Element {
             onSkip: handleSkip
           }}
           onEditFile={openEditor}
+          onOpenFileView={openFileView}
+          onCopyText={handleCopyText}
         />
       </div>
     ) : null
@@ -1484,6 +1533,28 @@ export default function App(): JSX.Element {
                 externalToolName={externalToolName}
                 onOpenExternal={(path) => void handleOpenExternal(path)}
               />
+            ) : fileView ? (
+              <div className="main-layout">
+                <FileHistoryView
+                  repoPath={repoPath}
+                  target={fileView}
+                  onClose={() => setFileView(null)}
+                  onOpenCommit={(hash, path) => {
+                    setFileView(null)
+                    closeEditor()
+                    setFullScreenHash(hash)
+                    setFullScreenPath(path)
+                    setSelection({ type: 'commit', hash })
+                  }}
+                  onShowInGraph={showCommitInGraph}
+                  onCopyText={handleCopyText}
+                  onEditFile={(path) => {
+                    setFileView(null)
+                    openEditor(path)
+                  }}
+                  onWorkingTreeChanged={() => refresh(repoPath)}
+                />
+              </div>
             ) : editingPath ? (
               <div className="main-layout">
                 <Suspense fallback={<div className="file-editor" />}>
@@ -1499,6 +1570,7 @@ export default function App(): JSX.Element {
                     }}
                     onClose={closeEditor}
                     onSaved={() => refresh(repoPath)}
+                    onOpenFileView={(path, mode) => openFileView(path, null, mode)}
                   />
                 </Suspense>
                 {detailPanel}
@@ -1520,6 +1592,8 @@ export default function App(): JSX.Element {
                 }}
                 onWorkingTreeChanged={() => refresh(repoPath)}
                 onEditFile={openEditor}
+                onOpenFileView={openFileView}
+                onCopyText={handleCopyText}
               />
             ) : (
               <div className="main-layout">

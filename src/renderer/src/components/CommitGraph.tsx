@@ -8,6 +8,7 @@ import { selectedHashes } from '../lib/selection'
 import { groupRefs, parseRefs, type RefBadge } from '../lib/refs'
 import RefCell, { type RefHandlers } from './RefCell'
 import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
+import { timeAgo } from '../lib/time'
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
 const MIN_REF_COLUMN_WIDTH = 60
@@ -25,20 +26,6 @@ function rowTarget(badges: RefBadge[]): RefTarget | null {
     badges.find((b) => b.kind === 'remote') ??
     badges.find((b) => b.kind === 'head')
   return pick ? badgeTarget(pick) : null
-}
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  if (months < 12) return `${months}mo ago`
-  return `${Math.floor(months / 12)}y ago`
 }
 
 // Rows drawn above and below the visible ones, so fast scrolling doesn't flash blanks.

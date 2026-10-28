@@ -4,6 +4,8 @@ import FileDiffViewer from './FileDiffViewer'
 import AiResults, { idleAiRun, type AiRun } from './AiResults'
 import SplitCommitPanel from './SplitCommitPanel'
 import Avatar from './Avatar'
+import ContextMenu from './ContextMenu'
+import { fileMenuSections } from './fileMenu'
 
 interface Props {
   repoPath: string
@@ -14,6 +16,8 @@ interface Props {
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
   onEditFile?: (path: string) => void
+  onOpenFileView?: (path: string, ref: string, mode: 'history' | 'blame') => void
+  onCopyText?: (text: string) => void
 }
 
 function SparkleIcon(): JSX.Element {
@@ -37,8 +41,11 @@ export default function CommitFullView({
   onClose,
   onNavigateToCommit,
   onWorkingTreeChanged,
-  onEditFile
+  onEditFile,
+  onOpenFileView,
+  onCopyText
 }: Props): JSX.Element {
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string } | null>(null)
   const [detail, setDetail] = useState<CommitDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
@@ -169,6 +176,7 @@ export default function CommitFullView({
                 onNavigateToCommit={onNavigateToCommit}
                 onWorkingTreeChanged={onWorkingTreeChanged}
                 onEditFile={onEditFile}
+                onOpenFileView={onOpenFileView}
               />
             )}
           </div>
@@ -225,6 +233,10 @@ export default function CommitFullView({
                           onClick={() =>
                             selectedPath === f.path ? onClose() : setSelectedPath(f.path)
                           }
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0] })
+                          }}
                         >
                           <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
                           <span className="file-path">{f.path}</span>
@@ -254,6 +266,22 @@ export default function CommitFullView({
             )}
           </div>
         </div>
+      )}
+      {fileMenu && (
+        <ContextMenu
+          x={fileMenu.x}
+          y={fileMenu.y}
+          sections={fileMenuSections({
+            path: fileMenu.path,
+            deleted: fileMenu.status === 'D',
+            onOpenDiff: () => setSelectedPath(fileMenu.path),
+            onBlame: onOpenFileView && (() => onOpenFileView(fileMenu.path, hash, 'blame')),
+            onHistory: onOpenFileView && (() => onOpenFileView(fileMenu.path, hash, 'history')),
+            onEdit: onEditFile && (() => onEditFile(fileMenu.path)),
+            onCopyPath: onCopyText && (() => onCopyText(fileMenu.path))
+          })}
+          onClose={() => setFileMenu(null)}
+        />
       )}
     </div>
   )
