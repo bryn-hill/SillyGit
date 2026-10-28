@@ -1125,6 +1125,7 @@ export default function App(): JSX.Element {
     setFullScreenHash(null)
     setResolvingPath(null)
     closeEditor()
+    setFileView(null)
     setRebaseEditor({ repoPath, base })
   }
 
@@ -1387,6 +1388,7 @@ export default function App(): JSX.Element {
   /** Shows a file's history or blame in place of the graph; a null `ref` starts from the working tree. */
   const openFileView = (path: string, ref: string | null, mode: FileViewMode): void => {
     setShowLaunchpad(false)
+    setRebaseEditor(null)
     setFileView({ path, ref, mode })
   }
 
