@@ -12,6 +12,27 @@ import {
 
 const UPSTREAM = `origin/${UPDATE_BRANCH}`
 
+export interface CheckoutSource {
+  /** app.isPackaged: an installed build (npm run dist) has no checkout to pull into. */
+  isPackaged: boolean
+  isE2E: boolean
+  /** SILLYGIT_UPDATE_CHECKOUT, which e2e tests point at a scratch clone. */
+  override: string | undefined
+  appPath: string
+}
+
+/**
+ * The checkout SillyGit updates, or null when it can't update itself. A
+ * packaged build never can, whatever the environment says, so the Update
+ * button, dialog, palette entry and background checks all stay off there.
+ */
+export async function resolveCheckout(src: CheckoutSource): Promise<string | null> {
+  if (src.isPackaged) return null
+  if (src.override) return src.override
+  if (src.isE2E) return null
+  return findCheckout(src.appPath)
+}
+
 /** The top of the git checkout at `appPath`, or null when it isn't in one. */
 export async function findCheckout(appPath: string): Promise<string | null> {
   try {
