@@ -18,12 +18,34 @@ export function activityLog(): ActivityEntry[] {
   return [...activity].reverse()
 }
 
+// Commands that change a repo run one at a time per repo: two at once (quick
+// clicks taking a side on two conflicted files, say) trip over git's
+// index.lock and one fails. Talking to a remote doesn't touch the index, so
+// a slow fetch or push doesn't hold up the rest.
+const REMOTE_ONLY = new Set(['fetch', 'push', 'clone', 'ls-remote'])
+const writeQueues = new Map<string, Promise<unknown>>()
+
+function oneAtATime<T>(repoPath: string, run: () => Promise<T>): Promise<T> {
+  const result = (writeQueues.get(repoPath) ?? Promise.resolve()).then(run)
+  const done = result.catch(() => {})
+  writeQueues.set(repoPath, done)
+  void done.then(() => {
+    if (writeQueues.get(repoPath) === done) writeQueues.delete(repoPath)
+  })
+  return result
+}
+
 export async function runGit(
   repoPath: string,
   args: string[],
   env?: Record<string, string>
 ): Promise<string> {
   const logged = isLoggedCommand(args)
+  if (logged && !REMOTE_ONLY.has(args[0])) return oneAtATime(repoPath, () => execGit(repoPath, args, env, logged))
+  return execGit(repoPath, args, env, logged)
+}
+
+async function execGit(repoPath: string, args: string[], env: Record<string, string> | undefined, logged: boolean): Promise<string> {
   const started = Date.now()
   const record = (ok: boolean, error?: string): void => {
     if (!logged) return
