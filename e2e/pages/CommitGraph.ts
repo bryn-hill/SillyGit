@@ -44,6 +44,11 @@ export class CommitGraph {
     return this.row(subject).getByTestId('sprint-marker')
   }
 
+  /** The merge animation drawn over a new merge commit's row while it plays. */
+  get mergeBurst(): Locator {
+    return this.root.getByTestId('merge-burst')
+  }
+
   /** The menu that opens after dropping something on a branch. */
   get dropMenu(): Locator {
     return this.root.page().getByRole('menu')

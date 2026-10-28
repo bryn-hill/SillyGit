@@ -37,6 +37,8 @@ interface Props {
   onBranchListChange: (next: BranchListSettings) => void
   mergeTool: MergeToolSettings
   onMergeToolChange: (next: MergeToolSettings) => void
+  mergeAnimation: boolean
+  onMergeAnimationChange: (on: boolean) => void
 }
 
 const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
@@ -512,7 +514,9 @@ export default function SettingsModal({
   branchList,
   onBranchListChange,
   mergeTool,
-  onMergeToolChange
+  onMergeToolChange,
+  mergeAnimation,
+  onMergeAnimationChange
 }: Props): JSX.Element {
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -570,6 +574,21 @@ export default function SettingsModal({
             </label>
             <div className="modal-hint">
               Looked up on GitHub, GitLab and Gravatar by commit email, then cached. Off shows initials only.
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <label className="settings-checkbox">
+              <input
+                type="checkbox"
+                checked={mergeAnimation}
+                onChange={(e) => onMergeAnimationChange(e.target.checked)}
+              />
+              Animate merges on the graph
+            </label>
+            <div className="modal-hint">
+              When a merge lands on the checked-out branch, its lanes race into the new commit and spark. If your system
+              asks for reduced motion, it's just a short glow.
             </div>
           </section>
 

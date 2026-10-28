@@ -21,6 +21,8 @@ interface StoredSettings {
   autoFetchMinutes?: number
   /** Look up author avatars online (GitHub, GitLab, Gravatar); off shows initials only. */
   showAvatars?: boolean
+  /** Play the lanes-colliding animation on the graph when a merge lands. */
+  mergeAnimation?: boolean
   /** Desktop notifications about pull requests. */
   notifications?: Partial<NotificationSettings>
   /** Sprint markers on the commit graph. */
@@ -123,6 +125,17 @@ export async function getShowAvatars(): Promise<boolean> {
 export async function setShowAvatars(show: boolean): Promise<void> {
   await updateSettings((current) => {
     current.showAvatars = show
+  })
+}
+
+export async function getMergeAnimation(): Promise<boolean> {
+  const stored = await readSettings()
+  return stored.mergeAnimation !== false
+}
+
+export async function setMergeAnimation(on: boolean): Promise<void> {
+  await updateSettings((current) => {
+    current.mergeAnimation = on
   })
 }
 

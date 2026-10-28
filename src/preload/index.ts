@@ -263,6 +263,8 @@ const api = {
   testNotification: (): Wrapped<void> => ipcRenderer.invoke('notifications:test'),
   getShowAvatars: (): Promise<boolean> => ipcRenderer.invoke('settings:get-show-avatars'),
   setShowAvatars: (show: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-show-avatars', show),
+  getMergeAnimation: (): Promise<boolean> => ipcRenderer.invoke('settings:get-merge-animation'),
+  setMergeAnimation: (on: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-merge-animation', on),
   /** Avatar images (data: URLs) by lower-cased email; null or missing means show initials. */
   resolveAvatars: (
     repoPath: string,

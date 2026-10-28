@@ -865,6 +865,10 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:set-show-avatars', (_e, show: boolean) => wrap(() => settings.setShowAvatars(show)))
 
+  ipcMain.handle('settings:get-merge-animation', () => settings.getMergeAnimation())
+
+  ipcMain.handle('settings:set-merge-animation', (_e, on: boolean) => wrap(() => settings.setMergeAnimation(on)))
+
   ipcMain.handle('avatars:resolve', (_e, repoPath: string, requests: AvatarRequest[]) =>
     wrap(async () => {
       if (!(await settings.getShowAvatars())) return {}

@@ -11,6 +11,7 @@ import { dropTarget, useRefDrag } from './RefDrag'
 import { commitsLabel } from '../lib/refDrag'
 import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
 import { timeAgo } from '../lib/time'
+import { MERGE_BURST_MS, newMergeAtHead } from '../lib/mergeBurst'
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
 const MIN_REF_COLUMN_WIDTH = 60
@@ -67,6 +68,8 @@ interface Props {
   onRefColumnWidthChange: (width: number) => void
   /** Sprint dividers and shading, when turned on in Settings. */
   sprints: SprintSettings
+  /** Animate a merge landing on the checked-out branch (Settings). */
+  mergeAnimation: boolean
 }
 
 export default function CommitGraph({
@@ -89,7 +92,8 @@ export default function CommitGraph({
   searchFocusToken,
   refColumnWidth,
   onRefColumnWidthChange,
-  sprints
+  sprints,
+  mergeAnimation
 }: Props): JSX.Element {
   // The WIP node sits above the checked-out commit's lane and a dashed line
   // joins them, even when other branch tips come between.
@@ -127,6 +131,24 @@ export default function CommitGraph({
     () => (sprints.enabled ? sprintMarks(rows.map((r) => r.commit.committedAt || r.commit.date), sprints) : null),
     [rows, sprints]
   )
+  // --- Merge animation ----------------------------------------------------------
+  // Compared with the last graph while rendering, so the burst starts in the
+  // same frame the merge commit first appears.
+  const [prevRows, setPrevRows] = useState(rows)
+  const [burst, setBurst] = useState<{ hash: string; id: number } | null>(null)
+  if (rows !== prevRows) {
+    setPrevRows(rows)
+    const merged = mergeAnimation ? newMergeAtHead(prevRows, rows, headHash) : null
+    if (merged) setBurst({ hash: merged, id: (burst?.id ?? 0) + 1 })
+  }
+  useEffect(() => {
+    if (!burst) return
+    // Ended by time rather than animationend, which never fires if the row is
+    // scrolled out of the virtual list or motion is reduced.
+    const timer = setTimeout(() => setBurst(null), MERGE_BURST_MS)
+    return () => clearTimeout(timer)
+  }, [burst])
+
   const now = new Date()
   const today = localDay(now.toISOString())
   const currentSprint = today === null ? null : sprintIndexOfDay(today, sprints)
@@ -312,7 +334,13 @@ export default function CommitGraph({
           width={refColumnWidth}
           handlers={refHandlers(row.commit.hash, isSelected)}
         />
-        <GraphCell row={row} repoPath={repoPath} connector={badges.length > 0} wipLink={wipLinkFor(index)} />
+        <GraphCell
+          row={row}
+          repoPath={repoPath}
+          connector={badges.length > 0}
+          wipLink={wipLinkFor(index)}
+          burst={burst?.hash === row.commit.hash ? burst.id : undefined}
+        />
         <div className="graph-row-message">
           <span className="graph-row-subject" style={{ color: row.color }}>
             {row.commit.subject}

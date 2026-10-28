@@ -100,6 +100,13 @@ export default function App(): JSX.Element {
     DEFAULT_BRANCH_LIST_SETTINGS,
     showError
   )
+  // Lanes colliding into a new merge on the graph (on by default).
+  const [mergeAnimation, setMergeAnimation] = useSavedSetting(
+    window.api.getMergeAnimation,
+    window.api.setMergeAnimation,
+    true,
+    showError
+  )
   const selfUpdate = useSelfUpdate()
 
   // --- The repo showing, and what's read from it ---------------------------------
@@ -1449,6 +1456,7 @@ export default function App(): JSX.Element {
           searchFocusToken={searchFocusToken}
           refColumnWidth={layout.refColumnWidth}
           sprints={sprintSettings}
+          mergeAnimation={mergeAnimation}
           onRefColumnWidthChange={layout.setRefColumnWidth}
         />
         {detailPanel}
@@ -1572,6 +1580,8 @@ export default function App(): JSX.Element {
           onBranchListChange={setBranchListSettings}
           mergeTool={mergeToolSettings}
           onMergeToolChange={setMergeToolSettings}
+          mergeAnimation={mergeAnimation}
+          onMergeAnimationChange={setMergeAnimation}
         />
       )}
       {palette && (

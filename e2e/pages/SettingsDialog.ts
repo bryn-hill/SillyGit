@@ -9,6 +9,7 @@ export class SettingsDialog {
   readonly tokenInput: Locator
   readonly hostInput: Locator
   readonly showAvatars: Locator
+  readonly mergeAnimation: Locator
   readonly notifications: Locator
   readonly notificationsEnabled: Locator
   readonly notificationInterval: Locator
@@ -31,6 +32,7 @@ export class SettingsDialog {
     this.tokenInput = this.addAccountForm.getByLabel('Personal access token')
     this.hostInput = this.addAccountForm.getByLabel('Server')
     this.showAvatars = this.root.getByRole('checkbox', { name: 'Show author avatars' })
+    this.mergeAnimation = this.root.getByRole('checkbox', { name: 'Animate merges on the graph' })
     this.notifications = this.root.getByRole('region', { name: 'Notifications' })
     this.notificationsEnabled = this.notifications.getByRole('checkbox', { name: 'Pull request notifications' })
     this.notificationInterval = this.notifications.getByLabel('Check')

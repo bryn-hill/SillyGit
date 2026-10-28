@@ -5774,3 +5774,176 @@ button.rebase-action {
   outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
+
+/* ---------- merge animation: lanes race into the new merge node and spark ---------- */
+
+.merge-burst {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.merge-burst-trail,
+.merge-burst-comet {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.merge-burst-trail {
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-dasharray: 1 1;
+  filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor);
+  animation: merge-trail 1000ms ease-in both;
+}
+
+.merge-burst-comet {
+  stroke: #fff;
+  stroke-width: 3.5;
+  stroke-dasharray: 0.22 2;
+  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 5px currentColor);
+  animation: merge-comet 540ms cubic-bezier(0.55, 0, 0.9, 0.6) both;
+}
+
+.merge-burst-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 4px currentColor);
+  animation: merge-ring 520ms ease-out 500ms both;
+}
+
+.merge-burst-core {
+  fill: #fff;
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 6px #ff79c6) drop-shadow(0 0 10px #bd93f9);
+  animation: merge-core 460ms ease-out 500ms both;
+}
+
+.merge-burst-spark {
+  fill: currentColor;
+  filter: drop-shadow(0 0 3px currentColor);
+  animation: merge-spark 600ms cubic-bezier(0.15, 0.6, 0.35, 1) both;
+}
+
+.merge-burst-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: merge-node 760ms ease-out both;
+}
+
+@keyframes merge-trail {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0.9;
+  }
+  52% {
+    stroke-dashoffset: 0;
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes merge-comet {
+  0% {
+    stroke-dashoffset: 0.22;
+    opacity: 1;
+  }
+  92% {
+    stroke-dashoffset: -0.78;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -0.78;
+    opacity: 0;
+  }
+}
+
+@keyframes merge-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes merge-core {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes merge-spark {
+  0% {
+    transform: translate(0, 0) scale(1.2);
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes merge-node {
+  0%,
+  66% {
+    transform: scale(0);
+  }
+  84% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes merge-fade {
+  0% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* No movement: the lanes and the node just glow and fade. */
+@media (prefers-reduced-motion: reduce) {
+  .merge-burst-comet,
+  .merge-burst-spark,
+  .merge-burst-ring {
+    display: none;
+  }
+  .merge-burst-trail {
+    stroke-dasharray: none;
+    animation: merge-fade 1000ms ease-out both;
+  }
+  .merge-burst-core {
+    animation: merge-fade 700ms ease-out both;
+  }
+  .merge-burst-node {
+    animation: none;
+  }
+}
