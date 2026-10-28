@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { LaunchpadBucketId, LaunchpadData, LaunchpadPullRequest } from '../../../shared/types'
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
+import { timeAgo } from '../lib/timeAgo'
+import PullRequestReview from './PullRequestReview'
 
 interface Props {
   /** The active repo tab, if any. */
@@ -15,20 +17,6 @@ const NO_REPOS: string[] = []
 
 function repoDisplayName(path: string): string {
   return path.split('/').filter(Boolean).pop() ?? path
-}
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  if (months < 12) return `${months}mo ago`
-  return `${Math.floor(months / 12)}y ago`
 }
 
 function RefreshIcon(): JSX.Element {
@@ -116,6 +104,7 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
   const [workspaceRepos, setWorkspaceRepos] = useState<string[]>([])
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const [addingRepo, setAddingRepo] = useState(false)
+  const [reviewing, setReviewing] = useState<LaunchpadPullRequest | null>(null)
 
   useEffect(() => {
     window.api.getWorkspaceRepos().then((repos) => {
@@ -175,6 +164,19 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
   }
 
   const groups = data?.connected ? groupByBucket(data.pullRequests) : []
+
+  if (reviewing)
+    return (
+      <PullRequestReview
+        repoPath={reviewing.repoPath}
+        number={reviewing.number}
+        title={reviewing.title}
+        onBack={() => {
+          setReviewing(null)
+          load()
+        }}
+      />
+    )
 
   return (
     <div className="launchpad">
@@ -240,7 +242,11 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
               <div className="launchpad-cards">
                 {items.map((pr) => (
                   <div key={`${pr.repoPath}#${pr.number}`} className="launchpad-card">
-                    <div className="launchpad-card-main">
+                    <div
+                      className="launchpad-card-main launchpad-card-clickable"
+                      onClick={() => setReviewing(pr)}
+                      title="Open this pull request"
+                    >
                       <div className="launchpad-card-title">{pr.title}</div>
                       <div className="launchpad-card-meta">
                         {pr.repoName} · #{pr.number} · {pr.headRefName} → {pr.baseRefName} · {pr.author} ·{' '}
@@ -257,7 +263,8 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
                           {mergingNumber === pr.number ? 'Merging…' : 'Merge'}
                         </button>
                       )}
-                      <button className="subtle" onClick={() => window.api.openExternal(pr.url)}>
+                      <button onClick={() => setReviewing(pr)}>{pr.isMine ? 'View' : 'Review'}</button>
+                      <button className="subtle" onClick={() => window.api.openExternal(pr.url)} title="Open on GitHub">
                         Open
                       </button>
                     </div>

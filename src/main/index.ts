@@ -8,6 +8,7 @@ import * as branches from './branches'
 import * as ai from './ai'
 import * as settings from './settings'
 import * as launchpad from './launchpad'
+import * as prReview from './prReview'
 import * as quickActions from './quickActions'
 import * as accounts from './accounts'
 import * as github from './github'
@@ -24,6 +25,7 @@ import { watchRepo, stopWatching } from './watcher'
 import { PrNotifier, type ShownNotification } from './prNotifications'
 import type { NotificationSettings } from '../shared/notifications'
 import type { SprintSettings } from '../shared/sprints'
+import type { SubmitReviewInput } from '../shared/prReview'
 import icon from '../../resources/icon.png?asset'
 import claudeLogo from '../../resources/bots/claude.png?asset'
 import renovateLogo from '../../resources/bots/renovate.png?asset'
@@ -532,6 +534,26 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('launchpad:merge-pr', (_e, repoPath: string, number: number) =>
     wrap(() => launchpad.mergePullRequest(repoPath, number))
+  )
+
+  ipcMain.handle('pr:get-detail', (_e, repoPath: string, number: number) =>
+    wrap(() => prReview.getPullRequestDetail(repoPath, number))
+  )
+
+  ipcMain.handle('pr:submit-review', (_e, repoPath: string, number: number, input: SubmitReviewInput) =>
+    wrap(() => prReview.submitReview(repoPath, number, input))
+  )
+
+  ipcMain.handle('pr:add-comment', (_e, repoPath: string, number: number, body: string) =>
+    wrap(() => prReview.addComment(repoPath, number, body))
+  )
+
+  ipcMain.handle('pr:reply-to-thread', (_e, repoPath: string, threadId: string, body: string) =>
+    wrap(() => prReview.replyToThread(repoPath, threadId, body))
+  )
+
+  ipcMain.handle('pr:set-thread-resolved', (_e, repoPath: string, threadId: string, resolved: boolean) =>
+    wrap(() => prReview.setThreadResolved(repoPath, threadId, resolved))
   )
 
   ipcMain.handle('settings:get-workspace-repos', () => settings.getWorkspaceRepos())

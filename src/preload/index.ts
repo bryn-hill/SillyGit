@@ -222,6 +222,16 @@ const api = {
     ipcRenderer.invoke('launchpad:get-data', repoPaths),
   launchpadMergePr: (repoPath: string, number: number): Wrapped<void> =>
     ipcRenderer.invoke('launchpad:merge-pr', repoPath, number),
+  prGetDetail: (repoPath: string, number: number): Wrapped<import('../shared/prReview').PullRequestDetail> =>
+    ipcRenderer.invoke('pr:get-detail', repoPath, number),
+  prSubmitReview: (repoPath: string, number: number, input: import('../shared/prReview').SubmitReviewInput): Wrapped<void> =>
+    ipcRenderer.invoke('pr:submit-review', repoPath, number, input),
+  prAddComment: (repoPath: string, number: number, body: string): Wrapped<void> =>
+    ipcRenderer.invoke('pr:add-comment', repoPath, number, body),
+  prReplyToThread: (repoPath: string, threadId: string, body: string): Wrapped<void> =>
+    ipcRenderer.invoke('pr:reply-to-thread', repoPath, threadId, body),
+  prSetThreadResolved: (repoPath: string, threadId: string, resolved: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('pr:set-thread-resolved', repoPath, threadId, resolved),
   getSession: (): Promise<import('../shared/types').SavedSession> => ipcRenderer.invoke('session:get'),
   recordOpenedRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:repo-opened', repoPath),
   forgetRecentRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:forget-repo', repoPath),
