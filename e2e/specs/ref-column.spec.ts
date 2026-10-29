@@ -54,7 +54,7 @@ test.describe('Branch / Tag column', () => {
     await sillygit.page.mouse.up()
 
     await expect.poll(async () => (await cell.boundingBox())!.width).toBeCloseTo(before + 80, 0)
-    await expect.poll(() => savedLayout(userData)?.refColumnWidth).toBeCloseTo(before + 80, 0)
+    await expect.poll(() => savedLayout(userData)?.graphColumns?.refs).toBeCloseTo(before + 80, 0)
 
     const reopened = await relaunch()
     const reopenedCell = reopened.graph.row('Add hello.txt').getByTestId('ref-cell')
