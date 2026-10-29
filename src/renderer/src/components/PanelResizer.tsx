@@ -17,7 +17,8 @@ interface Props {
  */
 export default function PanelResizer({ side, onWidthChange, onReset }: Props): JSX.Element {
   const handleDragStart = (e: ReactMouseEvent<HTMLDivElement>): void => {
-    const panel = side === 'before' ? e.currentTarget.previousElementSibling : e.currentTarget.nextElementSibling
+    const wrapper = e.currentTarget.parentElement
+    const panel = side === 'before' ? wrapper?.previousElementSibling : wrapper?.nextElementSibling
     if (!(panel instanceof HTMLElement)) return
     e.preventDefault()
     const startX = e.clientX
