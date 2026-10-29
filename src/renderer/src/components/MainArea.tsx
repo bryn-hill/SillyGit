@@ -320,10 +320,10 @@ export default function MainArea({
           loadingMore={repo.loadingMore}
           onLoadMore={repo.loadMore}
           searchFocusToken={view.searchFocusToken}
-          refColumnWidth={layout.refColumnWidth}
+          columnWidths={layout.graphColumns}
           sprints={settings.sprints}
           mergeAnimation={settings.mergeAnimation}
-          onRefColumnWidthChange={layout.setRefColumnWidth}
+          onColumnWidthChange={layout.setGraphColumnWidth}
         />
       </Activity>
       {cover}

@@ -40,7 +40,29 @@ export class CommitGraph {
 
   /** The Branch / Tag column's resize handle. */
   get refColumnResizer(): Locator {
-    return this.root.page().getByRole('separator', { name: 'Resize branch and tag column' })
+    return this.columnResizer('branch and tag')
+  }
+
+  /** A column header's resize handle: 'branch and tag', 'graph', 'author' or 'date'. */
+  columnResizer(column: string): Locator {
+    return this.root.page().getByRole('separator', { name: `Resize ${column} column` })
+  }
+
+  /** A cell of a commit's row in the Graph, Author or Date column. */
+  cell(subject: string, column: 'graph' | 'author' | 'date'): Locator {
+    return this.row(subject).getByTestId(column === 'graph' ? 'graph-cell' : `commit-${column}`)
+  }
+
+  /** Drags a column header's resize handle sideways by `dx` pixels. */
+  async dragColumnResizer(column: string, dx: number): Promise<void> {
+    const page = this.root.page()
+    const handle = (await this.columnResizer(column).boundingBox())!
+    const x = handle.x + handle.width / 2
+    const y = handle.y + handle.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + dx, y, { steps: 4 })
+    await page.mouse.up()
   }
 
   /** The "Sprint N · dates" labels drawn above the newest commit of each sprint. */

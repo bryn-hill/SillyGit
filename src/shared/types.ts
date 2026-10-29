@@ -339,11 +339,24 @@ export interface SavedLayout {
   terminalHeight: number
   showClaude: boolean
   claudeWidth: number
-  /** Width of the commit graph's Branch / Tag column. */
-  refColumnWidth: number
+  /** Widths of the commit graph's resizable columns. */
+  graphColumns: GraphColumnWidths
+  /** Width of the Branch / Tag column, saved before the other columns could be resized. */
+  refColumnWidth?: number
   /** Widths of the side bar and detail panel; absent until dragged, so the CSS default applies. */
   sidebarWidth?: number
   detailWidth?: number
+}
+
+/**
+ * Widths of the commit graph's resizable columns; the commit message takes
+ * what's left. A graph width of 0 fits the lanes.
+ */
+export interface GraphColumnWidths {
+  refs: number
+  graph: number
+  author: number
+  date: number
 }
 
 /** What the window restores on launch. */
