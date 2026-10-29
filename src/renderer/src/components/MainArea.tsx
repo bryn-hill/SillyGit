@@ -7,6 +7,7 @@ import WorkingFileView from './WorkingFileView'
 import FileHistoryView from './FileHistoryView'
 import MergeResolver from './MergeResolver'
 import InteractiveRebase from './InteractiveRebase'
+import PanelResizer from './PanelResizer'
 import Launchpad from './Launchpad'
 import EmptyState from './EmptyState'
 import type { Repo } from '../hooks/useRepo'
@@ -90,45 +91,57 @@ export default function MainArea({
 
   const detailPanel =
     selection.type !== 'none' ? (
-      <div className="detail-panel" role="complementary" aria-label="Details">
-        <DetailPanel
-          repoPath={repoPath}
-          selection={selection}
-          lookupCommit={(hash) => repo.commitByHash.get(hash)}
-          multiActions={{
-            cherryPick: (hashes: string[]) => git.cherryPick(hashes),
-            revert: (hashes: string[]) => git.revert(hashes),
-            copyText: git.copyText,
-            select: (hash: string) => view.setSelection({ type: 'commit', hash })
-          }}
-          amend={commitBox.amend}
-          onAmendChange={commitBox.changeAmend}
-          status={status}
-          commitMessage={commitBox.message}
-          onCommitMessageChange={commitBox.setMessage}
-          onStage={git.stage}
-          onUnstage={git.unstage}
-          onDiscard={git.discard}
-          onCommit={commitBox.commit}
-          onOpenCommitFileDiff={view.openCommitFile}
-          onOpenWorkingFile={view.openWorkingFile}
-          activeFile={view.activeFile}
-          operation={operation}
-          conflictActions={{
-            onOpenConflict: view.setResolvingPath,
-            onTakeSide: conflicts.takeSide,
-            onMarkResolved: conflicts.markResolved,
-            externalToolName: settings.externalToolName,
-            onOpenExternal: (path) => void conflicts.openExternal(path),
-            onContinue: conflicts.continueOperation,
-            onAbort: conflicts.abort,
-            onSkip: conflicts.skip
-          }}
-          onEditFile={view.openEditor}
-          onOpenFileView={view.openFileView}
-          onCopyText={git.copyText}
+      <>
+        <PanelResizer
+          side="after"
+          onWidthChange={layout.setDetailWidth}
+          onReset={() => layout.setDetailWidth(undefined)}
         />
-      </div>
+        <div
+          className="detail-panel"
+          role="complementary"
+          aria-label="Details"
+          style={layout.detailWidth ? { width: layout.detailWidth } : undefined}
+        >
+          <DetailPanel
+            repoPath={repoPath}
+            selection={selection}
+            lookupCommit={(hash) => repo.commitByHash.get(hash)}
+            multiActions={{
+              cherryPick: (hashes: string[]) => git.cherryPick(hashes),
+              revert: (hashes: string[]) => git.revert(hashes),
+              copyText: git.copyText,
+              select: (hash: string) => view.setSelection({ type: 'commit', hash })
+            }}
+            amend={commitBox.amend}
+            onAmendChange={commitBox.changeAmend}
+            status={status}
+            commitMessage={commitBox.message}
+            onCommitMessageChange={commitBox.setMessage}
+            onStage={git.stage}
+            onUnstage={git.unstage}
+            onDiscard={git.discard}
+            onCommit={commitBox.commit}
+            onOpenCommitFileDiff={view.openCommitFile}
+            onOpenWorkingFile={view.openWorkingFile}
+            activeFile={view.activeFile}
+            operation={operation}
+            conflictActions={{
+              onOpenConflict: view.setResolvingPath,
+              onTakeSide: conflicts.takeSide,
+              onMarkResolved: conflicts.markResolved,
+              externalToolName: settings.externalToolName,
+              onOpenExternal: (path) => void conflicts.openExternal(path),
+              onContinue: conflicts.continueOperation,
+              onAbort: conflicts.abort,
+              onSkip: conflicts.skip
+            }}
+            onEditFile={view.openEditor}
+            onOpenFileView={view.openFileView}
+            onCopyText={git.copyText}
+          />
+        </div>
+      </>
     ) : null
 
   if (resolvingPath) {
@@ -253,6 +266,7 @@ export default function MainArea({
   return (
     <div className="main-layout">
       <Sidebar
+        width={layout.sidebarWidth}
         branches={repo.branches}
         headHash={headHash}
         onCheckout={git.checkout}
@@ -268,6 +282,11 @@ export default function MainArea({
         cleanupSnoozed={cleanup.snoozed}
         onOpenCleanup={cleanup.open}
         onSnoozeCleanup={cleanup.snooze}
+      />
+      <PanelResizer
+        side="before"
+        onWidthChange={layout.setSidebarWidth}
+        onReset={() => layout.setSidebarWidth(undefined)}
       />
       <CommitGraph
         repoPath={repoPath}

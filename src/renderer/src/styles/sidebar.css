@@ -165,3 +165,25 @@ button.tidy-banner-dismiss {
   height: 20px;
   font-size: 10px;
 }
+
+/* A drag handle between two panels; zero-width so it adds no gap, with a wider grab area. */
+.panel-resizer {
+  position: relative;
+  width: 0;
+  flex-shrink: 0;
+  z-index: 3;
+}
+
+.panel-resizer-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.panel-resizer-handle:hover {
+  background: var(--accent);
+  opacity: 0.4;
+}

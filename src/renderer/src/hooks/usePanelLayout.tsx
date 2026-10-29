@@ -5,7 +5,7 @@ import { DEFAULT_HEIGHT as DEFAULT_TERMINAL_HEIGHT } from '../components/Termina
 import { DEFAULT_CLAUDE_WIDTH } from '../components/claude/ClaudePanel'
 
 /**
- * The terminal and Claude panels and the graph's Branch / Tag column, saved
+ * The terminal and Claude panels, the side bar and detail panel widths and the graph's Branch / Tag column, saved
  * between launches. Changes are saved only once `restore` has put back the
  * previous session's layout, so the defaults never overwrite it. Ctrl+`
  * toggles the terminal and Ctrl/Cmd+Esc the Claude panel.
@@ -17,14 +17,16 @@ export function usePanelLayout() {
   const [showClaude, setShowClaude] = useState(false)
   const [claudeWidth, setClaudeWidth] = useState(DEFAULT_CLAUDE_WIDTH)
   const [refColumnWidth, setRefColumnWidth] = useState(DEFAULT_REF_COLUMN_WIDTH)
+  const [sidebarWidth, setSidebarWidth] = useState<number | undefined>()
+  const [detailWidth, setDetailWidth] = useState<number | undefined>()
 
   useEffect(() => {
     if (!restored) return
     const timer = setTimeout(() => {
-      window.api.saveLayout({ showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth })
+      window.api.saveLayout({ showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth, sidebarWidth, detailWidth })
     }, 300)
     return () => clearTimeout(timer)
-  }, [restored, showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth])
+  }, [restored, showTerminal, terminalHeight, showClaude, claudeWidth, refColumnWidth, sidebarWidth, detailWidth])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -49,6 +51,8 @@ export function usePanelLayout() {
     if (layout.showClaude !== undefined) setShowClaude(layout.showClaude)
     if (layout.claudeWidth) setClaudeWidth(layout.claudeWidth)
     if (layout.refColumnWidth) setRefColumnWidth(layout.refColumnWidth)
+    if (layout.sidebarWidth) setSidebarWidth(layout.sidebarWidth)
+    if (layout.detailWidth) setDetailWidth(layout.detailWidth)
     setRestored(true)
   }
 
@@ -63,6 +67,10 @@ export function usePanelLayout() {
     setClaudeWidth,
     refColumnWidth,
     setRefColumnWidth,
+    sidebarWidth,
+    setSidebarWidth,
+    detailWidth,
+    setDetailWidth,
     restore
   }
 }

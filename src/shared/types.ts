@@ -336,6 +336,9 @@ export interface SavedLayout {
   claudeWidth: number
   /** Width of the commit graph's Branch / Tag column. */
   refColumnWidth: number
+  /** Widths of the side bar and detail panel; absent until dragged, so the CSS default applies. */
+  sidebarWidth?: number
+  detailWidth?: number
 }
 
 /** What the window restores on launch. */

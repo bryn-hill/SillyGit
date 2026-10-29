@@ -45,6 +45,8 @@ export interface StashActions {
 }
 
 interface Props {
+  /** Dragged width; the CSS default applies until set. */
+  width?: number
   branches: BranchInfo[]
   headHash: string | null
   onCheckout: (branch: string) => void
@@ -233,6 +235,7 @@ function TreeView({
 }
 
 export default function Sidebar({
+  width,
   branches,
   headHash,
   onCheckout,
@@ -340,7 +343,7 @@ export default function Sidebar({
   }
 
   return (
-    <nav className="sidebar" aria-label="Branches">
+    <nav className="sidebar" aria-label="Branches" style={width ? { width } : undefined}>
       <div className="sidebar-filter-row">
         <input
           className="filter-input"
