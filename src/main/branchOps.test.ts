@@ -134,6 +134,8 @@ describe('branch cleanup', () => {
     const byName = Object.fromEntries(found.map((c) => [c.name, c]))
     expect(Object.keys(byName).sort()).toEqual(['done', 'gone', 'wip'])
     expect(byName.done).toMatchObject({ gone: false, mergedInto: 'origin/main', localOnly: 0 })
+    expect(byName.done.mergedVia).toMatchObject({ subject: 'Merge done', fastForward: false })
+    expect(byName.done.mergedVia?.hash).toBe(run('rev-parse', 'main~0'))
     expect(byName.gone).toMatchObject({ gone: true, mergedInto: null, localOnly: 1 })
     expect(byName.wip).toMatchObject({ gone: false, mergedInto: null, localOnly: 2 })
     expect(byName.wip.lastCommitAt).toBeGreaterThan(0)
@@ -144,6 +146,28 @@ describe('branch cleanup', () => {
     commit('next.txt')
     const found = await branches.listCleanupCandidates(dir)
     expect(found).toEqual([expect.objectContaining({ name: 'old', mergedInto: 'main' })])
+  })
+
+  it('finds the mainline commit each merged branch landed in', async () => {
+    run('checkout', '-q', '-b', 'feat')
+    commit('f1.txt')
+    commit('f2.txt')
+    run('checkout', '-q', 'main')
+    commit('m1.txt')
+    run('merge', '-q', '--no-ff', '-m', 'Merge pull request #7 from me/feat', 'feat')
+    const mergeHash = run('rev-parse', 'HEAD')
+    commit('m2.txt')
+    run('checkout', '-q', '-b', 'quick')
+    run('commit', '-q', '--allow-empty', '-m', 'Quick fix (#9)')
+    const quickTip = run('rev-parse', 'HEAD')
+    run('checkout', '-q', 'main')
+    run('merge', '-q', '--ff-only', 'quick')
+    commit('m3.txt')
+
+    const found = await branches.listCleanupCandidates(dir)
+    const byName = Object.fromEntries(found.map((c) => [c.name, c]))
+    expect(byName.feat.mergedVia).toMatchObject({ hash: mergeHash, fastForward: false, pr: 7 })
+    expect(byName.quick.mergedVia).toMatchObject({ hash: quickTip, fastForward: true, pr: 9, subject: 'Quick fix (#9)' })
   })
 
   it('deletes branches and restores them with their tracking config', async () => {

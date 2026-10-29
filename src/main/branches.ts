@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { OpenPullRequest, RepoRemote } from '../shared/types'
-import type { CleanupCandidate, DeletedBranch } from '../shared/branchCleanup'
+import { prNumber, type CleanupCandidate, type DeletedBranch, type MergeLanding } from '../shared/branchCleanup'
 import { GitError, remoteEnv, runGit } from './gitExec'
 import * as github from './github'
 import { githubAccess } from './hosting'
@@ -197,11 +197,35 @@ export async function listCleanupCandidates(repoPath: string): Promise<CleanupCa
       hash,
       gone: (track ?? '').trim() === 'gone',
       mergedInto: isMerged && base ? base.ref : null,
+      mergedVia: isMerged && base ? await mergeLanding(repoPath, hash, base.ref) : undefined,
       localOnly,
       lastCommitAt: date ? Number(date) : undefined
     })
   }
   return candidates
+}
+
+/**
+ * The oldest commit on `base`'s first-parent line that contains `tip`: the merge
+ * (or squash, or fast-forwarded commit) that brought the branch in.
+ */
+async function mergeLanding(repoPath: string, tip: string, base: string): Promise<MergeLanding | undefined> {
+  try {
+    const path = await runGit(repoPath, ['rev-list', '--first-parent', '--ancestry-path', '--reverse', `${tip}..${base}`])
+    const landing = path.split('\n')[0]?.trim()
+    if (!landing) return undefined
+    const [, parents, at, subject] = (
+      await runGit(repoPath, ['log', '-1', '--format=%H%x09%P%x09%ct%x09%s', landing])
+    ).trimEnd().split('\t')
+    // Its first parent is the tip: the tip sits on the mainline itself.
+    if (parents.split(' ')[0] === tip) {
+      const [tipAt, tipSubject] = (await runGit(repoPath, ['log', '-1', '--format=%ct%x09%s', tip])).trimEnd().split('\t')
+      return { hash: tip, subject: tipSubject, at: Number(tipAt), fastForward: true, pr: prNumber(tipSubject) }
+    }
+    return { hash: landing, subject, at: Number(at), fastForward: false, pr: prNumber(subject) }
+  } catch {
+    return undefined
+  }
 }
 
 async function configValue(repoPath: string, key: string): Promise<string | undefined> {

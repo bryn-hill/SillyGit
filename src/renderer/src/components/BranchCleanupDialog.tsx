@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import {
   groupCandidates,
   preselected,
+  shortBranch,
   type CleanupCandidate,
   type CleanupGroup
 } from '../../../shared/branchCleanup'
@@ -24,14 +25,48 @@ function pluralBranches(n: number): string {
 
 /** What the row's right-hand note says, and whether it warns about unpushed work. */
 function rowNote(c: CleanupCandidate, nowMs: number): { text: string; warn: boolean } {
-  const seconds = c.lastCommitAt !== undefined ? nowMs / 1000 - c.lastCommitAt : null
-  const age = seconds === null ? null : seconds < 24 * 60 * 60 ? 'today' : `${formatAge(seconds)} ago`
+  const age = ago(c.lastCommitAt, nowMs)
   const warn = c.localOnly > 0 && !c.mergedInto
   const parts = [
-    warn ? `${c.localOnly} unpushed` : c.mergedInto && 'merged',
+    warn ? `${c.localOnly} unpushed` : c.mergedInto && `merged into ${shortBranch(c.mergedInto)}`,
     age
   ]
   return { text: parts.filter(Boolean).join(' · '), warn }
+}
+
+function ago(unixSeconds: number | undefined, nowMs: number): string | null {
+  if (unixSeconds === undefined) return null
+  const seconds = nowMs / 1000 - unixSeconds
+  return seconds < 24 * 60 * 60 ? 'today' : `${formatAge(seconds)} ago`
+}
+
+/** The hover card on a merged branch's note: which branch, and the commit it landed in. */
+function MergedCard({ c, nowMs, at }: { c: CleanupCandidate; nowMs: number; at: DOMRect }): JSX.Element {
+  const via = c.mergedVia
+  return (
+    <div
+      className="cleanup-merged-card"
+      role="tooltip"
+      id={`cleanup-merged-${c.name}`}
+      style={{ top: at.bottom + 6, right: window.innerWidth - at.right }}
+    >
+      <div className="cleanup-merged-title">
+        {via?.fastForward ? 'Fast-forwarded into ' : 'Merged into '}
+        <strong>{c.mergedInto}</strong>
+        {via?.pr !== undefined && <span className="cleanup-merged-pr">#{via.pr}</span>}
+      </div>
+      {via ? (
+        <>
+          <div className="cleanup-merged-subject">{via.subject}</div>
+          <div className="cleanup-merged-meta">
+            {via.hash.slice(0, 7)} · {ago(via.at, nowMs)}
+          </div>
+        </>
+      ) : (
+        <div className="cleanup-merged-meta">Every commit on {c.name} is already on it.</div>
+      )}
+    </div>
+  )
 }
 
 function CleanupList({
@@ -45,6 +80,7 @@ function CleanupList({
   onDelete: (names: string[]) => void
   onClose: () => void
 }): JSX.Element {
+  const [hovered, setHovered] = useState<{ name: string; rect: DOMRect } | null>(null)
   const [checked, setChecked] = useState<Set<string>>(
     () => new Set(groups.flatMap((g) => g.candidates.filter(preselected).map((c) => c.name)))
   )
@@ -73,7 +109,7 @@ function CleanupList({
 
   return (
     <>
-      <div className="modal-body">
+      <div className="modal-body" onScroll={() => setHovered(null)}>
         {groups.map((group) => {
           const allOn = group.candidates.every((c) => checked.has(c.name))
           return (
@@ -86,6 +122,8 @@ function CleanupList({
               </div>
               {group.candidates.map((c) => {
                 const note = rowNote(c, nowMs)
+                const showMerged = !note.warn && c.mergedInto !== null
+                const cardOpen = showMerged && hovered?.name === c.name
                 return (
                   <label key={c.name} className="cleanup-row">
                     <input type="checkbox" checked={checked.has(c.name)} onChange={() => toggle(c.name)} />
@@ -94,18 +132,24 @@ function CleanupList({
                     </span>
                     {note.text && (
                       <span
-                        className={`cleanup-row-why${note.warn ? ' warn' : ''}`}
+                        className={`cleanup-row-why${note.warn ? ' warn' : ''}${showMerged ? ' merged' : ''}`}
                         title={
                           note.warn
                             ? `${c.localOnly} commit${c.localOnly === 1 ? ' is' : 's are'} on no remote branch. If it was squash-merged, that's expected.`
-                            : c.mergedInto
-                              ? `Fully merged into ${c.mergedInto}`
-                              : undefined
+                            : undefined
                         }
+                        aria-describedby={cardOpen ? `cleanup-merged-${c.name}` : undefined}
+                        onMouseEnter={
+                          showMerged
+                            ? (e) => setHovered({ name: c.name, rect: e.currentTarget.getBoundingClientRect() })
+                            : undefined
+                        }
+                        onMouseLeave={showMerged ? () => setHovered(null) : undefined}
                       >
                         {note.text}
                       </span>
                     )}
+                    {cardOpen && hovered && <MergedCard c={c} nowMs={nowMs} at={hovered.rect} />}
                   </label>
                 )
               })}

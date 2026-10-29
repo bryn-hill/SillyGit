@@ -116,6 +116,10 @@ test('the cleanup dialog deletes finished branches and Restore brings them back'
   const row = (name: string) => dialog.locator('label.cleanup-row', { hasText: name }).getByRole('checkbox')
   await expect(dialog.getByTestId('cleanup-group-gone')).toContainText('gone')
   await expect(dialog.getByTestId('cleanup-group-merged')).toContainText('done')
+  // Hovering the merged note says where it landed.
+  const mergedNote = dialog.getByTestId('cleanup-group-merged').getByText(/merged into main/)
+  await mergedNote.hover()
+  await expect(page.getByRole('tooltip')).toContainText('Fast-forwarded into origin/main')
   await expect(dialog.getByTestId('cleanup-group-stale')).toContainText('ancient')
   await expect(dialog.getByTestId('cleanup-group-stale')).toContainText('1 unpushed')
   await expect(row('gone')).toBeChecked()

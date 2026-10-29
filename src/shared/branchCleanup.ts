@@ -9,10 +9,36 @@ export interface CleanupCandidate {
   gone: boolean
   /** The branch it's fully merged into (e.g. "origin/main"), or null. */
   mergedInto: string | null
+  /** Where on `mergedInto` it landed, when that could be worked out. */
+  mergedVia?: MergeLanding
   /** Commits on it that no remote branch has. */
   localOnly: number
   /** When the tip commit was made, in Unix seconds. */
   lastCommitAt?: number
+}
+
+/** The commit on the default branch's mainline that brought a branch in. */
+export interface MergeLanding {
+  hash: string
+  subject: string
+  /** Commit time in Unix seconds. */
+  at: number
+  /** The branch's tip is itself on the mainline (fast-forwarded or rebased in), so `hash` is the tip. */
+  fastForward: boolean
+  /** The pull request number in the subject, as GitHub writes it ("Merge pull request #12", "Fix (#12)"). */
+  pr?: number
+}
+
+/** The PR number a merge or squash commit's subject names, if any. */
+export function prNumber(subject: string): number | undefined {
+  const m = /^Merge pull request #(\d+)\b/.exec(subject) ?? /\(#(\d+)\)\s*$/.exec(subject)
+  return m ? Number(m[1]) : undefined
+}
+
+/** "main" for "origin/main", for the short note on the row. */
+export function shortBranch(ref: string, remotes: readonly string[] = ['origin']): string {
+  const remote = remotes.find((r) => ref.startsWith(`${r}/`))
+  return remote ? ref.slice(remote.length + 1) : ref
 }
 
 /** What a deleted branch needs to come back exactly as it was. */

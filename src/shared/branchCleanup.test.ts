@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCount, groupCandidates, preselected, tidyCount, type CleanupCandidate } from './branchCleanup'
+import { formatCount, groupCandidates, preselected, prNumber, shortBranch, tidyCount, type CleanupCandidate } from './branchCleanup'
 import { DEFAULT_BRANCH_LIST_SETTINGS } from './branchStatus'
 import type { BranchInfo } from './types'
 
@@ -81,5 +81,21 @@ describe('formatCount', () => {
     expect(formatCount(7)).toBe('7')
     expect(formatCount(99)).toBe('99')
     expect(formatCount(100)).toBe('99+')
+  })
+})
+
+describe('prNumber', () => {
+  it('reads GitHub merge and squash subjects', () => {
+    expect(prNumber('Merge pull request #12 from me/topic')).toBe(12)
+    expect(prNumber('feat(ui): add a thing (#34)')).toBe(34)
+    expect(prNumber('fix: issue #5 again')).toBeUndefined()
+  })
+})
+
+describe('shortBranch', () => {
+  it('drops the remote name', () => {
+    expect(shortBranch('origin/main')).toBe('main')
+    expect(shortBranch('main')).toBe('main')
+    expect(shortBranch('upstream/dev', ['origin', 'upstream'])).toBe('dev')
   })
 })
