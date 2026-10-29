@@ -7,11 +7,11 @@ export const ROW_HEIGHT = 32
 const LANE_W = 24
 const AVATAR_SIZE = 18
 
-export function laneX(i: number): number {
+function laneX(i: number): number {
   return i * LANE_W + LANE_W / 2 + 4
 }
 
-export function graphWidth(maxLanes: number): number {
+function graphWidth(maxLanes: number): number {
   return maxLanes * LANE_W + 8
 }
 
