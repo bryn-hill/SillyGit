@@ -18,6 +18,8 @@ function ignored(relative: string): boolean {
   if (path.endsWith('.lock')) return true
   if (path.startsWith('.git/objects/') || path.startsWith('.git/logs/')) return true
   if (path === '.git/FETCH_HEAD' || path.startsWith('.git/fsmonitor')) return true
+  // Lanes ownership is rewritten as the lanes are read; the app refreshes itself after changing it.
+  if (path.startsWith('.git/sillygit/')) return true
   // Big dependency and build folders churn without being interesting.
   return /(^|\/)(node_modules|\.cache)\//.test(path)
 }

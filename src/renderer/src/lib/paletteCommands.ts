@@ -20,6 +20,8 @@ export interface PaletteContext {
   hasWorkingChanges: boolean
   /** The checked-out branch's stack, if it's in one: its bottom branch and whether anything in it is behind. */
   currentStack?: { id: string; needsRestack: boolean } | null
+  /** Lanes' names while they're on (applied ones first), or null when they're off. */
+  lanes?: { applied: string[]; unapplied: string[] } | null
   /** A single commit is selected that Run can act on. */
   canRunCommit: boolean
   /** Every tracked file, for the Blame and File history pickers. */
@@ -55,6 +57,10 @@ export interface PaletteContext {
     restack: (branch: string) => void
     pushStack: (branch: string) => void
     cleanUpBranches: () => void
+    startLanes: () => void
+    newLane: () => void
+    applyLane: (name?: string) => void
+    leaveLanes: () => void
     checkout: (branch: string) => void
     checkoutRemote: (branch: string) => void
     merge: (branch: string) => void
@@ -151,6 +157,16 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       } else add('stack-on', `Stack ${branch} on another branch…`, () => a.stackCurrentBranch(branch))
     }
     add('cleanup-branches', 'Clean up branches…', a.cleanUpBranches)
+    if (ctx.lanes) {
+      add('new-lane', 'New lane…', a.newLane)
+      add('apply-branch-lane', 'Apply a branch as a lane…', () => a.applyLane())
+      addList(
+        'apply-lane',
+        'Apply lane',
+        ctx.lanes.unapplied.map((name) => ({ id: name, label: `Apply lane ${name}`, run: () => a.applyLane(name) }))
+      )
+      add('leave-lanes', 'Turn off lanes…', a.leaveLanes)
+    } else if (status?.branch && !operation) add('start-lanes', 'Turn on lanes (work on several branches at once)…', a.startLanes)
     const checkouts: Command[] = []
     for (const b of branches) {
       if (b.current) continue

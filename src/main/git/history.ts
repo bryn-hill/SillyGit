@@ -39,8 +39,10 @@ export async function getGraphLog(repoPath: string, limit = GRAPH_PAGE_SIZE): Pr
   try {
     out = await runGit(repoPath, [
       'log',
-      // Stashes get their own list; their internal commits only clutter the graph.
+      // Stashes get their own list; their internal commits only clutter the graph,
+      // as do the lanes' backups and set-aside changes.
       '--exclude=refs/stash',
+      '--exclude=refs/sillygit/*',
       '--all',
       '--date-order',
       `--max-count=${limit}`,
@@ -272,6 +274,7 @@ export async function searchCommits(repoPath: string, query: string, max = 2000)
     out = await runGit(repoPath, [
       'log',
       '--exclude=refs/stash',
+      '--exclude=refs/sillygit/*',
       '--all',
       '--date-order',
       `--format=%H${US}%an${US}%ae${US}%s`

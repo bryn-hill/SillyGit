@@ -11,6 +11,7 @@ import type { Run } from './hooks/useRun'
 import type { Tabs } from './hooks/useTabs'
 import type { PanelLayout } from './hooks/usePanelLayout'
 import type { Dialogs } from './hooks/useDialogs'
+import type { Lanes } from './hooks/useLanes'
 import { paletteCommands } from './lib/paletteCommands'
 import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 
@@ -27,6 +28,7 @@ export function appCommands(app: {
   tabs: Tabs
   layout: PanelLayout
   dialogs: Dialogs
+  lanes: Lanes
   selfUpdate: SelfUpdateState | null
   hasWorkingChanges: boolean
   customCommands: CustomCommand[]
@@ -66,6 +68,10 @@ export function appCommands(app: {
     redoLabel: repo.redoLabel,
     hasWorkingChanges: app.hasWorkingChanges,
     currentStack: stack && { id: stack.id, needsRestack: stack.branches.some((b) => b.needsRestack) },
+    lanes: app.lanes.lanes && {
+      applied: app.lanes.lanes.lanes.filter((l) => l.applied).map((l) => l.name),
+      unapplied: app.lanes.lanes.lanes.filter((l) => !l.applied).map((l) => l.name)
+    },
     canRunCommit: !!run.commit,
     trackedFiles: dialogs.trackedFiles,
     tabPinned: !!repoPath && tabs.pinnedTabs.includes(repoPath),
@@ -102,6 +108,10 @@ export function appCommands(app: {
       restack: branches.stackActions.restack,
       pushStack: branches.stackActions.pushStack,
       cleanUpBranches: app.cleanup.open,
+      startLanes: () => void app.lanes.start(),
+      newLane: () => void app.lanes.createLane(),
+      applyLane: (name) => void app.lanes.applyLane(name),
+      leaveLanes: () => void app.lanes.leave(),
       checkout: git.checkout,
       checkoutRemote: git.checkoutRemote,
       merge: git.merge,

@@ -20,6 +20,8 @@ import type { BranchCleanup } from '../hooks/useBranchCleanup'
 import type { Conflicts } from '../hooks/useConflicts'
 import type { CommitBox } from '../hooks/useCommitBox'
 import type { Tabs } from '../hooks/useTabs'
+import type { Lanes } from '../hooks/useLanes'
+import { diffLanesFor } from '../lib/lanes'
 
 // Monaco is several MB, so the editor loads the first time a file is opened in it.
 const FileEditor = lazy(() => import('./FileEditor'))
@@ -35,6 +37,7 @@ interface Props {
   conflicts: Conflicts
   commitBox: CommitBox
   tabs: Tabs
+  lanes: Lanes
   hasWorkingChanges: boolean
   onOpenTerminal: () => void
   showError: (message: string) => void
@@ -57,6 +60,7 @@ export default function MainArea({
   conflicts,
   commitBox,
   tabs,
+  lanes,
   hasWorkingChanges,
   onOpenTerminal,
   showError,
@@ -144,6 +148,7 @@ export default function MainArea({
             onEditFile={view.openEditor}
             onOpenFileView={view.openFileView}
             onCopyText={git.copyText}
+            lanes={lanes}
           />
         </div>
       </>
@@ -229,6 +234,7 @@ export default function MainArea({
     )
   } else if (workingDiff && selection.type === 'working') {
     const file = (workingDiff.staged ? status?.staged : status?.unstaged)?.find((f) => f.path === workingDiff.path)
+    const diffLanes = workingDiff.staged ? null : diffLanesFor(lanes.lanes, workingDiff.path, lanes.move)
     cover = (
       <WorkingFileView
         repoPath={repoPath}
@@ -242,6 +248,7 @@ export default function MainArea({
         onEditFile={view.openEditor}
         onOpenFileView={view.openFileView}
         onWorkingTreeChanged={reload}
+        lanes={diffLanes}
       />
     )
   } else if (fullScreenHash) {

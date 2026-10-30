@@ -41,10 +41,20 @@ export function buildPartialPatch(
   const block = fileBlocks[Number(m[1])]
   const hunk = block?.hunks[Number(m[2])]
   if (!hunk) return null
-  const header = HUNK_HEADER_RE.exec(hunk.headerLine)
+  const cut = cutHunk(hunk.lines, selected, reverse)
+  return cut && [...block.headerLines, ...cut].join('\n') + '\n'
+}
+
+/**
+ * One hunk (its `@@` header line first, as `parseCommitDiff` keeps it) cut
+ * down to the body lines at `selected` the way `buildPartialPatch` does:
+ * the hunk's lines for a patch, or null when no added or removed line is left.
+ */
+export function cutHunk(hunkLines: readonly string[], selected: ReadonlySet<number> | null, reverse: boolean): string[] | null {
+  const header = HUNK_HEADER_RE.exec(hunkLines[0] ?? '')
   if (!header) return null
 
-  const body = hunk.lines.slice(1)
+  const body = hunkLines.slice(1)
   // A trailing '' is the diff text's final newline, not a line of the hunk.
   if (body.length > 0 && body[body.length - 1] === '') body.pop()
 
@@ -91,7 +101,7 @@ export function buildPartialPatch(
   // The start lines stay as they were: the side the patch is matched against
   // is unchanged by what was left out. Apply with --recount all the same.
   const hunkHeader = `@@ -${header[1]},${oldCount} +${header[2]},${newCount} @@${header[3]}`
-  return [...block.headerLines, hunkHeader, ...out].join('\n') + '\n'
+  return [hunkHeader, ...out]
 }
 
 /** Index of each added or removed line in a hunk body, for selecting all of them or ranges. */

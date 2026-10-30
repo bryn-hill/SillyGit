@@ -1,0 +1,202 @@
+/* ---------- lanes (virtual branches) ---------- */
+
+:root {
+  --lane-0: #bd93f9;
+  --lane-1: #50fa7b;
+  --lane-2: #ffb86c;
+  --lane-3: #8be9fd;
+  --lane-4: #ff79c6;
+  --lane-5: #f1fa8c;
+  --lane-6: #ff5555;
+  --lane-7: #6be5b0;
+}
+
+.lanes-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lanes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lanes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lane {
+  margin: 10px 10px 0;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--lane-color);
+  border-radius: 6px;
+  padding: 6px 6px 8px;
+  background: color-mix(in srgb, var(--lane-color) 4%, transparent);
+}
+
+.lane.drop-target {
+  border-color: var(--lane-color);
+  background: color-mix(in srgb, var(--lane-color) 14%, transparent);
+}
+
+.lane-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 6px;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.lane-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--lane-color);
+  flex-shrink: 0;
+}
+
+.lane-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.lane-default {
+  color: var(--yellow);
+  font-size: 11px;
+}
+
+.lane-chip {
+  font-size: 10px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.lane-push {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.lane-menu-button {
+  margin-left: auto;
+}
+
+.lane-empty {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 6px;
+}
+
+.lane-file-counts {
+  display: flex;
+  gap: 4px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lane-added {
+  color: var(--green);
+}
+
+.lane-removed {
+  color: var(--red);
+}
+
+.lane-commit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.lane-commit textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  min-height: 44px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.lane-commit .commit-button {
+  background: var(--lane-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-unapplied-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.lanes-drift {
+  margin: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--orange);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.lanes-drift p {
+  margin: 0 0 8px;
+}
+
+.lanes-drift-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lanes-drift-actions button.primary {
+  border-color: var(--accent);
+}
+
+.lanes-start {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+/* Each changed line in a working file's diff, edged in its lane's colour. */
+.diff-row.lane-owned,
+.diff-split-cell.lane-owned {
+  box-shadow: inset 3px 0 0 var(--lane-color);
+}
+
+.hunk-lanes {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.hunk-lane-chip {
+  font-size: 10px;
+  border-radius: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--lane-color);
+  color: var(--lane-color);
+  white-space: nowrap;
+}
+
+.detail-header-row:has(.lanes-start) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

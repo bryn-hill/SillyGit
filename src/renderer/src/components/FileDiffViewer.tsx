@@ -5,6 +5,8 @@ import { selectDiffLine, type PickedLines } from '../lib/lineSelection'
 import { highlightLine, languageForPath } from '../lib/highlight'
 import { imageMime } from '../../../shared/imageDiff'
 import ImageDiff from './ImageDiff'
+import ContextMenu from './ContextMenu'
+import { laneColor, type DiffLanes } from '../lib/lanes'
 
 type Mode = 'file' | 'diff'
 type Layout = 'unified' | 'split'
@@ -27,6 +29,18 @@ interface Props {
   onEditFile?: (path: string) => void
   /** Opens the file's history or blame view; the buttons are hidden without it. */
   onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
+  /** While lanes are on (working changes only): each line's lane, and moving lines to another. */
+  lanes?: DiffLanes
+}
+
+/** A changed line's lane, to edge it in the lane's colour. */
+type LaneOf = (line: RenderedDiffLine) => { name: string; color: number } | null
+
+/** The class and colour for a line its lane owns. */
+function laneProps(laneOf: LaneOf | undefined, line: RenderedDiffLine | null): { className: string; style?: React.CSSProperties } {
+  const lane = line && laneOf?.(line)
+  if (!lane) return { className: '' }
+  return { className: 'lane-owned', style: { '--lane-color': laneColor(lane.color) } as React.CSSProperties }
 }
 
 function renderLineHtml(text: string, lang: string | null, showWhitespace: boolean): string {
@@ -90,6 +104,7 @@ interface HunkListProps {
   onSelectLine?: (hunkId: string, index: number, extend: boolean) => void
   onClearSelection: () => void
   highlightLine?: number
+  laneOf?: LaneOf
 }
 
 interface HunkAction {
@@ -100,7 +115,8 @@ interface HunkAction {
   icon: string
   /** Whether the action can take only the selected lines. */
   lines: boolean
-  run: (hunkId: string, lines: number[] | null) => void
+  /** `at` is where the button is, for an action that opens a menu. */
+  run: (hunkId: string, lines: number[] | null, at: { x: number; y: number }) => void
 }
 
 /** Lines picked in one hunk, for the diff text they were picked from. */
@@ -113,18 +129,34 @@ function HunkBar({
   busy,
   actions,
   selected,
-  onClearSelection
+  onClearSelection,
+  laneOf
 }: {
   hunk: RenderedHunk
   busy: string | null
   actions: HunkAction[]
   selected: number[] | null
   onClearSelection: () => void
+  laneOf?: LaneOf
 }): JSX.Element {
   const count = selected?.length ?? 0
+  const lanes = new Map<string, number>()
+  if (laneOf) for (const line of hunk.lines) {
+    const lane = line.type === 'context' ? null : laneOf(line)
+    if (lane) lanes.set(lane.name, lane.color)
+  }
   return (
     <div className="diff-hunk-bar">
       <span className="diff-hunk-header-text">{hunk.header}</span>
+      {lanes.size > 0 && (
+        <span className="hunk-lanes" aria-label="Lanes">
+          {[...lanes].map(([name, color]) => (
+            <span key={name} className="hunk-lane-chip" style={{ '--lane-color': laneColor(color) } as React.CSSProperties}>
+              {name}
+            </span>
+          ))}
+        </span>
+      )}
       {actions.length > 0 && (
         <span className="hunk-actions">
           {count > 0 && (
@@ -139,7 +171,10 @@ function HunkBar({
                 key={action.verb}
                 className="hunk-revert-btn"
                 disabled={busy === hunk.id}
-                onClick={() => action.run(hunk.id, partial ? selected : null)}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  action.run(hunk.id, partial ? selected : null, { x: r.left, y: r.bottom + 4 })
+                }}
                 title={action.title}
               >
                 {action.icon}{' '}
@@ -209,7 +244,8 @@ function UnifiedDiff({
   selection,
   onSelectLine,
   onClearSelection,
-  highlightLine
+  highlightLine,
+  laneOf
 }: HunkListProps): JSX.Element {
   const highlightRef = useRef<HTMLDivElement | null>(null)
 
@@ -231,15 +267,17 @@ function UnifiedDiff({
             }}
             className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
           >
-            <HunkBar hunk={hunk} busy={busy} actions={actions} selected={selected} onClearSelection={onClearSelection} />
+            <HunkBar hunk={hunk} busy={busy} actions={actions} selected={selected} onClearSelection={onClearSelection} laneOf={laneOf} />
             {hunk.lines.map((line, li) => {
               const isHighlighted = highlightLine != null && line.newLine === highlightLine
               const checked = selected?.includes(li) ?? false
+              const lane = laneProps(laneOf, line)
               return (
                 <div
                   key={li}
                   ref={isHighlighted ? highlightRef : undefined}
-                  className={`diff-row diff-row-${line.type} ${isHighlighted ? 'diff-row-highlight' : ''} ${checked ? 'diff-row-selected' : ''}`}
+                  className={`diff-row diff-row-${line.type} ${isHighlighted ? 'diff-row-highlight' : ''} ${checked ? 'diff-row-selected' : ''} ${lane.className}`}
+                  style={lane.style}
                 >
                   <LineGutter hunkId={hunk.id} index={li} line={line} checked={checked} onSelectLine={onSelectLine}>
                     <span className="gutter-num gutter-old">{line.oldLine ?? ''}</span>
@@ -270,7 +308,8 @@ function SplitCell({
   onSelectLine,
   lang,
   showWhitespace,
-  side
+  side,
+  laneOf
 }: {
   hunkId: string
   lines: RenderedDiffLine[]
@@ -280,12 +319,14 @@ function SplitCell({
   lang: string | null
   showWhitespace: boolean
   side: 'old' | 'new'
+  laneOf?: LaneOf
 }): JSX.Element {
   const index = line ? lines.indexOf(line) : -1
   const checked = line != null && line.type !== 'context' && (selected?.includes(index) ?? false)
   const num = <span className="gutter-num">{(side === 'old' ? line?.oldLine : line?.newLine) ?? ''}</span>
+  const lane = laneProps(laneOf, line)
   return (
-    <div className={`diff-split-cell diff-row-${line?.type ?? 'blank'} ${checked ? 'diff-row-selected' : ''}`}>
+    <div className={`diff-split-cell diff-row-${line?.type ?? 'blank'} ${checked ? 'diff-row-selected' : ''} ${lane.className}`} style={lane.style}>
       {line ? (
         <LineGutter hunkId={hunkId} index={index} line={line} checked={checked} onSelectLine={onSelectLine}>
           {num}
@@ -311,7 +352,8 @@ function SplitDiff({
   actions,
   selection,
   onSelectLine,
-  onClearSelection
+  onClearSelection,
+  laneOf
 }: HunkListProps): JSX.Element {
   if (hunks.length === 0) return <div className="diff-empty">No changes.</div>
   return (
@@ -327,7 +369,7 @@ function SplitDiff({
             }}
             className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
           >
-            <HunkBar hunk={hunk} busy={busy} actions={actions} selected={selected} onClearSelection={onClearSelection} />
+            <HunkBar hunk={hunk} busy={busy} actions={actions} selected={selected} onClearSelection={onClearSelection} laneOf={laneOf} />
             <div className="diff-split-rows">
               {rows.map((row, ri) => (
                 <div key={ri} className="diff-split-row">
@@ -342,6 +384,7 @@ function SplitDiff({
                       lang={lang}
                       showWhitespace={showWhitespace}
                       side={side}
+                      laneOf={laneOf}
                     />
                   ))}
                 </div>
@@ -366,7 +409,8 @@ export default function FileDiffViewer({
   onNavigateToCommit,
   onWorkingTreeChanged,
   onEditFile,
-  onOpenFileView
+  onOpenFileView,
+  lanes
 }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('diff')
   const [layout, setLayout] = useState<Layout>('unified')
@@ -387,6 +431,7 @@ export default function FileDiffViewer({
   const [busy, setBusy] = useState<string | null>(null)
   const [picked, setPicked] = useState<LineSelection | null>(null)
   const [revertStatus, setRevertStatus] = useState<{ ok: boolean; message: string } | null>(null)
+  const [laneMenu, setLaneMenu] = useState<{ x: number; y: number; hunkId: string; lines: number[] | null } | null>(null)
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([])
 
   const lang = languageForPath(path)
@@ -509,6 +554,38 @@ export default function FileDiffViewer({
     run: (hunkId, lines) => void runHunkAction(action, hunkId, lines)
   })
 
+  // With lanes on, a change isn't staged but given to a lane: the whole hunk or the picked lines.
+  const laneHunkAction: HunkAction = {
+    verb: 'Move',
+    busyLabel: 'Moving…',
+    icon: '⇄',
+    title: 'Give this change to another lane',
+    lines: !untracked,
+    run: (hunkId, lines, at) => setLaneMenu({ ...at, hunkId, lines })
+  }
+  const laneOf: LaneOf | undefined = lanes
+    ? (line) => {
+        if (line.type === 'context') return null
+        const name = line.type === 'add' ? lanes.ownerOf('+', line.newLine ?? -1) : lanes.ownerOf('-', line.oldLine ?? -1)
+        return name ? (lanes.lanes.find((l) => l.name === name) ?? null) : null
+      }
+    : undefined
+  const moveToLane = (lane: string, hunkId: string, picked: number[] | null): void => {
+    if (!lanes) return
+    const hunk = hunks.find((h) => h.id === hunkId)
+    if (!hunk) return
+    const lines = untracked
+      ? null
+      : hunk.lines.flatMap((line, i): { kind: '+' | '-'; line: number }[] => {
+          if (picked && !picked.includes(i)) return []
+          if (line.type === 'add' && line.newLine != null) return [{ kind: '+', line: line.newLine }]
+          if (line.type === 'remove' && line.oldLine != null) return [{ kind: '-', line: line.oldLine }]
+          return []
+        })
+    setPicked(null)
+    lanes.onMove(lane, lines)
+  }
+
   // A commit's hunk is undone in the working tree. An uncommitted change can be staged or
   // unstaged a hunk or a few lines at a time, and an unstaged one discarded. A diff that
   // ignores whitespace isn't the file's real change, so it can't be applied.
@@ -517,7 +594,14 @@ export default function FileDiffViewer({
       ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory')]
       : ignoreWhitespace
         ? []
-        : staged
+        : lanes && !staged
+          ? [
+              ...(untracked
+                ? []
+                : [hunkAction('discard', 'Discard', 'Discarding…', '↺', 'Throw this change away from your working directory')]),
+              laneHunkAction
+            ]
+          : staged
           ? [hunkAction('unstage', 'Unstage', 'Unstaging…', '−', 'Take this change out of the next commit')]
           : [
               ...(untracked
@@ -667,6 +751,7 @@ export default function FileDiffViewer({
             onSelectLine={canPickLines ? selectLine : undefined}
             onClearSelection={() => setPicked(null)}
             highlightLine={highlightLine}
+            laneOf={laneOf}
           />
         ) : (
           <SplitDiff
@@ -680,9 +765,24 @@ export default function FileDiffViewer({
             selection={selection}
             onSelectLine={canPickLines ? selectLine : undefined}
             onClearSelection={() => setPicked(null)}
+            laneOf={laneOf}
           />
         )}
       </div>
+      {laneMenu && lanes && (
+        <ContextMenu
+          x={laneMenu.x}
+          y={laneMenu.y}
+          sections={[
+            lanes.lanes.map((l) => ({
+              id: `lane-${l.name}`,
+              label: `Move to ${l.name}`,
+              onSelect: () => moveToLane(l.name, laneMenu.hunkId, laneMenu.lines)
+            }))
+          ]}
+          onClose={() => setLaneMenu(null)}
+        />
+      )}
     </div>
   )
 }

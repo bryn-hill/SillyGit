@@ -6,6 +6,7 @@ import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
 import ToolButton from './topBar/ToolButton'
+import { WORKSPACE_BRANCH } from '../../../shared/lanes'
 import {
   ActionsIcon,
   BranchIcon,
@@ -209,7 +210,7 @@ export default function TopBar({
                   <BranchIcon />
                   <span className="breadcrumb-text">
                     <span className="breadcrumb-label">Branch</span>
-                    <span className="breadcrumb-value">{status.branch}</span>
+                    <span className="breadcrumb-value">{status.branch === WORKSPACE_BRANCH ? 'Lanes' : status.branch}</span>
                   </span>
                   <span className="caret">▾</span>
                 </button>
