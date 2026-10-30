@@ -28,6 +28,14 @@ import type {
 } from '../shared/prReview'
 import type { LaunchpadBucketId, LaunchpadIssue, LaunchpadPullRequest, OpenPullRequest } from '../shared/types'
 import type { Credentials, VerifiedAccount } from './providerApi'
+import {
+  AZURE_MERGE_STRATEGY,
+  AZURE_MERGE_STRATEGY_POLICY,
+  azureMergeMethods as mergeMethodsFromPolicies,
+  type AzurePolicyConfiguration,
+  type PrMergeMethod,
+  type PrMergeMethods
+} from '../shared/mergeOptions'
 
 // Azure DevOps (Azure Repos and Azure Boards) through its REST API, with a
 // personal access token. Pull requests here are shaped like GitHub's, so
@@ -304,13 +312,26 @@ function getPullRequest(access: AzureAccess, id: number): Promise<AzPullRequest>
 }
 
 /** Completes (merges) a pull request with a merge commit, as Launchpad's Merge does on GitHub. */
-export async function azureMergePullRequest(access: AzureAccess, id: number): Promise<void> {
+export async function azureMergePullRequest(access: AzureAccess, id: number, method: PrMergeMethod = 'merge'): Promise<void> {
   const pr = await getPullRequest(access, id)
   await call(access, 'PATCH', repoApi(access.repo, `pullrequests/${id}`), {
     status: 'completed',
     lastMergeSourceCommit: pr.lastMergeSourceCommit,
-    completionOptions: { mergeStrategy: 'noFastForward' }
+    completionOptions: { mergeStrategy: AZURE_MERGE_STRATEGY[method] }
   })
+}
+
+/** The merge methods the target branch's "Require a merge strategy" policies allow. */
+export async function azureMergeMethods(access: AzureAccess, id: number): Promise<PrMergeMethods> {
+  const [pr, policies] = await Promise.all([
+    getPullRequest(access, id),
+    call<{ value: AzurePolicyConfiguration[] }>(
+      access,
+      'GET',
+      `${projectUrl(access.repo)}/_apis/policy/configurations?policyType=${AZURE_MERGE_STRATEGY_POLICY}`
+    )
+  ])
+  return mergeMethodsFromPolicies(policies.value, pr.repository?.id, pr.targetRefName)
 }
 
 // ---- Review --------------------------------------------------------------

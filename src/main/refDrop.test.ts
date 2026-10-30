@@ -88,6 +88,53 @@ describe('mergeInto', () => {
   })
 })
 
+describe('mergeInto with a strategy', () => {
+  it('always makes a merge commit with no-ff, even when it could fast-forward', async () => {
+    addAheadBranch()
+    expect(await mergeInto(repo.path, 'ahead', 'main', 'no-ff')).toEqual({ conflicts: false })
+    expect(subjects('main')[0]).toBe("Merge branch 'ahead'")
+  })
+
+  it('fast-forwards with ff-only, and refuses diverged branches', async () => {
+    addAheadBranch()
+    expect(await mergeInto(repo.path, 'ahead', 'main', 'ff-only')).toEqual({ conflicts: false })
+    expect(rev('main')).toBe(rev('ahead'))
+    repo.addFeatureBranch()
+    await expect(mergeInto(repo.path, 'feature', 'main', 'ff-only')).rejects.toThrow(/have diverged/)
+  })
+
+  it('stages a squash without committing, with a message to start from', async () => {
+    repo.addFeatureBranch()
+    const before = rev('main')
+    expect(await mergeInto(repo.path, 'feature', 'main', 'squash')).toEqual({
+      conflicts: false,
+      squashed: true,
+      message: "Squash merge branch 'feature'"
+    })
+    expect(rev('main')).toBe(before)
+    expect(repo.git('diff', '--cached', '--name-only').trim()).toBe('feature.txt')
+    expect(await getOperationState(repo.path)).toBeNull()
+  })
+
+  it('says when a squash has nothing to bring in', async () => {
+    repo.addFeatureBranch()
+    repo.git('merge', '-q', '--no-edit', 'feature')
+    expect(await mergeInto(repo.path, 'feature', 'main', 'squash')).toEqual({ conflicts: false, nothingToSquash: true })
+  })
+
+  it('reports a squash that stops on conflicts', async () => {
+    repo.addConflictingBranch()
+    expect(await mergeInto(repo.path, 'feature', 'main', 'squash')).toMatchObject({ conflicts: true, squashed: true })
+  })
+
+  it('refuses to squash on top of staged changes', async () => {
+    repo.addFeatureBranch()
+    repo.writeFile('hello.txt', 'edited\n')
+    repo.git('add', 'hello.txt')
+    await expect(mergeInto(repo.path, 'feature', 'main', 'squash')).rejects.toThrow(/staged changes/)
+  })
+})
+
 describe('rebaseBranchOnto', () => {
   it('rebases a branch that is not checked out and leaves it checked out', async () => {
     repo.addFeatureBranch()

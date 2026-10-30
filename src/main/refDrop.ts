@@ -1,5 +1,6 @@
 import type { ConflictableResult, DropRelation } from '../shared/types'
-import { getOperationState, runMayConflict } from './conflicts'
+import { getOperationState, mergeBranch, runMayConflict } from './conflicts'
+import type { MergeResult, MergeStrategy } from '../shared/mergeOptions'
 import { GitError, runGit } from './gitExec'
 
 // What dragging a branch or commit onto another branch on the graph does,
@@ -58,10 +59,15 @@ async function checkoutFor(repoPath: string, branch: string, what: string): Prom
   await runGit(repoPath, ['checkout', branch])
 }
 
-/** Merges `source` into the local branch `target`. */
-export async function mergeInto(repoPath: string, source: string, target: string): Promise<ConflictableResult> {
+/** Merges `source` into the local branch `target` with `strategy`. */
+export async function mergeInto(
+  repoPath: string,
+  source: string,
+  target: string,
+  strategy: MergeStrategy = 'default'
+): Promise<MergeResult> {
   await checkoutFor(repoPath, target, `merge ${source} into it`)
-  return runMayConflict(repoPath, ['merge', '--no-edit', source], NO_EDITOR)
+  return mergeBranch(repoPath, source, strategy)
 }
 
 /** Rebases the local branch `branch` onto `onto`, leaving `branch` checked out. */

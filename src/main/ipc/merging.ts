@@ -9,6 +9,7 @@ import type { BisectVerdict } from '../../shared/bisect'
 import * as refDrop from '../refDrop'
 import * as ai from '../ai'
 import type { RebaseStep } from '../../shared/rebase'
+import type { MergeStrategy } from '../../shared/mergeOptions'
 import type { ConflictSnapshot, RenameKeep } from '../../shared/types'
 import { wrap } from './wrap'
 
@@ -30,8 +31,8 @@ export function registerMergeHandlers(): void {
 
   ipcMain.handle('git:bisect-reset', (_e, repoPath: string) => wrap(() => bisect.resetBisect(repoPath)))
 
-  ipcMain.handle('git:merge-branch', (_e, repoPath: string, branch: string) =>
-    wrap(() => conflicts.mergeBranch(repoPath, branch))
+  ipcMain.handle('git:merge-branch', (_e, repoPath: string, branch: string, strategy?: MergeStrategy) =>
+    wrap(() => conflicts.mergeBranch(repoPath, branch, strategy))
   )
 
   ipcMain.handle('git:rebase-onto', (_e, repoPath: string, branch: string) =>
@@ -64,8 +65,8 @@ export function registerMergeHandlers(): void {
     wrap(() => refDrop.dropRelation(repoPath, source, target))
   )
 
-  ipcMain.handle('git:merge-into', (_e, repoPath: string, source: string, target: string) =>
-    wrap(() => refDrop.mergeInto(repoPath, source, target))
+  ipcMain.handle('git:merge-into', (_e, repoPath: string, source: string, target: string, strategy?: MergeStrategy) =>
+    wrap(() => refDrop.mergeInto(repoPath, source, target, strategy))
   )
 
   ipcMain.handle('git:rebase-branch-onto', (_e, repoPath: string, branch: string, onto: string) =>

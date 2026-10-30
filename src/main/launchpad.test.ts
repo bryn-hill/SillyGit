@@ -46,16 +46,20 @@ vi.mock('./azure', () => ({
   azureAssignedWorkItems: async (_access: unknown, repoPath: string) => [
     { number: 12, title: 'Work item', repoPath, repoName: 'web', updatedAt: '2026-10-29T00:00:00Z', provider: 'azure' }
   ],
-  azureMergePullRequest: async (_access: unknown, n: number) => void fake.merged.push(`azure#${n}`)
+  azureMergePullRequest: async (_access: unknown, n: number, method = 'merge') =>
+    void fake.merged.push(`azure#${n}${method === 'merge' ? '' : `:${method}`}`),
+  azureMergeMethods: async () => ({ allowed: ['squash'], known: true })
 }))
 
 vi.mock('./github', () => ({
   launchpadPullRequests: (_creds: unknown, repo: { name: string }) => fake.api(repo.name),
   assignedIssues: (_creds: unknown, repo: { name: string }) => fake.apiIssues(repo.name),
-  mergePullRequest: async (_creds: unknown, repo: { name: string }, n: number) => void fake.merged.push(`${repo.name}#${n}`)
+  mergePullRequest: async (_creds: unknown, repo: { name: string }, n: number, method = 'merge') =>
+    void fake.merged.push(`${repo.name}#${n}${method === 'merge' ? '' : `:${method}`}`),
+  mergeMethods: async () => ({ allowed: ['merge', 'rebase'], known: true })
 }))
 
-import { getLaunchpadData, mergePullRequest } from './launchpad'
+import { getLaunchpadData, mergePullRequest, pullRequestMergeMethods } from './launchpad'
 import { HttpError } from './http'
 
 const pr = (number: number, extra: Partial<GhStylePullRequest> = {}): GhStylePullRequest => ({
@@ -345,5 +349,32 @@ describe('mergePullRequest', () => {
     fake.gh = gh
     await mergePullRequest('/repos/cli', 7)
     expect(gh).toHaveBeenCalledWith('/repos/cli', ['pr', 'merge', '7', '--merge'])
+  })
+
+  it('uses the picked method on each host', async () => {
+    fake.access.set('/repos/api', access('ada'))
+    await mergePullRequest('/repos/api', 4, 'squash')
+    fake.azure.set('/repos/web', { account: { username: 'ada@contoso.com' } })
+    await mergePullRequest('/repos/web', 70, 'rebase')
+    expect(fake.merged).toEqual(['api-repo#4:squash', 'azure#70:rebase'])
+
+    const gh = vi.fn(async () => '')
+    fake.gh = gh
+    await mergePullRequest('/repos/cli', 7, 'squash')
+    expect(gh).toHaveBeenCalledWith('/repos/cli', ['pr', 'merge', '7', '--squash'])
+  })
+})
+
+describe('pullRequestMergeMethods', () => {
+  it('asks the API, Azure DevOps, or gh for the allowed methods', async () => {
+    fake.access.set('/repos/api', access('ada'))
+    expect(await pullRequestMergeMethods('/repos/api', 4)).toEqual({ allowed: ['merge', 'rebase'], known: true })
+    fake.azure.set('/repos/web', { account: { username: 'ada@contoso.com' } })
+    expect(await pullRequestMergeMethods('/repos/web', 70)).toEqual({ allowed: ['squash'], known: true })
+
+    const gh = vi.fn(async () => JSON.stringify({ mergeCommitAllowed: false, squashMergeAllowed: true, rebaseMergeAllowed: false }))
+    fake.gh = gh
+    expect(await pullRequestMergeMethods('/repos/cli', 7)).toEqual({ allowed: ['squash'], known: true })
+    expect(gh).toHaveBeenCalledWith('/repos/cli', ['repo', 'view', '--json', 'mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed'])
   })
 })

@@ -4,7 +4,14 @@ import { promisify } from 'util'
 import { LAUNCHPAD_BUCKET_ORDER } from '../shared/launchpad'
 import * as github from './github'
 import { azureAccess, githubAccess, type GithubAccess } from './hosting'
-import { azureAssignedWorkItems, azureLaunchpad, azureMergePullRequest, type AzureAccess } from './azure'
+import {
+  azureAssignedWorkItems,
+  azureLaunchpad,
+  azureMergeMethods,
+  azureMergePullRequest,
+  type AzureAccess
+} from './azure'
+import { githubMergeMethods, type PrMergeMethod, type PrMergeMethods } from '../shared/mergeOptions'
 import { HttpError } from './http'
 import type {
   LaunchpadBucketId,
@@ -335,10 +342,29 @@ export async function getLaunchpadData(repoPaths: string[]): Promise<LaunchpadDa
   return { connected: true, login, pullRequests, issues, skippedRepos }
 }
 
-export async function mergePullRequest(repoPath: string, number: number): Promise<void> {
+/** The merge methods pull request `number`'s repository allows, so Launchpad offers only those. */
+export async function pullRequestMergeMethods(repoPath: string, number: number): Promise<PrMergeMethods> {
   const az = await azureAccess(repoPath)
-  if (az) return azureMergePullRequest(az, number)
+  if (az) return azureMergeMethods(az, number)
   const access = await githubAccess(repoPath)
-  if (access) await github.mergePullRequest(access.creds, access.repo, number)
-  else await execFileAsync('gh', ['pr', 'merge', String(number), '--merge'], { cwd: repoPath })
+  if (access) return github.mergeMethods(access.creds, access.repo)
+  const { stdout } = await execFileAsync(
+    'gh',
+    ['repo', 'view', '--json', 'mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed'],
+    { cwd: repoPath }
+  )
+  const flags = JSON.parse(stdout) as { mergeCommitAllowed?: boolean; squashMergeAllowed?: boolean; rebaseMergeAllowed?: boolean }
+  return githubMergeMethods({
+    allow_merge_commit: flags.mergeCommitAllowed,
+    allow_squash_merge: flags.squashMergeAllowed,
+    allow_rebase_merge: flags.rebaseMergeAllowed
+  })
+}
+
+export async function mergePullRequest(repoPath: string, number: number, method: PrMergeMethod = 'merge'): Promise<void> {
+  const az = await azureAccess(repoPath)
+  if (az) return azureMergePullRequest(az, number, method)
+  const access = await githubAccess(repoPath)
+  if (access) await github.mergePullRequest(access.creds, access.repo, number, method)
+  else await execFileAsync('gh', ['pr', 'merge', String(number), `--${method}`], { cwd: repoPath })
 }

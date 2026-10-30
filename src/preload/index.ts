@@ -202,8 +202,12 @@ const api = {
     hash?: string
   ): Wrapped<import('../shared/bisect').BisectState | null> => ipcRenderer.invoke('git:bisect-mark', repoPath, verdict, hash),
   bisectReset: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:bisect-reset', repoPath),
-  mergeBranch: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>
-    ipcRenderer.invoke('git:merge-branch', repoPath, branch),
+  mergeBranch: (
+    repoPath: string,
+    branch: string,
+    strategy?: import('../shared/mergeOptions').MergeStrategy
+  ): Wrapped<import('../shared/mergeOptions').MergeResult> =>
+    ipcRenderer.invoke('git:merge-branch', repoPath, branch, strategy),
   rebaseOnto: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:rebase-onto', repoPath, branch),
   planInteractiveRebase: (repoPath: string, base: string): Wrapped<import('../shared/rebase').RebasePlan> =>
@@ -231,8 +235,13 @@ const api = {
     ipcRenderer.invoke('git:absorb', repoPath, planHead, planDiff, assignments),
   dropRelation: (repoPath: string, source: string, target: string): Wrapped<import('../shared/types').DropRelation> =>
     ipcRenderer.invoke('git:drop-relation', repoPath, source, target),
-  mergeInto: (repoPath: string, source: string, target: string): Wrapped<import('../shared/types').ConflictableResult> =>
-    ipcRenderer.invoke('git:merge-into', repoPath, source, target),
+  mergeInto: (
+    repoPath: string,
+    source: string,
+    target: string,
+    strategy?: import('../shared/mergeOptions').MergeStrategy
+  ): Wrapped<import('../shared/mergeOptions').MergeResult> =>
+    ipcRenderer.invoke('git:merge-into', repoPath, source, target, strategy),
   rebaseBranchOnto: (repoPath: string, branch: string, onto: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:rebase-branch-onto', repoPath, branch, onto),
   fastForward: (repoPath: string, target: string, source: string): Wrapped<void> =>
@@ -470,8 +479,17 @@ const api = {
 
   launchpadGetData: (repoPaths: string[]): Wrapped<import('../shared/types').LaunchpadData> =>
     ipcRenderer.invoke('launchpad:get-data', repoPaths),
-  launchpadMergePr: (repoPath: string, number: number): Wrapped<void> =>
-    ipcRenderer.invoke('launchpad:merge-pr', repoPath, number),
+  /** The merge methods the pull request's repository allows into `baseRefName`. */
+  launchpadMergeMethods: (
+    repoPath: string,
+    number: number
+  ): Wrapped<import('../shared/mergeOptions').PrMergeMethods> =>
+    ipcRenderer.invoke('launchpad:merge-methods', repoPath, number),
+  launchpadMergePr: (
+    repoPath: string,
+    number: number,
+    method: import('../shared/mergeOptions').PrMergeMethod
+  ): Wrapped<void> => ipcRenderer.invoke('launchpad:merge-pr', repoPath, number, method),
   /** Fetches pull request `number` and checks it out as a local branch (see prCheckout.ts). */
   checkoutPullRequest: async (
     repoPath: string,

@@ -1,5 +1,6 @@
 import type { PullMode } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
+import type { PrMergeMethod } from '../../../shared/mergeOptions'
 
 // Small per-machine choices kept in localStorage. Storage can be unavailable,
 // so reads fall back to the default and failed writes are ignored.
@@ -37,6 +38,28 @@ export function loadRunMode(): RunMode {
 export function saveRunMode(mode: RunMode): void {
   try {
     localStorage.setItem(RUN_MODE_KEY, mode)
+  } catch {
+    // Not remembering it is fine.
+  }
+}
+
+const PR_MERGE_METHOD_KEY = 'sillygit.prMergeMethod'
+
+/** The merge method last used for a pull request in `repoPath`. */
+export function loadPrMergeMethod(repoPath: string): PrMergeMethod | null {
+  try {
+    const saved = (JSON.parse(localStorage.getItem(PR_MERGE_METHOD_KEY) ?? '{}') as Record<string, unknown>)[repoPath]
+    if (saved === 'merge' || saved === 'squash' || saved === 'rebase') return saved
+  } catch {
+    // Fall back to the repository's first allowed method.
+  }
+  return null
+}
+
+export function savePrMergeMethod(repoPath: string, method: PrMergeMethod): void {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PR_MERGE_METHOD_KEY) ?? '{}') as Record<string, unknown>
+    localStorage.setItem(PR_MERGE_METHOD_KEY, JSON.stringify({ ...saved, [repoPath]: method }))
   } catch {
     // Not remembering it is fine.
   }

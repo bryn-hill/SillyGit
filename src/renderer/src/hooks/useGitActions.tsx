@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ConflictableResult, FileStatus, FixupResult, PullMode, StashEntry } from '../../../shared/types'
 import type { RebasePlan, RebaseStep } from '../../../shared/rebase'
+import type { MergeResult, MergeStrategy } from '../../../shared/mergeOptions'
 import type { DragSource, DropOption } from '../lib/refDrag'
 import type { IpcResult } from '../lib/ipc'
 import { loadPullMode, savePullMode } from '../lib/preferences'
@@ -20,7 +21,8 @@ export function useGitActions({
   view,
   askText,
   showError,
-  setNotice
+  setNotice,
+  prefillCommitMessage
 }: {
   repo: Repo
   git: GitRunner
@@ -28,6 +30,8 @@ export function useGitActions({
   askText: (request: PromptRequest) => Promise<string | null>
   showError: (message: string | null) => void
   setNotice: (message: string | null) => void
+  /** Starts the commit message box on `message` unless something is typed there. */
+  prefillCommitMessage: (message: string) => void
 }) {
   const { repoPath, undoLabel, redoLabel, refresh } = repo
   const { runGit, runGitThen, withBusy } = git
@@ -112,7 +116,26 @@ export function useGitActions({
 
   const checkoutRemote = (name: string): void => runGit((path) => window.api.checkoutRemoteBranch(path, name))
 
-  const merge = (branch: string): void => runConflictable((path) => window.api.mergeBranch(path, branch))
+  /**
+   * Runs a merge. A squash merge leaves the branch's changes staged, so the
+   * working changes open with a message ready to commit.
+   */
+  const runMerge = (branch: string, call: (path: string) => Promise<IpcResult<MergeResult>>): void =>
+    runGitThen(call, (data) => {
+      if (data.nothingToSquash) {
+        setNotice(`${branch} has no changes to squash in.`)
+        return
+      }
+      if (data.message) prefillCommitMessage(data.message)
+      if (data.conflicts) view.showConflicts()
+      else if (data.squashed) {
+        view.goToWorkingChanges()
+        setNotice(`Squashed ${branch}: its changes are staged. Commit them to finish the merge.`)
+      }
+    })
+
+  const merge = (branch: string, strategy?: MergeStrategy): void =>
+    runMerge(branch, (path) => window.api.mergeBranch(path, branch, strategy))
 
   const rebase = (branch: string): void => runConflictable((path) => window.api.rebaseOnto(path, branch))
 
@@ -183,7 +206,7 @@ export function useGitActions({
     if (source.kind === 'commits') {
       runConflictable((path) => window.api.cherryPickOnto(path, source.hashes, target))
     } else if (option.action === 'merge') {
-      runConflictable((path) => window.api.mergeInto(path, source.name, target))
+      runMerge(source.name, (path) => window.api.mergeInto(path, source.name, target, option.strategy))
     } else if (option.action === 'rebase') {
       runConflictable((path) => window.api.rebaseBranchOnto(path, source.name, target))
     } else if (option.action === 'fast-forward') {

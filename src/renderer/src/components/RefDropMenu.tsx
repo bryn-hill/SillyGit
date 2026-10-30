@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import ContextMenu from './ContextMenu'
+import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import RefDragLayer from './RefDrag'
 import { shortRef } from './RefContextMenu'
 import { dropOptions, type DragSource, type DropOption } from '../lib/refDrag'
@@ -10,6 +10,18 @@ interface DropMenu {
   source: DragSource
   target: string
   options: DropOption[]
+}
+
+function menuItem(option: DropOption, pick: (option: DropOption) => void): ContextMenuItem {
+  return {
+    id: option.submenu ? `${option.action}-with` : option.strategy ? `${option.action}-${option.strategy}` : option.action,
+    label: option.label,
+    title: option.title,
+    disabled: option.disabled,
+    ...(option.submenu
+      ? { submenu: option.submenu.map((o) => menuItem(o, pick)) }
+      : { onSelect: () => pick(option) })
+  }
 }
 
 /**
@@ -47,15 +59,7 @@ export default function RefDropMenu({
         <ContextMenu
           x={menu.x}
           y={menu.y}
-          sections={[
-            menu.options.map((option) => ({
-              id: option.action,
-              label: option.label,
-              title: option.title,
-              disabled: option.disabled,
-              onSelect: () => onPick(menu.source, menu.target, option)
-            }))
-          ]}
+          sections={[menu.options.map((option) => menuItem(option, (o) => onPick(menu.source, menu.target, o)))]}
           onClose={() => setMenu(null)}
         />
       )}

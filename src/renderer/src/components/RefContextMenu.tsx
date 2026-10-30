@@ -8,6 +8,7 @@ import { useCustomCommandMenu } from '../lib/customCommandMenu'
 import { useBisectMenu } from '../lib/bisectMenu'
 import { useJiraSites } from '../lib/jira'
 import { jiraKeyInBranch } from '../../../shared/jira'
+import { MERGE_STRATEGY_CHOICES, type MergeStrategy } from '../../../shared/mergeOptions'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 const MAX_REF_LENGTH = 36
@@ -35,7 +36,7 @@ export interface RefTarget {
 export interface RefActions extends StackActions, GitFlowActions {
   checkout: (refOrHash: string) => void
   checkoutRemote: (name: string) => void
-  merge: (branch: string) => void
+  merge: (branch: string, strategy?: MergeStrategy) => void
   rebase: (branch: string) => void
   createWorktree: (ref: string, kind: 'local' | 'remote' | 'commit') => void
   createBranchAt: (hash: string) => void
@@ -127,6 +128,17 @@ export default function RefContextMenu({
   if (target && !target.current) {
     sections.push([
       { id: 'merge', label: `Merge ${name} into ${shortInto}`, onSelect: () => actions.merge(target.name) },
+      {
+        id: 'merge-with',
+        label: `Merge ${name} into ${shortInto} with…`,
+        title: `Merge ${target.name} into ${into} with…`,
+        submenu: MERGE_STRATEGY_CHOICES.map(({ strategy, label, hint }) => ({
+          id: `merge-${strategy}`,
+          label,
+          title: hint,
+          onSelect: () => actions.merge(target.name, strategy)
+        }))
+      },
       { id: 'rebase', label: `Rebase ${shortInto} onto ${name}`, onSelect: () => actions.rebase(target.name) }
     ])
   }

@@ -14,6 +14,8 @@ const article: HelpArticle = {
 | a branch | another branch | merge it in, rebase onto it, or fast-forward |
 | one or more commits | a branch | cherry-pick them onto it |
 
+Next to **Merge** is **Merge … with…**, to always make a merge commit, fast-forward only, or squash the branch into one commit. See [Merge options](help:branches/branch-menu).
+
 SillyGit checks the target branch out first, and refuses if you have uncommitted changes to tracked files or another operation is in progress. Press **Esc** while dragging to cancel. Near the top or bottom of the graph the list scrolls for you.
 
 ## Example

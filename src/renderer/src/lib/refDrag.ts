@@ -1,4 +1,5 @@
 import type { DropRelation } from '../../../shared/types'
+import { MERGE_STRATEGY_CHOICES, type MergeStrategy } from '../../../shared/mergeOptions'
 
 /** What's being dragged on the graph or sidebar. */
 export type DragSource =
@@ -20,6 +21,10 @@ export interface DropOption {
   disabled?: boolean
   /** Why it's disabled, or the full text when the label is shortened. */
   title?: string
+  /** Merge only: how to merge; git's default when left out. */
+  strategy?: MergeStrategy
+  /** Other ways to do it, shown as a submenu. */
+  submenu?: DropOption[]
 }
 
 export function sourceName(source: DragSource): string {
@@ -69,6 +74,11 @@ export function dropOptions(
   const options: DropOption[] = []
   if (relation.sourceContainsTarget) options.push(option('fast-forward', (s, t) => `Fast-forward ${t} to ${s}`))
   options.push(option('merge', (s, t) => `Merge ${s} into ${t}`))
+  options.push({
+    action: 'merge',
+    label: `Merge ${short(sourceName(source))} into ${short(target)} with…`,
+    submenu: MERGE_STRATEGY_CHOICES.map(({ strategy, label, hint }) => ({ action: 'merge', label, title: hint, strategy }))
+  })
   if (!source.remote && !relation.sourceContainsTarget) options.push(option('rebase', (s, t) => `Rebase ${s} onto ${t}`))
   return options
 }

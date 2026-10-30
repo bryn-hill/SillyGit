@@ -14,6 +14,7 @@ describe('dropOptions', () => {
   it('offers merge and rebase for diverged branches', () => {
     expect(labels(dropOptions(branch('feature'), 'main', rel(false, false)))).toEqual([
       'Merge feature into main',
+      'Merge feature into main with…',
       'Rebase feature onto main'
     ])
   })
@@ -21,13 +22,24 @@ describe('dropOptions', () => {
   it('offers a fast-forward when the target is behind, and no rebase', () => {
     expect(labels(dropOptions(branch('feature'), 'main', rel(false, true)))).toEqual([
       'Fast-forward main to feature',
-      'Merge feature into main'
+      'Merge feature into main',
+      'Merge feature into main with…'
     ])
   })
 
   it('never offers to rebase a remote branch', () => {
     expect(labels(dropOptions(branch('origin/feature', true), 'main', rel(false, false)))).toEqual([
-      'Merge origin/feature into main'
+      'Merge origin/feature into main',
+      'Merge origin/feature into main with…'
+    ])
+  })
+
+  it('offers the other merge strategies in a submenu', () => {
+    const withMenu = dropOptions(branch('feature'), 'main', rel(false, false)).find((o) => o.submenu)
+    expect(withMenu?.submenu?.map((o) => [o.action, o.strategy])).toEqual([
+      ['merge', 'no-ff'],
+      ['merge', 'ff-only'],
+      ['merge', 'squash']
     ])
   })
 

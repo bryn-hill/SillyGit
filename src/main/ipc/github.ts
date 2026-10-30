@@ -8,6 +8,7 @@ import type { PullRequestHead } from '../../shared/prCheckout'
 import * as createPr from '../createPullRequest'
 import type { CreatePullRequestInput } from '../../shared/createPullRequest'
 import type { SubmitReviewInput } from '../../shared/prReview'
+import type { PrMergeMethod } from '../../shared/mergeOptions'
 import { wrap } from './wrap'
 
 /** Launchpad, its GitHub and Jira issues and starting work on them, and creating and reviewing pull requests in the app. */
@@ -16,8 +17,12 @@ export function registerGithubHandlers(): void {
     wrap(() => launchpad.getLaunchpadData(repoPaths))
   )
 
-  ipcMain.handle('launchpad:merge-pr', (_e, repoPath: string, number: number) =>
-    wrap(() => launchpad.mergePullRequest(repoPath, number))
+  ipcMain.handle('launchpad:merge-methods', (_e, repoPath: string, number: number) =>
+    wrap(() => launchpad.pullRequestMergeMethods(repoPath, number))
+  )
+
+  ipcMain.handle('launchpad:merge-pr', (_e, repoPath: string, number: number, method?: PrMergeMethod) =>
+    wrap(() => launchpad.mergePullRequest(repoPath, number, method))
   )
 
   // Checking out a pull request is two calls (the preload's checkoutPullRequest

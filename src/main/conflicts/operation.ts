@@ -3,6 +3,7 @@ import { join } from 'path'
 import type { ConflictableResult, OperationState } from '../../shared/types'
 import { parseBisectRefs, parseTerms, summarizeBisect, type BisectState } from '../../shared/bisect'
 import { GitError, runGit } from '../gitExec'
+import { mergeArgs, squashMessage, type MergeResult, type MergeStrategy } from '../../shared/mergeOptions'
 
 // The merge, rebase, cherry-pick or revert in progress: reading its state
 // from the git directory, starting merges and rebases, and continuing,
@@ -212,8 +213,49 @@ async function runRebase(repoPath: string, args: string[]): Promise<Conflictable
   }
 }
 
-export async function mergeBranch(repoPath: string, branch: string): Promise<ConflictableResult> {
-  return runMayConflict(repoPath, ['merge', '--no-edit', branch], NO_EDITOR)
+async function hasStagedChanges(repoPath: string): Promise<boolean> {
+  return runGit(repoPath, ['diff', '--cached', '--quiet']).then(
+    () => false,
+    () => true
+  )
+}
+
+/**
+ * Merges `branch` into the checked-out branch with `strategy`. A squash
+ * stages the branch's changes for the user to commit; git leaves no merge in
+ * progress for it, so its conflicts are just unmerged files.
+ */
+export async function mergeBranch(
+  repoPath: string,
+  branch: string,
+  strategy: MergeStrategy = 'default'
+): Promise<MergeResult> {
+  const args = mergeArgs(branch, strategy)
+  if (strategy === 'ff-only') {
+    try {
+      await runGit(repoPath, args)
+      return { conflicts: false }
+    } catch (err) {
+      if (/not possible to fast-forward|diverging/i.test(String((err as Error).message))) {
+        throw new GitError(`Can't fast-forward to ${branch}: the branches have diverged. Merge or rebase instead.`)
+      }
+      throw err
+    }
+  }
+  if (strategy !== 'squash') return runMayConflict(repoPath, args, NO_EDITOR)
+
+  if (await hasStagedChanges(repoPath)) {
+    throw new GitError('Commit or unstage your staged changes first: a squash merge stages the branch\'s changes.')
+  }
+  const message = squashMessage(branch)
+  try {
+    await runGit(repoPath, args)
+  } catch (err) {
+    if (await hasUnmergedPaths(repoPath)) return { conflicts: true, squashed: true, message }
+    throw err
+  }
+  if (!(await hasStagedChanges(repoPath))) return { conflicts: false, nothingToSquash: true }
+  return { conflicts: false, squashed: true, message }
 }
 
 export async function rebaseOnto(repoPath: string, branch: string): Promise<ConflictableResult> {

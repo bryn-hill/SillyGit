@@ -4,6 +4,7 @@ import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_O
 import { timeAgo } from '../lib/timeAgo'
 import PullRequestReview from './PullRequestReview'
 import StartWorkDialog, { type WorkItem } from './StartWorkDialog'
+import MergePullRequestDialog from './MergePullRequestDialog'
 import { issueBranchName } from '../../../shared/issues'
 import { jiraBranchName, type JiraIssue, type JiraIssues } from '../../../shared/jira'
 
@@ -220,7 +221,8 @@ export default function Launchpad({
   const [answered, setAnswered] = useState<{ request: string; error: string | null } | null>(null)
   const [reloads, setReloads] = useState(0)
   const [actionError, setError] = useState<string | null>(null)
-  const [mergingNumber, setMergingNumber] = useState<number | null>(null)
+  // The pull request whose merge dialog is open.
+  const [merging, setMerging] = useState<LaunchpadPullRequest | null>(null)
   // The card whose Check out is running (repoPath#number).
   const [checkingOut, setCheckingOut] = useState<string | null>(null)
   const [workspaceRepos, setWorkspaceRepos] = useState<string[]>([])
@@ -278,19 +280,6 @@ export default function Launchpad({
     }
   }, [reloads])
 
-  const handleMerge = (pr: LaunchpadPullRequest): void => {
-    const ok = window.confirm(`Merge #${pr.number} "${pr.title}" into ${pr.baseRefName}?`)
-    if (!ok) return
-    setMergingNumber(pr.number)
-    window.api.launchpadMergePr(pr.repoPath, pr.number).then((res) => {
-      setMergingNumber(null)
-      if (!res.ok) {
-        setError(res.error)
-        return
-      }
-      load()
-    })
-  }
 
   const handleCheckout = async (pr: LaunchpadPullRequest): Promise<void> => {
     setCheckingOut(`${pr.repoPath}#${pr.number}`)
@@ -422,9 +411,7 @@ export default function Launchpad({
                     </div>
                     <div className="launchpad-card-actions">
                       {bucket === 'readyToMerge' && pr.isMine && (
-                        <button disabled={mergingNumber === pr.number} onClick={() => handleMerge(pr)}>
-                          {mergingNumber === pr.number ? 'Merging…' : 'Merge'}
-                        </button>
+                        <button onClick={() => setMerging(pr)}>Merge…</button>
                       )}
                       <button onClick={() => setReviewing(pr)}>{pr.isMine ? 'View' : 'Review'}</button>
                       <button
@@ -495,6 +482,17 @@ export default function Launchpad({
           </div>
         )}
       </div>
+      {merging && (
+        <MergePullRequestDialog
+          key={`${merging.repoPath}#${merging.number}`}
+          pr={merging}
+          onCancel={() => setMerging(null)}
+          onMerged={() => {
+            setMerging(null)
+            load()
+          }}
+        />
+      )}
       {startingWork && (
         <StartWorkDialog
           key={`${startingWork.repoPath}#${startingWork.issue}`}

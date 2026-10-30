@@ -82,7 +82,15 @@ export default function App(): JSX.Element {
       commitBox.amend))
 
   const view = useMainView({ repo, hasWorkingChanges, keysBlocked: dialogs.showSettings })
-  const actions = useGitActions({ repo, git, view, askText, showError, setNotice })
+  const actions = useGitActions({
+    repo,
+    git,
+    view,
+    askText,
+    showError,
+    setNotice,
+    prefillCommitMessage: (message) => commitBox.setMessage((typed) => (typed.trim() ? typed : message))
+  })
   const branches = useBranchActions({
     repo,
     git,

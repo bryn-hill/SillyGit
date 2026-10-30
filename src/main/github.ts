@@ -1,6 +1,7 @@
 import { fetchJson } from './http'
 import { apiBase, authHeaders, graphqlUrl, type Credentials } from './providerApi'
 import type { OpenPullRequest } from '../shared/types'
+import { githubMergeMethods, type PrMergeMethod, type PrMergeMethods } from '../shared/mergeOptions'
 
 /** A repository on a GitHub host, e.g. github.com and bryn-hill/sillygit. */
 export interface GithubRepo {
@@ -166,12 +167,27 @@ export async function listOpenPullRequests(creds: Credentials, repo: GithubRepo)
   return pulls.map((p) => ({ number: p.number, url: p.html_url, headRefName: p.head.ref, title: p.title }))
 }
 
-export async function mergePullRequest(creds: Credentials, repo: GithubRepo, number: number): Promise<void> {
+export async function mergePullRequest(
+  creds: Credentials,
+  repo: GithubRepo,
+  number: number,
+  method: PrMergeMethod = 'merge'
+): Promise<void> {
   await fetchJson(`${apiBase('github', repo.host)}/repos/${repo.owner}/${repo.name}/pulls/${number}/merge`, {
     method: 'PUT',
     headers: { ...authHeaders(creds), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ merge_method: 'merge' })
+    body: JSON.stringify({ merge_method: method })
   })
+}
+
+/** The merge methods the repository's settings allow. */
+export async function mergeMethods(creds: Credentials, repo: GithubRepo): Promise<PrMergeMethods> {
+  const settings = await fetchJson<{
+    allow_merge_commit?: boolean
+    allow_squash_merge?: boolean
+    allow_rebase_merge?: boolean
+  }>(`${apiBase('github', repo.host)}/repos/${repo.owner}/${repo.name}`, { headers: authHeaders(creds) })
+  return githubMergeMethods(settings)
 }
 
 // GraphQL caps how much one query may ask for; this many commits stays well inside it.

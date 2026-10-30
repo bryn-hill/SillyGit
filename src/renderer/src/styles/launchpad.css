@@ -265,3 +265,55 @@
   color: var(--green);
   background: color-mix(in srgb, var(--green) 16%, transparent);
 }
+
+/* The merge dialog for a pull request: one choice per merge method. */
+.merge-pr-dialog {
+  -webkit-app-region: no-drag;
+}
+
+.merge-pr-summary {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.merge-pr-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.merge-pr-method {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.merge-pr-method:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.merge-pr-method.selected {
+  border-color: var(--accent);
+}
+
+.merge-pr-method:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.merge-pr-method-label {
+  font-size: 12.5px;
+}
+
+.merge-pr-method-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+}
