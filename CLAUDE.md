@@ -1,5 +1,9 @@
 # SillyGit
 
+Branch new work from `dev` and merge it back into `dev`. `main` is the stable branch: it only
+receives `dev` when the owner asks for a promotion. The in-app "Update SillyGit" button
+deliberately pulls `main`.
+
 Commit messages must follow Conventional Commits (`type(scope): subject`, lowercase
 subject, no trailing period). See CONTRIBUTING.md for the types and scopes, and run
 `npm run lint:commits` before pushing; CI rejects anything else.

@@ -1,5 +1,11 @@
 # Contributing
 
+## Branches
+
+Branch new work from `dev` and open pull requests against `dev`. `main` is the stable
+branch and only receives `dev` when a release is promoted. The in-app "Update SillyGit"
+button pulls `main`.
+
 ## Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -34,5 +40,5 @@ must be at most 100 characters.
 - `npm install` points git at `.githooks/`, whose `commit-msg` hook runs
   `scripts/commit-msg.mjs` and rejects a message that doesn't fit. Run
   `git config core.hooksPath .githooks` yourself if you skipped `npm install`.
-- `npm run lint:commits` checks every commit on your branch that isn't on `origin/main`.
-- CI runs the same check on every pull request and every push to `main`.
+- `npm run lint:commits` checks every commit on your branch that isn't on `origin/dev`.
+- CI runs the same check on every pull request and every push to `dev` or `main`.

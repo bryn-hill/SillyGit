@@ -5,6 +5,7 @@
     "group:allNonMajor",
     ":dependencyDashboard"
   ],
+  "baseBranches": ["dev"],
   "schedule": ["* 0-5 * * *"],
   "prConcurrentLimit": 2,
   "prHourlyLimit": 1,
