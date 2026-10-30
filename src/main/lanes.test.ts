@@ -62,6 +62,24 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('lanes', () => {
+  it('answers status asks queued together once, but never with state from before a queued change', async () => {
+    write('a.txt', numbered(30, { 2: 'two' }))
+    write('b.txt', 'b changed\n')
+    await enterLanes(dir, 'main', 'one')
+    await createLane(dir, 'two')
+
+    const first = lanesStatus(dir)
+    const second = lanesStatus(dir)
+    expect(second).toBe(first)
+    const move = moveToLane(dir, 'two', { files: [{ path: 'b.txt' }] })
+    const after = lanesStatus(dir)
+    expect(after).not.toBe(first)
+
+    await move
+    expect((await first)!.files.find((f) => f.path === 'b.txt')!.lane).toBe('one')
+    expect((await after)!.files.find((f) => f.path === 'b.txt')!.lane).toBe('two')
+  })
+
   it('turns on without touching files, every change in the first lane', async () => {
     write('a.txt', numbered(30, { 2: 'two' }))
     write('new.txt', 'new\n')

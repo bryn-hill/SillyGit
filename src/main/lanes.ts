@@ -595,23 +595,39 @@ async function laneInfo(repoPath: string, state: LanesState): Promise<LaneInfo[]
   )
 }
 
+// The lanesStatus ask per repo that hasn't started, and the queue's tail just after it.
+const waitingStatus = new Map<string, { result: Promise<LanesStatus | null>; tail: Promise<unknown> | undefined }>()
+
 /** The lanes, who owns each uncommitted change, and anything that moved outside SillyGit. Null when lanes are off. */
 export function lanesStatus(repoPath: string): Promise<LanesStatus | null> {
-  return serial(repoPath, async () => {
-    const state = await readState(repoPath)
-    if (!state) return null
-    const d = await drift(repoPath, state)
-    const lanes = await laneInfo(repoPath, state)
-    const [newest] = await listBackups(repoPath)
-    const undoLabel = newest ? ((await readBackup(repoPath, newest))?.label ?? null) : null
-    if (d?.kind === 'switched') return { base: state.base, lanes, files: [], lines: [], drift: d, undoLabel }
-    const snap = await snapshot(repoPath, state)
-    if (!d && rememberOwners(state, snap)) await writeState(repoPath, state)
-    const lines = snap.parsed.lines.flatMap((l, i) =>
-      l.kind === 'file' ? [] : [{ path: l.path, kind: l.kind, line: l.line, lane: snap.owners[i] }]
-    )
-    return { base: state.base, lanes, files: laneFiles(snap.parsed, snap.owners, snap.untracked), lines, drift: d, undoLabel }
+  // Every repo refresh asks again, and on a busy machine the asks queued up
+  // behind each other faster than they were answered, so the lanes showed
+  // ever older state. An ask that hasn't started yet and is last in the
+  // queue will read the state after everything before this one, so share it.
+  const waiting = waitingStatus.get(repoPath)
+  if (waiting && queues.get(repoPath) === waiting.tail) return waiting.result
+  const result = serial(repoPath, () => {
+    if (waitingStatus.get(repoPath)?.result === result) waitingStatus.delete(repoPath)
+    return readLanesStatus(repoPath)
   })
+  waitingStatus.set(repoPath, { result, tail: queues.get(repoPath) })
+  return result
+}
+
+async function readLanesStatus(repoPath: string): Promise<LanesStatus | null> {
+  const state = await readState(repoPath)
+  if (!state) return null
+  const d = await drift(repoPath, state)
+  const lanes = await laneInfo(repoPath, state)
+  const [newest] = await listBackups(repoPath)
+  const undoLabel = newest ? ((await readBackup(repoPath, newest))?.label ?? null) : null
+  if (d?.kind === 'switched') return { base: state.base, lanes, files: [], lines: [], drift: d, undoLabel }
+  const snap = await snapshot(repoPath, state)
+  if (!d && rememberOwners(state, snap)) await writeState(repoPath, state)
+  const lines = snap.parsed.lines.flatMap((l, i) =>
+    l.kind === 'file' ? [] : [{ path: l.path, kind: l.kind, line: l.line, lane: snap.owners[i] }]
+  )
+  return { base: state.base, lanes, files: laneFiles(snap.parsed, snap.owners, snap.untracked), lines, drift: d, undoLabel }
 }
 
 // ---- Turning lanes on and off ----
