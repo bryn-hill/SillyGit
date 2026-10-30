@@ -142,7 +142,8 @@ const api = {
     ipcRenderer.invoke('git:checkout', repoPath, branch),
   createBranch: (repoPath: string, branch: string): Wrapped<void> =>
     ipcRenderer.invoke('git:create-branch', repoPath, branch),
-  push: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:push', repoPath),
+  push: (repoPath: string, options?: import('../shared/push').PushOptions): Wrapped<import('../shared/push').PushResult> =>
+    ipcRenderer.invoke('git:push', repoPath, options),
   pull: (
     repoPath: string,
     mode?: import('../shared/types').PullMode

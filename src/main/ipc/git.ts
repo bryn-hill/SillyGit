@@ -7,6 +7,7 @@ import { activityLog } from '../gitExec'
 import { watchRepo, stopWatching } from '../watcher'
 import type { PartialAction } from '../../shared/lineStaging'
 import type { PullMode, StashPushOptions } from '../../shared/types'
+import type { PushOptions } from '../../shared/push'
 import type { CommitSearch, GraphFilter } from '../../shared/historySearch'
 import { getGraphScope } from '../settings'
 import { wrap } from './wrap'
@@ -180,7 +181,7 @@ export function registerGitHandlers(): void {
     wrap(() => git.createBranch(repoPath, branch))
   )
 
-  ipcMain.handle('git:push', (_e, repoPath: string) => wrap(() => git.push(repoPath)))
+  ipcMain.handle('git:push', (_e, repoPath: string, options?: PushOptions) => wrap(() => git.push(repoPath, options)))
 
   ipcMain.handle('git:pull', (_e, repoPath: string, mode?: PullMode) => wrap(() => git.pull(repoPath, mode)))
 

@@ -116,6 +116,12 @@ export class SillyGitApp {
     await this.page.getByRole('menu', { name: 'Pull options' }).getByText(item, { exact: true }).click()
   }
 
+  /** Opens the Push button's menu and picks `item`, e.g. "Push to…". */
+  async pushMenu(item: string): Promise<void> {
+    await this.toolbarButton('Push options').click()
+    await this.page.getByRole('menu', { name: 'Push options' }).getByText(item, { exact: true }).click()
+  }
+
   /** Opens the Run button's menu and picks `item`, e.g. "Run in isolation". */
   async runMenu(item: string): Promise<void> {
     await this.toolbarButton('Run options').click()

@@ -1,4 +1,5 @@
 import type { ConflictableResult, PullMode } from '../../shared/types'
+import { defaultPushTarget, pushRejection, type PushOptions, type PushResult } from '../../shared/push'
 import { runMayConflict } from '../conflicts'
 import { remoteEnv, runGit } from '../gitExec'
 
@@ -18,18 +19,43 @@ export function fetchAll(repoPath: string): Promise<void> {
   return fetch
 }
 
-/** Pushes the current branch, publishing it with `-u` when it has no upstream yet. */
-export async function push(repoPath: string): Promise<void> {
+/**
+ * Pushes the current branch: to its upstream, or to `options.remote` and
+ * `options.branch` when given, publishing it with `-u` when it has no upstream
+ * yet. A push git refuses because the remote branch has commits this one
+ * doesn't (after an amend, rebase, fixup or absorb, or someone else pushing)
+ * comes back as `rejected` rather than an error, so the app can offer a force
+ * push. `options.force` uses `--force-with-lease --force-if-includes`: it
+ * only overwrites what the last fetch saw and this branch has since built on.
+ */
+export async function push(repoPath: string, options: PushOptions = {}): Promise<PushResult> {
   const env = await remoteEnv()
-  const upstream = await runGit(repoPath, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']).catch(() => null)
-  if (upstream?.trim()) {
-    await runGit(repoPath, ['push'], env)
-    return
-  }
+  const branch = (await runGit(repoPath, ['symbolic-ref', '--short', '-q', 'HEAD']).catch(() => '')).trim()
+  if (!branch) throw new Error('Check out a branch to push it.')
+  const upstream = (await runGit(repoPath, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']).catch(() => '')).trim()
   const remotes = (await runGit(repoPath, ['remote'])).split('\n').map((r) => r.trim()).filter(Boolean)
-  const remote = remotes.includes('origin') ? 'origin' : remotes[0]
+  const fallback = defaultPushTarget(branch, upstream, remotes)
+  const remote = options.remote ?? fallback?.remote
   if (!remote) throw new Error('This repository has no remote to push to.')
-  await runGit(repoPath, ['push', '-u', remote, 'HEAD'], env)
+  const target = options.branch?.trim() || (remote === fallback?.remote ? fallback.branch : branch)
+  const args = ['push']
+  if (options.force) args.push('--force-with-lease', '--force-if-includes')
+  if (!upstream) args.push('-u')
+  args.push(remote, `HEAD:refs/heads/${target}`)
+  try {
+    await runGit(repoPath, args, env)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const why = pushRejection(message)
+    if (why === 'stale') {
+      throw new Error(
+        `Someone pushed to ${remote}/${target} since your branch last caught up with it, so the force push was stopped to keep their commits. Fetch, look at what changed and rebase onto it, then push again.`
+      )
+    }
+    if (why === 'diverged' && !options.force) return { rejected: true, remote, branch: target }
+    throw err
+  }
+  return { rejected: false, remote, branch: target }
 }
 
 const PULL_ARGS: Record<PullMode, string[]> = {

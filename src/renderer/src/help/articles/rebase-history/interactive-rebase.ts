@@ -23,7 +23,7 @@ Drag commits, or use **Alt+Up** and **Alt+Down**, to reorder them. Click **Start
 
 To change just one commit, the commit menu can do it in one step: see [Edit an older commit in place](help:rebase-history/edit-older-commits).
 
-Only rewrite commits you haven't pushed, or be ready to force push.
+Only rewrite commits you haven't pushed, or be ready to force push with lease; see [Push, pull and fetch](help:remotes-prs/push-pull-fetch).
 
 ## Example
 

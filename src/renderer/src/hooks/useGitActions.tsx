@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { defaultPushTarget, forcePushPrompt, rejectedPushPrompt, type PushOptions } from '../../../shared/push'
 import type { ConflictableResult, FileStatus, FixupResult, PullMode, StashEntry, StashPushOptions } from '../../../shared/types'
 import type { RebasePlan, RebaseStep } from '../../../shared/rebase'
 import type { MergeResult, MergeStrategy } from '../../../shared/mergeOptions'
@@ -34,11 +35,13 @@ export function useGitActions({
   /** Starts the commit message box on `message` unless something is typed there. */
   prefillCommitMessage: (message: string) => void
 }) {
-  const { repoPath, undoLabel, redoLabel, refresh } = repo
+  const { repoPath, status, undoLabel, redoLabel, refresh } = repo
   const { runGit, runGitThen, withBusy } = git
   const [pullMode, setPullMode] = useState<PullMode>(loadPullMode)
   // "Stash…" while it's open, with the files it opened with picked (every change when null).
   const [stashPicker, setStashPicker] = useState<{ paths: string[] | null } | null>(null)
+  // The repo the Push to dialog was opened for.
+  const [pushToRepo, setPushToRepo] = useState<string | null>(null)
 
   /**
    * Runs a git command that may stop on conflicts. When it does, the working
@@ -154,7 +157,38 @@ export function useGitActions({
     repo.fetchRemotes(false)
   }
 
-  const push = (): void => runGit((path) => window.api.push(path))
+  /**
+   * Pushes the current branch. When git refuses because the remote branch
+   * has commits this one doesn't (as it does after an amend, rebase, fixup or
+   * absorb), asks whether to force push with a lease instead.
+   */
+  const push = (options: PushOptions = {}): void => {
+    if (!repoPath) return
+    withBusy(async () => {
+      let forced = !!options.force
+      let res = await window.api.push(repoPath, options)
+      if (res.ok && res.data.rejected) {
+        const { remote, branch } = res.data
+        if (window.confirm(rejectedPushPrompt(remote, branch))) {
+          forced = true
+          res = await window.api.push(repoPath, { remote, branch, force: true })
+        } else {
+          setNotice(`Didn’t push: ${remote}/${branch} has commits your branch doesn’t. Pull to bring them in first.`)
+        }
+      }
+      if (!res.ok) showError(res.error)
+      else if (forced && !res.data.rejected) setNotice(`Force pushed to ${res.data.remote}/${res.data.branch}.`)
+      await refresh(repoPath)
+    })
+  }
+
+  /** Force pushes the current branch with a lease, after confirming. */
+  const forcePush = (options: PushOptions = {}): void => {
+    const target = status?.branch ? defaultPushTarget(status.branch, status.upstream, repo.remotes.map((r) => r.name)) : null
+    const where = options.remote && options.branch ? `${options.remote}/${options.branch}` : target ? `${target.remote}/${target.branch}` : 'the remote'
+    if (window.confirm(forcePushPrompt(where))) push({ ...options, force: true })
+  }
+
 
   /** Pulls the remembered way, or `mode`, which then becomes what Pull does. */
   const pull = (mode?: PullMode): void => {
@@ -330,6 +364,10 @@ export function useGitActions({
     redo,
     fetch,
     push,
+    forcePush,
+    pushTo: pushToRepo !== null && pushToRepo === repoPath,
+    openPushTo: () => setPushToRepo(repoPath),
+    closePushTo: () => setPushToRepo(null),
     pull,
     pullMode,
     checkout,

@@ -64,6 +64,14 @@ export interface RefActions extends StackActions, GitFlowActions {
   renameBranch: (name: string) => void
   /** Pulls the current branch, or fast-forwards another local branch from its upstream without checking it out. */
   pull: (target: RefTarget) => void
+  /** Pushes the checked-out branch; a rejected push offers a force push with lease. */
+  push: () => void
+  /** Force pushes the checked-out branch with a lease, after confirming. */
+  forcePush: () => void
+  /** Opens the Push to dialog for the checked-out branch. */
+  pushTo: () => void
+  /** Whether the repo has a remote to push to. */
+  hasRemotes: boolean
   createTag: (hash: string) => void
   createAnnotatedTag: (hash: string) => void
   createPatch: (hash: string) => void
@@ -130,16 +138,24 @@ export default function RefContextMenu({
   const isHeadCommit = hash === headHash
   const sections: ContextMenuItem[][] = []
 
-  // Local branches that track a remote can be pulled, checked out or not.
+  // Local branches that track a remote can be pulled, checked out or not;
+  // the checked-out one can be pushed.
+  const syncItems: ContextMenuItem[] = []
   if (target && !target.remote && info?.remoteBranch) {
-    sections.push([
-      {
-        id: 'pull',
-        label: target.current ? 'Pull' : `Pull ${name} (fast-forward)`,
-        onSelect: () => actions.pull(target)
-      }
-    ])
+    syncItems.push({
+      id: 'pull',
+      label: target.current ? 'Pull' : `Pull ${name} (fast-forward)`,
+      onSelect: () => actions.pull(target)
+    })
   }
+  if (target && !target.remote && target.current && actions.hasRemotes) {
+    syncItems.push(
+      { id: 'push', label: 'Push', onSelect: actions.push },
+      { id: 'force-push', label: 'Force push (with lease)…', onSelect: actions.forcePush },
+      { id: 'push-to', label: 'Push to…', onSelect: actions.pushTo }
+    )
+  }
+  if (syncItems.length > 0) sections.push(syncItems)
 
   if (target && !target.current) {
     sections.push([

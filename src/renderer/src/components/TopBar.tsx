@@ -43,6 +43,10 @@ interface Props {
   onPush: () => void
   /** With no remote, Push becomes Publish: create the repository on a signed-in host and push to it. */
   onPublish: () => void
+  /** Force pushes the current branch with a lease, after confirming. */
+  onForcePush: () => void
+  /** Opens the Push to dialog to pick the remote and branch. */
+  onPushTo: () => void
   /** Pulls the way the Pull menu last chose, or `mode` when picked from the menu. */
   onPull: (mode?: PullMode) => void
   pullMode: PullMode
@@ -104,6 +108,8 @@ export default function TopBar({
   onOpenRecentRepo,
   onPush,
   onPublish,
+  onForcePush,
+  onPushTo,
   onPull,
   pullMode,
   onFetch,
@@ -146,10 +152,11 @@ export default function TopBar({
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [showRepoMenu, setShowRepoMenu] = useState(false)
   const [showPullMenu, setShowPullMenu] = useState(false)
+  const [showPushMenu, setShowPushMenu] = useState(false)
   const [showRunMenu, setShowRunMenu] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showEditorMenu, setShowEditorMenu] = useState(false)
-  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showRunMenu || showMoreMenu || showEditorMenu
+  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showPushMenu || showRunMenu || showMoreMenu || showEditorMenu
 
   // Escape closes whichever top-bar menu is open.
   useEffect(() => {
@@ -159,6 +166,7 @@ export default function TopBar({
       setShowBranchMenu(false)
       setShowRepoMenu(false)
       setShowPullMenu(false)
+      setShowPushMenu(false)
       setShowRunMenu(false)
       setShowMoreMenu(false)
       setShowEditorMenu(false)
@@ -337,14 +345,55 @@ export default function TopBar({
             )}
           </div>
           {hasRemotes ? (
-            <ToolButton
-              label="Push"
-              icon={<PushIcon />}
-              disabled={busy}
-              onClick={onPush}
-              title={`Push to remote (${MOD}⇧U)`}
-              badge={status?.ahead}
-            />
+            <div className="tool-split">
+              <ToolButton
+                label="Push"
+                icon={<PushIcon />}
+                disabled={busy}
+                onClick={onPush}
+                title={`Push to remote (${MOD}⇧U)`}
+                badge={status?.ahead}
+              />
+              <button
+                className="tool-caret"
+                disabled={busy || !status?.branch}
+                onClick={() => setShowPushMenu((v) => !v)}
+                title="Force push, or choose where to push"
+                aria-label="Push options"
+                aria-haspopup="menu"
+                aria-expanded={showPushMenu}
+              >
+                ▾
+              </button>
+              {showPushMenu && (
+                <>
+                  <div className="dropdown-backdrop" onClick={() => setShowPushMenu(false)} />
+                  <div className="branch-dropdown tool-menu" role="menu" aria-label="Push options">
+                    {[
+                      { label: 'Push', run: onPush },
+                      { label: 'Force push (with lease)…', run: onForcePush },
+                      { label: 'Push to…', run: onPushTo }
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        role="menuitem"
+                        className="branch-dropdown-item"
+                        onClick={() => {
+                          setShowPushMenu(false)
+                          item.run()
+                        }}
+                      >
+                        {item.label}
+                      </div>
+                    ))}
+                    <div className="dropdown-separator" />
+                    <div className="tool-menu-hint">
+                      A force push with lease replaces the remote branch only if nobody pushed there since you last caught up.
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <ToolButton
               label="Publish"

@@ -21,6 +21,8 @@ import CreatePullRequestDialog from './components/CreatePullRequestDialog'
 import GitFlowSetupDialog from './components/GitFlowSetupDialog'
 import CloneDialog from './components/CloneDialog'
 import PublishRepoDialog from './components/PublishRepoDialog'
+import PushDialog from './components/PushDialog'
+import { defaultPushTarget } from '../../shared/push'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
@@ -231,8 +233,10 @@ export default function App(): JSX.Element {
           onOpenRepo={tabs.openRepo}
           recentRepos={tabs.recentRepos}
           onOpenRecentRepo={(path) => tabs.openRecentRepo(path, true)}
-          onPush={actions.push}
           onPublish={() => dialogs.setShowPublish(true)}
+          onPush={() => actions.push()}
+          onForcePush={() => actions.forcePush()}
+          onPushTo={actions.openPushTo}
           onPull={actions.pull}
           pullMode={actions.pullMode}
           onFetch={actions.fetch}
@@ -417,6 +421,24 @@ export default function App(): JSX.Element {
               dialogs.setShowSettings(true)
             }}
             onClose={() => dialogs.setShowPublish(false)}
+          />
+        )}
+        {actions.pushTo && status?.branch && repo.remotes.length > 0 && (
+          <PushDialog
+            branch={status.branch}
+            remotes={repo.remotes.map((r) => r.name)}
+            initial={
+              defaultPushTarget(status.branch, status.upstream, repo.remotes.map((r) => r.name)) ?? {
+                remote: repo.remotes[0].name,
+                branch: status.branch
+              }
+            }
+            onPush={(options) => {
+              // Ticking force push in the dialog is the confirmation.
+              actions.closePushTo()
+              actions.push(options)
+            }}
+            onCancel={actions.closePushTo}
           />
         )}
         {branches.gitFlow.setup && (

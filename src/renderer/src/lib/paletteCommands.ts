@@ -57,6 +57,8 @@ export interface PaletteContext {
     fetch: () => void
     pull: (mode: PullMode) => void
     push: () => void
+    forcePush: () => void
+    pushTo: () => void
     focusSearch: () => void
     goToWorkingChanges: () => void
     startAmend: () => void
@@ -151,6 +153,10 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       add('pull-ff-only', 'Pull (fast-forward only)', () => a.pull('ff-only'))
       add('pull-rebase', 'Pull (rebase)', () => a.pull('rebase'))
       add('push', 'Push', a.push, `${MOD}⇧U`)
+      if (status?.branch) {
+        add('force-push', 'Force push (with lease)…', a.forcePush)
+        add('push-to', 'Push to…', a.pushTo)
+      }
     } else if (a.publish) {
       add('publish', 'Publish repository…', a.publish)
     }

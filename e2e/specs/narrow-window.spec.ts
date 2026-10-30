@@ -49,7 +49,7 @@ test.describe('at half-screen width', () => {
     const bar = await box(topBar)
     const buttons = await topBarButtonBoxes(topBar)
     expect(buttons.map((b) => b.name)).toEqual(
-      expect.arrayContaining(['Undo', 'Pull', 'Push', 'Create branch', 'Run', 'Actions'])
+      expect.arrayContaining(['Undo', 'Pull', 'Publish repository', 'Create branch', 'Run', 'Actions'])
     )
     for (const [i, a] of buttons.entries()) {
       expect(a.box.x, `${a.name} starts inside the window`).toBeGreaterThanOrEqual(bar.x)

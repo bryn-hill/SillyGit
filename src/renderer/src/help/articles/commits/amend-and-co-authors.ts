@@ -11,7 +11,7 @@ const article: HelpArticle = {
 
 Tick **Amend previous commit** under the message box. The box fills with the last commit's message; stage any extra changes, edit the message, and commit. The last commit is replaced with the new one. **Actions > Amend last commit** does the same.
 
-Only amend commits you haven't pushed, or you'll need to force push and anyone who pulled it will have to sort out the difference.
+Only amend commits you haven't pushed, or you'll need to force push (SillyGit offers one with lease when the push is refused; see [Push, pull and fetch](help:remotes-prs/push-pull-fetch)) and anyone who pulled it will have to sort out the difference.
 
 ## Co-authors
 

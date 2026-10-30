@@ -134,6 +134,68 @@ describe('push', () => {
       rmSync(remote, { recursive: true, force: true })
     }
   })
+
+  describe('after rewriting pushed commits', () => {
+    let remote: string
+    let other: string
+    const theirs = (...args: string[]): string => execFileSync('git', args, { cwd: other, encoding: 'utf8' }).trim()
+
+    beforeEach(() => {
+      remote = mkdtempSync(join(tmpdir(), 'sillygit-remote-'))
+      other = mkdtempSync(join(tmpdir(), 'sillygit-other-'))
+      execFileSync('git', ['init', '-q', '--bare', '-b', 'main', remote])
+      run('remote', 'add', 'origin', remote)
+      commitFile('a.txt', 'two\n', 'Second')
+      run('push', '-q', '-u', 'origin', 'main')
+      run('commit', '-q', '--amend', '-m', 'Second, reworded')
+    })
+
+    afterEach(() => {
+      rmSync(remote, { recursive: true, force: true })
+      rmSync(other, { recursive: true, force: true })
+    })
+
+    it('reports the refusal instead of failing, and leaves the remote alone', async () => {
+      const before = execFileSync('git', ['rev-parse', 'main'], { cwd: remote, encoding: 'utf8' }).trim()
+      expect(await git.push(dir)).toEqual({ rejected: true, remote: 'origin', branch: 'main' })
+      expect(execFileSync('git', ['rev-parse', 'main'], { cwd: remote, encoding: 'utf8' }).trim()).toBe(before)
+    })
+
+    it('force pushes with a lease', async () => {
+      expect(await git.push(dir, { force: true })).toEqual({ rejected: false, remote: 'origin', branch: 'main' })
+      expect(execFileSync('git', ['log', '-1', '--format=%s', 'main'], { cwd: remote, encoding: 'utf8' }).trim()).toBe(
+        'Second, reworded'
+      )
+    })
+
+    it('stops a force push when someone pushed since the last fetch', async () => {
+      execFileSync('git', ['clone', '-q', remote, other])
+      theirs('config', 'user.name', 'Grace Hopper')
+      theirs('config', 'user.email', 'grace@example.com')
+      writeFileSync(join(other, 'b.txt'), 'theirs\n')
+      theirs('add', 'b.txt')
+      theirs('commit', '-q', '-m', 'Theirs')
+      theirs('push', '-q', 'origin', 'main')
+
+      await expect(git.push(dir, { force: true })).rejects.toThrow(/Someone pushed to origin\/main/)
+      // Fetching alone doesn't make it safe: the branch hasn't built on their commit.
+      run('fetch', '-q')
+      await expect(git.push(dir, { force: true })).rejects.toThrow(/Someone pushed to origin\/main/)
+      expect(theirs('log', '-1', '--format=%s', 'origin/main')).toBe('Theirs')
+    })
+
+    it('pushes to another branch name without changing the upstream', async () => {
+      expect(await git.push(dir, { remote: 'origin', branch: 'reworded' })).toEqual({
+        rejected: false,
+        remote: 'origin',
+        branch: 'reworded'
+      })
+      expect(execFileSync('git', ['log', '-1', '--format=%s', 'reworded'], { cwd: remote, encoding: 'utf8' }).trim()).toBe(
+        'Second, reworded'
+      )
+      expect(run('rev-parse', '--abbrev-ref', 'main@{upstream}')).toBe('origin/main')
+    })
+  })
 })
 
 describe('staging', () => {

@@ -1,0 +1,28 @@
+/* ---------- push to dialog ---------- */
+
+.push-modal {
+  width: 440px;
+  max-width: calc(100vw - 32px);
+}
+
+.push-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.push-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.push-force {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}

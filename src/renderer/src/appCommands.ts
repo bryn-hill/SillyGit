@@ -110,7 +110,9 @@ export function appCommands(app: {
       redo: git.redo,
       fetch: git.fetch,
       pull: git.pull,
-      push: git.push,
+      push: () => git.push(),
+      forcePush: () => git.forcePush(),
+      pushTo: git.openPushTo,
       focusSearch: view.focusSearch,
       goToWorkingChanges: view.goToWorkingChanges,
       startAmend: () => {
