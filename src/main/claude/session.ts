@@ -8,6 +8,7 @@ import type {
   SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
 import { getApiKey } from '../settings'
+import { claudeExecutable } from './executable'
 import type {
   ClaudeEvent,
   ClaudePermissionDecision,
@@ -97,6 +98,7 @@ export class ChatSession {
         settingSources: ['user', 'project', 'local'],
         canUseTool: (toolName, input, options) => this.requestPermission(toolName, input, options),
         stderr: (data) => console.error('[claude]', data.trimEnd()),
+        pathToClaudeCodeExecutable: claudeExecutable(),
         ...(apiKey ? { env: { ...process.env, ANTHROPIC_API_KEY: apiKey } } : {})
       }
     })
