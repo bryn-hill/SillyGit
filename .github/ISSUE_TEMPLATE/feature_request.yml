@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest something SillyGit should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or workflow, rather than the solution. "I often need to ..." works well.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like SillyGit to do?
+    validations:
+      required: true
+  - type: textarea
+    id: elsewhere
+    attributes:
+      label: How do other tools handle it?
+      description: If another Git client or the command line already does this, how?

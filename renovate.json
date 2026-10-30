@@ -11,6 +11,11 @@
   "prConcurrentLimit": 2,
   "prHourlyLimit": 1,
   "minimumReleaseAge": "3 days",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "description": "Security fixes skip the schedule and the release-age wait",
+    "labels": ["security"]
+  },
   "semanticCommits": "enabled",
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",

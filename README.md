@@ -120,7 +120,8 @@ Contributions are welcome. The short version:
    behaviour that an e2e spec covers, run that spec too.
 4. Follow the renderer rules below.
 
-[CONTRIBUTING.md](CONTRIBUTING.md) has the full details, and
+[CONTRIBUTING.md](CONTRIBUTING.md) has the full details, everyone is expected to
+follow the [Code of Conduct](CODE_OF_CONDUCT.md), and
 [CLAUDE.md](CLAUDE.md) holds the same rules for AI agents working on the repo.
 
 ### Commit messages
