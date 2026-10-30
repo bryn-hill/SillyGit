@@ -1,4 +1,5 @@
 import { getApiKey } from '../settings'
+import { claudeExecutable } from '../claude/executable'
 import type { AiFinding } from '../../shared/types'
 
 // The API call itself, the models and the size limits the prompts share.
@@ -34,6 +35,7 @@ export async function callClaude(prompt: string, model: string = MODEL): Promise
       tools: [],
       permissionMode: 'dontAsk',
       settingSources: [],
+      pathToClaudeCodeExecutable: claudeExecutable(),
       ...(apiKey ? { env: { ...process.env, ANTHROPIC_API_KEY: apiKey } } : {})
     }
   })) {
