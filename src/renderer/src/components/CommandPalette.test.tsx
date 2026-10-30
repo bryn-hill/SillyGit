@@ -36,6 +36,20 @@ const commands = (): Command[] => [
 ]
 
 describe('CommandPalette', () => {
+  it('can open straight on a sub-list, and Escape goes back to the top', () => {
+    const onClose = vi.fn()
+    render(<CommandPalette commands={commands()} onClose={onClose} startIn="checkout" />)
+    expect(labels()).toEqual(['main', 'feature/login'])
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Command' }), { key: 'Escape' })
+    expect(labels()).toEqual(['Fetch', 'Push', 'Pull', 'Checkout'])
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('opens at the top when the sub-list to start in is missing', () => {
+    render(<CommandPalette commands={commands()} onClose={vi.fn()} startIn="merge" />)
+    expect(labels()).toEqual(['Fetch', 'Push', 'Pull', 'Checkout'])
+  })
+
   it('lists every top-level command and focuses the search', () => {
     const { input } = setup(commands())
     expect(labels()).toEqual(['Fetch', 'Push', 'Pull', 'Checkout'])

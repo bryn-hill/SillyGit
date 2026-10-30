@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 export function useDialogs(repoPath: string | null) {
   const [showSettings, setShowSettings] = useState(false)
   // Cmd+K opens the palette in the middle of the window; the toolbar's
-  // Actions button opens the same list hanging under it.
-  const [palette, setPalette] = useState<'modal' | 'dropdown' | null>(null)
+  // Actions button opens the same list hanging under it; Cmd+B opens the
+  // palette on its Checkout list.
+  const [palette, setPalette] = useState<'modal' | 'dropdown' | 'checkout' | null>(null)
   /** Tracked files, loaded when the Actions list opens, for its Blame and File history pickers. */
   const [trackedFiles, setTrackedFiles] = useState<string[]>([])
   const [showActivity, setShowActivity] = useState(false)

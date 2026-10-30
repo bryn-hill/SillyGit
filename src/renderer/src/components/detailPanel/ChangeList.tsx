@@ -7,6 +7,7 @@ import LfsBadge from '../LfsBadge'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import { EditorContext } from '../../lib/editorMenu'
 import type { ActiveFile, OpenFileView } from './types'
+import { fileRowKeyAction, openNeighbourRow } from '../../lib/fileListNav'
 
 function statusLabel(code: string): string {
   return code === '?' ? 'U' : code
@@ -56,6 +57,18 @@ export default function ChangeList({
           aria-current={active}
           tabIndex={-1}
           onClick={() => onOpenFile(file, staged)}
+          onKeyDown={(e) => {
+            const action = fileRowKeyAction(e, staged)
+            if (!action) return
+            e.preventDefault()
+            if (action === 'discard') {
+              onDiscard(file)
+              return
+            }
+            openNeighbourRow(e.currentTarget)
+            if (action === 'stage') onStage([file.path])
+            else onUnstage([file.path])
+          }}
           onContextMenu={(e) => {
             e.preventDefault()
             setFileMenu({ x: e.clientX, y: e.clientY, file })
@@ -83,7 +96,7 @@ export default function ChangeList({
             {!staged && (
               <button
                 className="icon-button"
-                title="Discard changes"
+                title="Discard changes (D)"
                 onClick={(e) => {
                   e.stopPropagation()
                   onDiscard(file)
@@ -94,7 +107,7 @@ export default function ChangeList({
             )}
             <button
               className="icon-button"
-              title={staged ? 'Unstage' : 'Stage'}
+              title={staged ? 'Unstage (U)' : 'Stage (S)'}
               onClick={(e) => {
                 e.stopPropagation()
                 staged ? onUnstage([file.path]) : onStage([file.path])

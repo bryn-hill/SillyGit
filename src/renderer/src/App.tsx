@@ -44,6 +44,7 @@ import { useLfs } from './hooks/useLfs'
 import { useEditor } from './hooks/useEditor'
 import { useLanes } from './hooks/useLanes'
 import { HelpProvider, openHelp } from './help'
+import { SHORTCUTS_ARTICLE } from './help/articles'
 import { useHelpCentre } from './help/useHelpCentre'
 
 /**
@@ -175,7 +176,12 @@ export default function App(): JSX.Element {
     selectTab: tabs.selectTab,
     openSettings: () => dialogs.setShowSettings(true),
     openInEditor: () => editor.open(),
-    openHelp: () => openHelp()
+    openHelp: () => openHelp(),
+    openShortcuts: () => openHelp(SHORTCUTS_ARTICLE),
+    fetch: actions.fetch,
+    pull: () => actions.pull(),
+    push: actions.push,
+    switchBranch: () => dialogs.setPalette((v) => (v ? null : 'checkout'))
   })
 
   const { showTerminal, setShowTerminal, showClaude, setShowClaude } = layout
@@ -410,7 +416,8 @@ export default function App(): JSX.Element {
               checkoutPullRequest,
               editor
             })}
-            variant={dialogs.palette}
+            variant={dialogs.palette === 'dropdown' ? 'dropdown' : 'modal'}
+            startIn={dialogs.palette === 'checkout' ? 'checkout' : undefined}
             onClose={() => dialogs.setPalette(null)}
           />
         )}

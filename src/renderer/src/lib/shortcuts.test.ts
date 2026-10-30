@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { isPrimary, isTyping, matchScore } from './shortcuts'
+import { isPrimary, isTyping, matchScore, ownsModifierKeys } from './shortcuts'
 
 // Node has a navigator of its own that reports macOS on a Mac, so hide it and test the non-macOS (Ctrl) bindings.
 vi.hoisted(() => vi.stubGlobal('navigator', undefined))
@@ -34,6 +34,18 @@ describe('isTyping', () => {
   it('copes with targets that are not elements', () => {
     expect(isTyping(null)).toBe(false)
     expect(isTyping({} as EventTarget)).toBe(false)
+  })
+})
+
+describe('ownsModifierKeys', () => {
+  const inside = (selector: string): EventTarget =>
+    ({ closest: (s: string) => (s.split(', ').includes(selector) ? {} : null) }) as unknown as EventTarget
+
+  it('is true in the terminal and the built-in editor only', () => {
+    expect(ownsModifierKeys(inside('.xterm'))).toBe(true)
+    expect(ownsModifierKeys(inside('.monaco-editor'))).toBe(true)
+    expect(ownsModifierKeys(inside('textarea'))).toBe(false)
+    expect(ownsModifierKeys(null)).toBe(false)
   })
 })
 

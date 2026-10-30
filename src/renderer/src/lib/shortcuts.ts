@@ -15,6 +15,12 @@ export function isTyping(target: EventTarget | null): boolean {
   return !!el?.closest?.('input, textarea, select, [contenteditable="true"], .xterm')
 }
 
+/** True inside the terminal or the built-in editor, which keep their own Cmd and Ctrl keys. */
+export function ownsModifierKeys(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  return !!el?.closest?.('.xterm, .monaco-editor')
+}
+
 /** Ranks `label` against a palette query: every word must appear; earlier and word-start matches rank higher. */
 export function matchScore(label: string, query: string): number | null {
   const text = label.toLowerCase()

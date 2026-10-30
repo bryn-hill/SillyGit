@@ -122,8 +122,8 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
   const add = (id: string, label: string, run: () => void, shortcut?: string): void => {
     commands.push({ id, label, run, shortcut })
   }
-  const addList = (id: string, label: string, children: Command[]): void => {
-    if (children.length > 0) commands.push({ id, label, children })
+  const addList = (id: string, label: string, children: Command[], shortcut?: string): void => {
+    if (children.length > 0) commands.push({ id, label, children, shortcut })
   }
   const localOthers = branches.filter((b) => !b.current && !b.remote)
   const current = status?.branch ?? 'HEAD'
@@ -131,11 +131,11 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
     if (ctx.undoLabel) add('undo', ctx.undoLabel, a.undo, `${MOD}Z`)
     if (ctx.redoLabel) add('redo', ctx.redoLabel, a.redo, `${MOD}⇧Z`)
     if (ctx.hasRemotes) {
-      add('fetch', 'Fetch all remotes', a.fetch)
+      add('fetch', 'Fetch all remotes', a.fetch, `${MOD}⇧F`)
       add('pull', 'Pull (fast-forward if possible)', () => a.pull('ff'))
       add('pull-ff-only', 'Pull (fast-forward only)', () => a.pull('ff-only'))
       add('pull-rebase', 'Pull (rebase)', () => a.pull('rebase'))
-      add('push', 'Push', a.push)
+      add('push', 'Push', a.push, `${MOD}⇧U`)
     }
     if (a.addRemote) add('add-remote', 'Add remote…', a.addRemote)
     add('search', 'Search commits', a.focusSearch, `${MOD}F`)
@@ -232,7 +232,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
         checkouts.push({ id: b.name, label: `Check out ${b.name}`, run: () => a.checkout(b.name) })
       }
     }
-    addList('checkout', 'Checkout', checkouts)
+    addList('checkout', 'Checkout', checkouts, `${MOD}B`)
     addList(
       'checkout-pr',
       'Check out pull request…',

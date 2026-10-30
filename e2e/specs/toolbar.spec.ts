@@ -68,7 +68,7 @@ test.describe('toolbar', () => {
 
       await expect(sillygit.graph.rows.first()).toContainText('Mine')
       await expect.poll(() => repo.git('log', '--format=%s', '-2').trim().split('\n')).toEqual(['Mine', 'Theirs'])
-      await expect(sillygit.toolbarButton('Pull')).toHaveAttribute('title', 'Pull (rebase)')
+      await expect(sillygit.toolbarButton('Pull')).toHaveAttribute('title', /^Pull \(rebase\) \(/)
     } finally {
       upstream.remove()
     }

@@ -25,6 +25,8 @@ interface Props {
    * under the toolbar's Actions button, listing actions alphabetically.
    */
   variant?: 'modal' | 'dropdown'
+  /** The id of a sub-list to open in, like Cmd+B opening straight on Checkout. */
+  startIn?: string
 }
 
 const MAX_RESULTS = 60
@@ -38,11 +40,14 @@ function flatten(commands: Command[]): Command[] {
 }
 
 /** A searchable list of everything the app can do, opened with Cmd/Ctrl+K or the Actions button. */
-export default function CommandPalette({ commands, onClose, variant = 'modal' }: Props): JSX.Element {
+export default function CommandPalette({ commands, onClose, variant = 'modal', startIn }: Props): JSX.Element {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   /** The labels of the sub-lists opened, outermost first. */
-  const [path, setPath] = useState<string[]>([])
+  const [path, setPath] = useState<string[]>(() => {
+    const start = startIn && commands.find((c) => c.id === startIn && c.children)
+    return start ? [start.label] : []
+  })
   const listRef = useRef<HTMLUListElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 

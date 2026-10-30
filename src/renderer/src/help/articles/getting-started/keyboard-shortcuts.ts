@@ -5,7 +5,7 @@ const article: HelpArticle = {
   title: 'Keyboard shortcuts',
   category: 'getting-started',
   summary: 'Every keyboard shortcut in SillyGit, by area.',
-  keywords: ['keyboard', 'shortcuts', 'keys', 'hotkeys', 'cmd', 'ctrl', 'f1'],
+  keywords: ['keyboard', 'shortcuts', 'keys', 'hotkeys', 'cheat sheet', 'cmd', 'ctrl', 'f1', 'stage', 'push', 'pull', 'fetch', 'switch branch'],
   related: ['getting-started/command-palette', 'rebase-history/undo-and-redo', 'conflicts/merge-tool'],
   body: `On macOS use **Cmd**; on Windows and Linux use **Ctrl** wherever this page says Cmd. Shortcuts that already say Ctrl use Ctrl everywhere.
 
@@ -15,6 +15,7 @@ const article: HelpArticle = {
 | --- | --- |
 | Cmd+K or Cmd+Shift+P | Command palette |
 | F1 or ? | Help centre |
+| Cmd+/ | This list of shortcuts |
 | Cmd+, | Settings |
 | Cmd+O or Cmd+T | Open a repository in a new tab |
 | Ctrl+Tab, Ctrl+Shift+Tab | Next or previous tab |
@@ -29,12 +30,30 @@ const article: HelpArticle = {
 | Keys | What it does |
 | --- | --- |
 | Cmd+F | Search commits |
+| Cmd+B | Switch branch (the palette's Checkout list) |
+| Cmd+Shift+F | Fetch all remotes |
+| Cmd+Shift+L | Pull, the way the Pull button does |
+| Cmd+Shift+U | Push |
 | Cmd+Z | Undo the last Git operation |
 | Cmd+Shift+Z | Redo |
 | Cmd+Shift+A | Open the repository in your editor |
 | Cmd+Enter | Commit (in the commit message box) |
 | Up and Down | Move through the graph or a file list |
 | Cmd+click, Shift+click | Select several commits or files |
+
+## Unstaged and Staged files
+
+Click a file, or move to it with Up and Down, then:
+
+| Keys | What it does |
+| --- | --- |
+| S | Stage the file and move to the next one |
+| U | Unstage the file and move to the next one |
+| D, Delete or Backspace | Discard the file's changes (asks first) |
+| Page Up, Page Down, Space | Scroll the open diff |
+| Home, End | Jump to the top or bottom of the diff |
+
+Single-letter keys never fire while you're typing in a text box.
 
 ## Merge tool and conflicts
 
@@ -62,7 +81,9 @@ const article: HelpArticle = {
 
 ## Example
 
-To find and fix a mistake fast: press **Cmd+F**, type part of the commit message and press **Enter** to jump to it. Spotted the problem in your last commit? Press **Cmd+Z** to undo it, fix the file, then type the message again and press **Cmd+Enter** to commit.`
+To find and fix a mistake fast: press **Cmd+F**, type part of the commit message and press **Enter** to jump to it. Spotted the problem in your last commit? Press **Cmd+Z** to undo it, fix the file, then type the message again and press **Cmd+Enter** to commit.
+
+To commit a few files and push: click the first file in **Unstaged**, press **S** for each one you want, type the message, press **Cmd+Enter**, then **Cmd+Shift+U** to push.`
 }
 
 export default article

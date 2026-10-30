@@ -282,7 +282,7 @@ export default function TopBar({
               icon={<PullIcon />}
               disabled={busy || !hasRemotes}
               onClick={() => onPull()}
-              title={hasRemotes ? pullLabel : noRemote}
+              title={hasRemotes ? `${pullLabel} (${MOD}⇧L)` : noRemote}
               badge={status?.behind}
             />
             <button
@@ -304,6 +304,7 @@ export default function TopBar({
                     role="menuitem"
                     className="branch-dropdown-item"
                     aria-disabled={fetching}
+                    title={`Fetch all remotes (${MOD}⇧F)`}
                     onClick={() => {
                       setShowPullMenu(false)
                       if (!fetching) onFetch()
@@ -337,7 +338,7 @@ export default function TopBar({
             icon={<PushIcon />}
             disabled={busy || !hasRemotes}
             onClick={onPush}
-            title={hasRemotes ? 'Push to remote' : noRemote}
+            title={hasRemotes ? `Push to remote (${MOD}⇧U)` : noRemote}
             badge={status?.ahead}
           />
           <ToolButton

@@ -1,12 +1,14 @@
 import { useEffect, useEffectEvent } from 'react'
-import { isPrimary, isTyping } from '../lib/shortcuts'
+import { ownsModifierKeys, isPrimary, isTyping } from '../lib/shortcuts'
 import { tabForDigit } from '../lib/tabs'
 
 /**
  * App-wide keyboard shortcuts: Cmd+K / Cmd+Shift+P for the palette, Cmd+F
  * search, Cmd+Z / Cmd+Shift+Z undo and redo, Cmd+O / Cmd+T open a repo,
  * Ctrl+Tab, Cmd+Shift+[ ] and Cmd+1…9 for tabs, Cmd+, for Settings and
- * Cmd+Shift+A to open the repo in the user's editor, and F1 or ? for help.
+ * Cmd+Shift+A to open the repo in the user's editor, Cmd+Shift+F / L / U to
+ * fetch, pull and push, Cmd+B to switch branch, F1 or ? for help and Cmd+/
+ * for the keyboard shortcuts.
  * An effect event sees current state without re-registering the listener on
  * every render.
  */
@@ -27,6 +29,12 @@ export function useAppShortcuts(app: {
   openSettings: () => void
   openInEditor: () => void
   openHelp: () => void
+  openShortcuts: () => void
+  fetch: () => void
+  pull: () => void
+  push: () => void
+  /** Opens the palette on its Checkout list (or closes it). */
+  switchBranch: () => void
 }): void {
   const onShortcut = useEffectEvent((e: KeyboardEvent): void => {
     if (app.blocked) return
@@ -34,6 +42,11 @@ export function useAppShortcuts(app: {
     if ((isPrimary(e) && key === 'k') || (isPrimary(e, true) && key === 'p')) {
       e.preventDefault()
       app.togglePalette()
+      return
+    }
+    if (isPrimary(e) && key === 'b' && app.repoOpen && !ownsModifierKeys(e.target)) {
+      e.preventDefault()
+      app.switchBranch()
       return
     }
     if (app.paletteOpen) return
@@ -45,6 +58,20 @@ export function useAppShortcuts(app: {
     if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target)) {
       e.preventDefault()
       app.openHelp()
+      return
+    }
+    // Cmd+/ comments a line in the editor, so only outside text fields.
+    if (isPrimary(e) && e.code === 'Slash' && !isTyping(e.target)) {
+      e.preventDefault()
+      app.openShortcuts()
+      return
+    }
+    if (isPrimary(e, true) && (key === 'f' || key === 'l' || key === 'u') && app.repoOpen && !ownsModifierKeys(e.target)) {
+      e.preventDefault()
+      if (app.busy) return
+      if (key === 'f') app.fetch()
+      else if (key === 'l') app.pull()
+      else app.push()
       return
     }
     if (isPrimary(e) && key === 'f' && app.repoOpen) {

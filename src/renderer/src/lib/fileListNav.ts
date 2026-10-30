@@ -70,3 +70,34 @@ export function onFileListKeyDown(e: KeyboardEvent<HTMLElement>): void {
   rows[next].scrollIntoView({ block: 'nearest' })
   rows[next].click()
 }
+
+type FileRowKey = Pick<KeyboardEvent, 'key' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>
+
+/**
+ * What a plain key does to the focused row of the Unstaged or Staged list: S
+ * stages, U unstages, and D, Delete or Backspace (the Mac's Delete key)
+ * discards an unstaged file. Null for any other key or a modifier.
+ */
+export function fileRowKeyAction(e: FileRowKey, staged: boolean): 'stage' | 'unstage' | 'discard' | null {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return null
+  const key = e.key.toLowerCase()
+  if (staged) return key === 'u' ? 'unstage' : null
+  if (key === 's') return 'stage'
+  if (key === 'd' || key === 'delete' || key === 'backspace') return 'discard'
+  return null
+}
+
+/**
+ * Opens and focuses the row after `row` in its list (or the one before when
+ * it's the last), so staging one file after another can carry on from the
+ * keyboard once the row moves to the other list.
+ */
+export function openNeighbourRow(row: HTMLElement): void {
+  const rows = Array.from(row.closest('.file-list')?.querySelectorAll<HTMLElement>(ROW) ?? [])
+  const at = rows.indexOf(row)
+  const next = rows[at + 1] ?? rows[at - 1]
+  if (!next || next === row) return
+  next.focus()
+  next.scrollIntoView({ block: 'nearest' })
+  next.click()
+}
