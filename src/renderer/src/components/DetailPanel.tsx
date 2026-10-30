@@ -5,6 +5,7 @@ import type { ActiveFile, ConflictActions, MultiCommitActions, OpenFileView } fr
 import WorkingDirectoryView from './detailPanel/WorkingDirectoryView'
 import CommitDetailView from './detailPanel/CommitDetailView'
 import MultiCommitView from './detailPanel/MultiCommitView'
+import type { Lanes } from '../hooks/useLanes'
 
 export type { ActiveFile, ConflictActions, MultiCommitActions } from './detailPanel/types'
 
@@ -37,6 +38,7 @@ interface Props {
   onOpenWorkingFile: (file: FileStatus, staged: boolean) => void
   /** The file shown in the main area, if any, to mark in the lists. */
   activeFile: ActiveFile | null
+  lanes: Lanes
 }
 
 /** The side bar beside the graph: the working changes, one commit, or several selected commits. */
@@ -81,6 +83,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       onCopyText={props.onCopyText}
       onOpenFile={props.onOpenWorkingFile}
       activeFile={props.activeFile}
+      lanes={props.lanes}
     />
   )
 }

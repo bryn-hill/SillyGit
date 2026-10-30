@@ -45,8 +45,10 @@ export const GRAPH_PAGE_SIZE = 500
 function graphLogArgs(filter: GraphFilter | null, extra: string[]): string[] {
   return [
     'log',
-    // Stashes get their own list; their internal commits only clutter the graph.
+    // Stashes get their own list; their internal commits only clutter the graph,
+    // as do the lanes' backups and set-aside changes.
     '--exclude=refs/stash',
+    '--exclude=refs/sillygit/*',
     '--all',
     '--date-order',
     ...(filter ? ['--parents'] : []),

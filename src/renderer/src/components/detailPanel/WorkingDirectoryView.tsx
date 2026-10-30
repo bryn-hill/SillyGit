@@ -7,6 +7,8 @@ import { onFileListKeyDown } from '../../lib/fileListNav'
 import ChangeList from './ChangeList'
 import CommitBox from './CommitBox'
 import OperationCommitBox from './OperationCommitBox'
+import LanesView from './LanesView'
+import type { Lanes } from '../../hooks/useLanes'
 
 export interface WorkingProps {
   repoPath: string
@@ -30,6 +32,8 @@ export interface WorkingProps {
   onCopyText: (text: string) => void
   onOpenFile: (file: FileStatus, staged: boolean) => void
   activeFile: ActiveFile | null
+  /** Lanes, which replace the staged/unstaged lists and commit box while they're on. */
+  lanes: Lanes
 }
 
 /** The side bar for the WIP row: conflicted, unstaged and staged files, and the commit box. */
@@ -52,7 +56,8 @@ export default function WorkingDirectoryView({
   onFilterHistory,
   onCopyText,
   onOpenFile,
-  activeFile
+  activeFile,
+  lanes
 }: WorkingProps): JSX.Element {
   const staged = status?.staged ?? []
   const unstaged = status?.unstaged ?? []
@@ -69,6 +74,14 @@ export default function WorkingDirectoryView({
     onOpenFileView,
     onFilterHistory,
     onCopyText
+  }
+
+  if (lanes.lanes && !operation) {
+    return (
+      <div className="detail-panel-content" onKeyDown={onFileListKeyDown}>
+        <LanesView status={lanes.lanes} actions={lanes} activeFile={activeFile} onOpenFile={onOpenFile} />
+      </div>
+    )
   }
 
   return (
@@ -88,6 +101,13 @@ export default function WorkingDirectoryView({
           <span>
             {totalChanges} file change{totalChanges === 1 ? '' : 's'} in working directory
           </span>
+          <button
+            className="link-button lanes-start"
+            onClick={() => void lanes.start()}
+            title="Work on several branches at once in this working tree, each change in a lane of its own"
+          >
+            Lanes…
+          </button>
         </div>
       )}
 

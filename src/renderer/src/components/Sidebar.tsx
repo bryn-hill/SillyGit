@@ -9,6 +9,7 @@ import { dropTarget, useRefDrag } from './RefDrag'
 import { pressable } from '../lib/pressable'
 import { favouriteBranches, staleAge, type BranchListSettings } from '../../../shared/branchStatus'
 import { CLEANUP_SNOOZE_DAYS, formatCount, tidyCount } from '../../../shared/branchCleanup'
+import { WORKSPACE_BRANCH } from '../../../shared/lanes'
 
 interface TreeNode {
   name: string
@@ -273,7 +274,8 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['remote-root']))
 
   const filtered = useMemo(
-    () => branches.filter((b) => b.name.toLowerCase().includes(filter.toLowerCase())),
+    // SillyGit's own lanes workspace branch isn't one to check out or manage.
+    () => branches.filter((b) => b.name !== WORKSPACE_BRANCH && b.name.toLowerCase().includes(filter.toLowerCase())),
     [branches, filter]
   )
   // Starred branches move up into their own group rather than showing twice.

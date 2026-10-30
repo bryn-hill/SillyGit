@@ -13,6 +13,7 @@ import type { PanelLayout } from './hooks/usePanelLayout'
 import type { Dialogs } from './hooks/useDialogs'
 import type { Lfs } from './hooks/useLfs'
 import type { Editor } from './hooks/useEditor'
+import type { Lanes } from './hooks/useLanes'
 import { paletteCommands } from './lib/paletteCommands'
 import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 import type { OpenPullRequest } from '../../shared/types'
@@ -32,6 +33,7 @@ export function appCommands(app: {
   tabs: Tabs
   layout: PanelLayout
   dialogs: Dialogs
+  lanes: Lanes
   selfUpdate: SelfUpdateState | null
   lfs: Lfs
   hasWorkingChanges: boolean
@@ -82,6 +84,10 @@ export function appCommands(app: {
     hasWorkingChanges: app.hasWorkingChanges,
     currentStack: stack && { id: stack.id, needsRestack: stack.branches.some((b) => b.needsRestack) },
     gitFlow: branches.gitFlow.config,
+    lanes: app.lanes.lanes && {
+      applied: app.lanes.lanes.lanes.filter((l) => l.applied).map((l) => l.name),
+      unapplied: app.lanes.lanes.lanes.filter((l) => !l.applied).map((l) => l.name)
+    },
     canRunCommit: !!run.commit,
     canCreatePullRequest: !!prRemote,
     trackedFiles: dialogs.trackedFiles,
@@ -127,6 +133,10 @@ export function appCommands(app: {
       finishGitFlow: branches.gitFlow.actions.finishGitFlow,
       cleanUpBranches: app.cleanup.open,
       createPullRequest: () => branchTarget && prRemote && branches.startPullRequest(branchTarget, prRemote),
+      startLanes: () => void app.lanes.start(),
+      newLane: () => void app.lanes.createLane(),
+      applyLane: (name) => void app.lanes.applyLane(name),
+      leaveLanes: () => void app.lanes.leave(),
       checkout: git.checkout,
       checkoutRemote: git.checkoutRemote,
       checkoutPullRequest: (number) => {

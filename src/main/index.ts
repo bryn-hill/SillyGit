@@ -10,6 +10,7 @@ import * as settings from './settings'
 import { registerGitHandlers } from './ipc/git'
 import { registerMergeHandlers } from './ipc/merging'
 import { registerBranchHandlers } from './ipc/branches'
+import { registerLaneHandlers } from './ipc/lanes'
 import { registerSystemHandlers } from './ipc/system'
 import { registerGithubHandlers } from './ipc/github'
 import { registerSettingsHandlers } from './ipc/settings'
@@ -28,6 +29,7 @@ function registerIpcHandlers(): void {
   registerGitHandlers()
   registerMergeHandlers()
   registerBranchHandlers()
+  registerLaneHandlers()
   registerSystemHandlers()
   registerGithubHandlers()
   registerSettingsHandlers()

@@ -11,6 +11,7 @@ import { InteractiveRebase } from './InteractiveRebase'
 import { Launchpad } from './Launchpad'
 import { FileHistory } from './FileHistory'
 import { GitFlow } from './GitFlow'
+import { Lanes } from './Lanes'
 import { WorkingFileView } from './WorkingFileView'
 import { MergeTool } from './MergeTool'
 import { PullRequestReview } from './PullRequestReview'
@@ -40,6 +41,7 @@ export class SillyGitApp {
   readonly workingFile: WorkingFileView
   readonly bisect: Bisect
   readonly gitFlow: GitFlow
+  readonly lanes: Lanes
 
   /** <html>, whose data-theme says which theme is drawn. */
   readonly document: Locator
@@ -83,6 +85,7 @@ export class SillyGitApp {
     this.workingFile = new WorkingFileView(page)
     this.bisect = new Bisect(page)
     this.gitFlow = new GitFlow(page)
+    this.lanes = new Lanes(page)
 
     this.document = page.locator('html')
     this.emptyState = page.getByText('No repository open.')

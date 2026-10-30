@@ -318,6 +318,33 @@ const api = {
     tagMessage?: string
   ): Wrapped<import('../shared/gitflow').GitFlowFinishResult> =>
     ipcRenderer.invoke('gitflow:finish', repoPath, branch, tagMessage),
+  /** Lanes (virtual branches): their status, or null when lanes are off. */
+  lanesStatus: (repoPath: string): Wrapped<import('../shared/lanes').LanesStatus | null> =>
+    ipcRenderer.invoke('lanes:status', repoPath),
+  enterLanes: (repoPath: string, base: string, lane: string): Wrapped<void> =>
+    ipcRenderer.invoke('lanes:enter', repoPath, base, lane),
+  /** Turns lanes off, checking out `keep` with its uncommitted changes. */
+  leaveLanes: (repoPath: string, keep: string): Wrapped<void> => ipcRenderer.invoke('lanes:leave', repoPath, keep),
+  forgetLanes: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('lanes:forget', repoPath),
+  returnToWorkspace: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('lanes:return', repoPath),
+  createLane: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('lanes:create', repoPath, name),
+  applyLane: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('lanes:apply', repoPath, name),
+  /** Unapplies a lane, setting its uncommitted changes aside; `remove` also drops it from the lanes. */
+  unapplyLane: (repoPath: string, name: string, remove: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('lanes:unapply', repoPath, name, remove),
+  setDefaultLane: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('lanes:set-default', repoPath, name),
+  renameLane: (repoPath: string, from: string, to: string): Wrapped<void> =>
+    ipcRenderer.invoke('lanes:rename', repoPath, from, to),
+  moveToLane: (repoPath: string, lane: string, move: import('../shared/lanes').LaneMove): Wrapped<number> =>
+    ipcRenderer.invoke('lanes:move', repoPath, lane, move),
+  commitLane: (repoPath: string, lane: string, message: string): Wrapped<string> =>
+    ipcRenderer.invoke('lanes:commit', repoPath, lane, message),
+  pushLane: (repoPath: string, lane: string): Wrapped<string> => ipcRenderer.invoke('lanes:push', repoPath, lane),
+  /** Moves commits made on the workspace branch outside SillyGit onto `lane`. */
+  adoptWorkspaceCommits: (repoPath: string, lane: string): Wrapped<number> =>
+    ipcRenderer.invoke('lanes:adopt-commits', repoPath, lane),
+  refreshWorkspace: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('lanes:refresh-workspace', repoPath),
+  undoLaneChange: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('lanes:undo', repoPath),
   renameBranch: (repoPath: string, from: string, to: string): Wrapped<void> =>
     ipcRenderer.invoke('git:rename-branch', repoPath, from, to),
   addWorktree: (repoPath: string, ref: string, kind: 'local' | 'remote' | 'commit'): Wrapped<string | null> =>

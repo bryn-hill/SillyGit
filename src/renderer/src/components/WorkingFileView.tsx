@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import FileDiffViewer from './FileDiffViewer'
+import type { DiffLanes } from '../lib/lanes'
 
 interface Props {
   repoPath: string
@@ -15,6 +16,8 @@ interface Props {
   onEditFile?: (path: string) => void
   onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
   onWorkingTreeChanged?: () => void
+  /** While lanes are on: who owns each line, and moving lines between lanes. */
+  lanes?: DiffLanes | null
 }
 
 /**
@@ -32,7 +35,8 @@ export default function WorkingFileView({
   onUnstage,
   onEditFile,
   onOpenFileView,
-  onWorkingTreeChanged
+  onWorkingTreeChanged,
+  lanes
 }: Props): JSX.Element {
   // The last loaded diff and the file it's for. It stays up while another file's (or a refresh's) loads,
   // rather than blinking to "Loading diff…" and back.
@@ -65,14 +69,18 @@ export default function WorkingFileView({
         <span className="commit-fullview-title" title={path}>
           {path}
         </span>
-        <span className="working-file-side">{staged ? 'Staged changes' : untracked ? 'New file' : 'Unstaged changes'}</span>
-        <button
-          className="working-file-stage"
-          onClick={() => (staged ? onUnstage([path]) : onStage([path]))}
-          title={staged ? 'Move this file out of the next commit' : 'Add this file to the next commit'}
-        >
-          {staged ? 'Unstage file' : 'Stage file'}
-        </button>
+        <span className="working-file-side">
+          {lanes ? (untracked ? 'New file' : 'Uncommitted changes') : staged ? 'Staged changes' : untracked ? 'New file' : 'Unstaged changes'}
+        </span>
+        {!lanes && (
+          <button
+            className="working-file-stage"
+            onClick={() => (staged ? onUnstage([path]) : onStage([path]))}
+            title={staged ? 'Move this file out of the next commit' : 'Add this file to the next commit'}
+          >
+            {staged ? 'Unstage file' : 'Stage file'}
+          </button>
+        )}
         <button className="icon-button" onClick={onClose} title="Close" aria-label="Close file diff">
           ✕
         </button>
@@ -91,6 +99,7 @@ export default function WorkingFileView({
             onWorkingTreeChanged={onWorkingTreeChanged}
             onEditFile={onEditFile}
             onOpenFileView={onOpenFileView}
+            lanes={lanes ?? undefined}
           />
         )}
       </div>

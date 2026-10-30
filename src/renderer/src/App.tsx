@@ -41,6 +41,7 @@ import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
 import { useLfs } from './hooks/useLfs'
 import { useEditor } from './hooks/useEditor'
+import { useLanes } from './hooks/useLanes'
 
 /**
  * The window: repo tabs, the toolbar, banners, the main area with the
@@ -64,16 +65,18 @@ export default function App(): JSX.Element {
   const git = useGitRunner({ repoPath, refresh: repo.refresh, showError, setNotice })
   const lfs = useLfs({ repoPath, refreshKey: status, git, setNotice })
   const commitBox = useCommitBox({ repoPath, operation, git, refresh: repo.refresh, showError })
+  const lanes = useLanes({ repo, git, askText, showError, setNotice })
 
   // Amending can reword the last commit with nothing changed, so the WIP row
-  // (where the commit box lives) stays while Amend is on.
+  // (where the commit box lives) stays while Amend is on; likewise while lanes are on.
   const hasWorkingChanges =
-    !!status &&
+    !!lanes.lanes ||
+    (!!status &&
     (status.staged.length > 0 ||
       status.unstaged.length > 0 ||
       status.conflicted.length > 0 ||
       !!operation ||
-      commitBox.amend)
+      commitBox.amend))
 
   const view = useMainView({ repo, hasWorkingChanges, keysBlocked: dialogs.showSettings })
   const actions = useGitActions({ repo, git, view, askText, showError, setNotice })
@@ -265,6 +268,7 @@ export default function App(): JSX.Element {
                       conflicts={conflicts}
                       commitBox={commitBox}
                       tabs={tabs}
+                      lanes={lanes}
                       hasWorkingChanges={hasWorkingChanges}
                       onOpenTerminal={() => setShowTerminal(true)}
                       onCheckoutPullRequest={checkoutPullRequest}
@@ -374,6 +378,7 @@ export default function App(): JSX.Element {
             tabs,
             layout,
             dialogs,
+            lanes,
             selfUpdate,
             lfs,
             hasWorkingChanges,
