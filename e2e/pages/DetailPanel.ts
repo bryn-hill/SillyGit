@@ -23,6 +23,11 @@ export class DetailPanel {
     this.coAuthorPicker = page.getByRole('dialog', { name: 'Add co-authors' })
   }
 
+  /** Opens one of the commit box toolbar's menus: "Quick actions", "Recent" or "Type". */
+  async openCommitMenu(name: 'Quick actions' | 'Recent' | 'Type'): Promise<void> {
+    await this.root.getByRole('button', { name: `${name} ▾` }).click()
+  }
+
   /** Opens the commit box's co-author picker and searches it. */
   async searchCoAuthors(query: string): Promise<void> {
     await this.root.getByRole('button', { name: /^Co-authors/ }).click()

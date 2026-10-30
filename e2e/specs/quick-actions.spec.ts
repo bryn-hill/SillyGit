@@ -38,9 +38,8 @@ test.describe('commit quick actions', () => {
     await expect(page.getByPlaceholder('Commit message')).toHaveValue('chore(deps): bump react from ^19.3.0 to ^19.3.1')
     await expect(suggestion).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Quick actions ▾' }).click()
-    await page.getByRole('menu').getByText('Prefix with').hover()
-    await page.getByRole('menuitem', { name: 'fix:' }).click()
+    await sillygit.details.openCommitMenu('Type')
+    await page.getByRole('menuitem', { name: 'fix:', exact: true }).click()
     await expect(page.getByPlaceholder('Commit message')).toHaveValue('fix: bump react from ^19.3.0 to ^19.3.1')
   })
 })

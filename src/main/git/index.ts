@@ -6,6 +6,7 @@ export {
   applyPartial,
   commit,
   discardFile,
+  getCommitHints,
   getDiff,
   getStagedDiff,
   getStatus,

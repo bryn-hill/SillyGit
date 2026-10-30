@@ -22,6 +22,8 @@ const api = {
   commit: (repoPath: string, message: string, amend?: boolean): Wrapped<void> =>
     ipcRenderer.invoke('git:commit', repoPath, message, amend),
   lastCommitMessage: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:last-commit-message', repoPath),
+  commitHints: (repoPath: string): Wrapped<import('../shared/commitHints').CommitHints> =>
+    ipcRenderer.invoke('git:commit-hints', repoPath),
   fetch: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:fetch', repoPath),
   fetchRemote: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('git:fetch-remote', repoPath, name),
   addRemote: (repoPath: string, name: string, url: string): Wrapped<void> =>

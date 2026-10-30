@@ -4,14 +4,39 @@ const article: HelpArticle = {
   id: 'commits/commit-message-help',
   title: 'Get help writing commit messages',
   category: 'commits',
-  summary: 'Quick actions for routine commits, and AI-generated messages.',
-  keywords: ['quick actions', 'commit message', 'generate', 'ai message', 'version bump', 'conventional commits', 'suggestion'],
+  summary: 'Commit templates, recent messages, Conventional Commits types, quick actions and AI messages.',
+  keywords: [
+    'quick actions',
+    'commit message',
+    'generate',
+    'ai message',
+    'version bump',
+    'conventional commits',
+    'suggestion',
+    'commit template',
+    'commit.template',
+    'recent messages',
+    'type',
+    'scope'
+  ],
   related: ['commits/stage-and-commit', 'ai/ai-review'],
-  body: `SillyGit has two ways to fill in a commit message.
+  body: `SillyGit has several ways to fill in a commit message.
+
+## Commit template
+
+If git's \`commit.template\` is set (for this repo or globally), the message box starts from that file each time it's empty, with its \`#\` comment lines taken out. **Commit** stays off until you change the template text. To bring the template back, pick **Recent ▾ > Commit template**.
+
+## Recent messages
+
+**Recent ▾** lists your last messages in this repo, newest first, one per subject (fixup and squash commits are left out). Hover one to see the whole message; click it to use it. Co-authors you've already picked are kept.
+
+## Type and scope
+
+**Type ▾** puts a Conventional Commits prefix such as \`feat:\` or \`fix(ui):\` on the first line, replacing any prefix that's there and keeping a breaking-change \`!\`. Types and scopes this repo's history already uses come first, so each type opens a list of the scopes your team writes. The current prefix is ticked.
 
 ## Quick actions (no AI)
 
-Simple rules look at what you've staged and suggest a message for routine changes, such as a version bump in \`package.json\`, dependency updates or a lockfile refresh. When one fits, a **Use …** chip appears above the message box; click it to use the message. The **Quick actions ▾** menu lists the suggestions, can **Bump version** (patch, minor or major) in \`package.json\` for you, and can **Prefix with** a Conventional Commits type such as \`fix:\` or \`feat:\`. Nothing is sent anywhere.
+Simple rules look at what you've staged and suggest a message for routine changes, such as a version bump in \`package.json\`, dependency updates or a lockfile refresh. When one fits, a **Use …** chip appears above the message box; click it to use the message. The **Quick actions ▾** menu lists the suggestions, can **Bump version** (patch, minor or major) in \`package.json\` for you. Nothing is sent anywhere.
 
 ## Generate message (AI)
 

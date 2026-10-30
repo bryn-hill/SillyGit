@@ -1,15 +1,23 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useState, type JSX, type MouseEvent } from 'react'
 import type { FileStatus } from '../../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from '../ContextMenu'
 import Avatar from '../Avatar'
 import CoAuthorPicker from './CoAuthorPicker'
 import { addCoAuthor, hasMessage, parseCoAuthors, removeCoAuthor, type Person } from '../../../../shared/coAuthors'
 import { isPrimary, MOD } from '../../lib/shortcuts'
-import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../../shared/quickActions'
+import { bumpVersion, type BumpKind, type QuickMessage } from '../../../../shared/quickActions'
+import {
+  applyConventional,
+  isUntouchedTemplate,
+  parseConventional,
+  typeChoices,
+  type CommitHints
+} from '../../../../shared/commitHints'
 
 /**
  * The commit message box on the WIP row: rule-based quick actions (suggested
- * messages, version bumps, prefixes), a Claude-generated message, co-authors
+ * messages, version bumps), recent messages and commit.template, a
+ * Conventional Commits type(scope) picker, a Claude-generated message, co-authors
  * (kept as `Co-authored-by:` trailers in the message itself), Amend, and
  * Commit (Cmd/Ctrl+Enter).
  */
@@ -17,6 +25,7 @@ export default function CommitBox({
   repoPath,
   staged,
   commitMessage,
+  hints,
   onCommitMessageChange,
   onStage,
   onCommit,
@@ -27,6 +36,7 @@ export default function CommitBox({
   repoPath: string
   staged: FileStatus[]
   commitMessage: string
+  hints: CommitHints
   onCommitMessageChange: (value: string) => void
   onStage: (paths: string[]) => void
   onCommit: () => void
@@ -37,13 +47,17 @@ export default function CommitBox({
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null)
+  const [recentMenu, setRecentMenu] = useState<{ x: number; y: number } | null>(null)
+  const [typeMenu, setTypeMenu] = useState<{ x: number; y: number } | null>(null)
   const [indexSuggestions, setSuggestions] = useState<QuickMessage[]>([])
   const [packageVersion, setPackageVersion] = useState<string | null>(null)
   const [coAuthorAnchor, setCoAuthorAnchor] = useState<DOMRect | null>(null)
   const coAuthors = parseCoAuthors(commitMessage)
 
   // Amending can just reword the last commit, with nothing staged. Trailers alone aren't a message.
-  const canCommit = hasMessage(commitMessage) && (amend || staged.length > 0)
+  // An untouched commit.template isn't a message either.
+  const canCommit =
+    hasMessage(commitMessage) && !isUntouchedTemplate(commitMessage, hints.template) && (amend || staged.length > 0)
 
   // A suggested or generated message replaces what's typed, but keeps the co-authors.
   const replaceMessage = (message: string): void => onCommitMessageChange(coAuthors.reduce(addCoAuthor, message))
@@ -104,17 +118,51 @@ export default function CommitBox({
         }))
       })
     }
-    tools.push({
-      id: 'prefix',
-      label: 'Prefix with',
-      submenu: COMMIT_PREFIXES.map((p) => ({
-        id: `prefix-${p}`,
-        label: `${p}:`,
-        onSelect: () => onCommitMessageChange(applyPrefix(commitMessage, p))
-      }))
-    })
     sections.push(tools)
     return sections
+  }
+
+  const recentMenuSections = (): ContextMenuItem[][] => {
+    const sections: ContextMenuItem[][] = []
+    if (hints.recent.length > 0) {
+      sections.push(
+        hints.recent.map((message, i) => ({
+          id: `recent-${i}`,
+          label: message.split('\n')[0],
+          title: message,
+          onSelect: () => replaceMessage(message)
+        }))
+      )
+    }
+    if (hints.template) {
+      sections.push([
+        { id: 'template', label: 'Commit template', title: hints.template, onSelect: () => replaceMessage(hints.template!) }
+      ])
+    }
+    return sections
+  }
+
+  // The type(scope) the message starts with now, ticked in the menu.
+  const current = parseConventional(commitMessage.split('\n')[0])
+  const scopes = hints.scopes.slice(0, 12)
+  const typeMenuSections = (): ContextMenuItem[][] => [
+    typeChoices(hints.types).map((type) => {
+      const pick = (scope: string | null): ContextMenuItem => {
+        const label = `${type}${scope ? `(${scope})` : ''}:`
+        const ticked = current?.type === type && current.scope === scope
+        return {
+          id: `type-${type}-${scope ?? ''}`,
+          label: ticked ? `✓ ${label}` : label,
+          onSelect: () => onCommitMessageChange(applyConventional(commitMessage, type, scope))
+        }
+      }
+      return scopes.length === 0 ? pick(null) : { id: `type-${type}`, label: type, submenu: [pick(null), ...scopes.map(pick)] }
+    })
+  ]
+
+  const openMenu = (open: (pos: { x: number; y: number }) => void) => (e: MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    open({ x: r.left, y: r.bottom + 4 })
   }
 
   const handleGenerateMessage = async (): Promise<void> => {
@@ -132,12 +180,28 @@ export default function CommitBox({
         <button
           className="link-button"
           title="Fill in a message from simple rules (no AI)"
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect()
-            setQuickMenu({ x: r.left, y: r.bottom + 4 })
-          }}
+          onClick={openMenu(setQuickMenu)}
         >
           Quick actions ▾
+        </button>
+        <button
+          className="link-button"
+          title="Reuse one of your recent commit messages, or the commit template"
+          disabled={hints.recent.length === 0 && !hints.template}
+          onClick={openMenu(setRecentMenu)}
+        >
+          Recent ▾
+        </button>
+        <button
+          className="link-button"
+          title={
+            scopes.length > 0
+              ? 'Start the message with a Conventional Commits type(scope); scopes come from this repo'
+              : 'Start the message with a Conventional Commits type'
+          }
+          onClick={openMenu(setTypeMenu)}
+        >
+          Type ▾
         </button>
         <button className="link-button" disabled={staged.length === 0 || generating} onClick={handleGenerateMessage}>
           {generating ? 'Generating…' : 'Generate message'}
@@ -216,6 +280,12 @@ export default function CommitBox({
       )}
       {quickMenu && (
         <ContextMenu x={quickMenu.x} y={quickMenu.y} sections={quickMenuSections()} onClose={() => setQuickMenu(null)} />
+      )}
+      {recentMenu && (
+        <ContextMenu x={recentMenu.x} y={recentMenu.y} sections={recentMenuSections()} onClose={() => setRecentMenu(null)} />
+      )}
+      {typeMenu && (
+        <ContextMenu x={typeMenu.x} y={typeMenu.y} sections={typeMenuSections()} onClose={() => setTypeMenu(null)} />
       )}
     </div>
   )

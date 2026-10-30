@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto'
 import { promises as fsp } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import { homedir, tmpdir } from 'os'
+import { isAbsolute, join, resolve } from 'path'
+import { cleanTemplate, learnConventional, parseRecentMessages, type CommitHints } from '../../shared/commitHints'
 import { addIgnorePattern } from '../../shared/gitignore'
 import { buildPartialPatch, isReverse, type PartialAction } from '../../shared/lineStaging'
 import type { FileStatus, RepoStatus } from '../../shared/types'
@@ -160,6 +161,41 @@ export async function lastCommitMessage(repoPath: string): Promise<string> {
     return (await runGit(repoPath, ['log', '-1', '--format=%B'])).trim()
   } catch {
     return ''
+  }
+}
+
+/**
+ * What the commit box offers from the repo itself: commit.template, the
+ * user's recent messages, and the Conventional Commits types and scopes in
+ * the history. Every part is optional, so failures just leave it empty.
+ */
+export async function getCommitHints(repoPath: string): Promise<CommitHints> {
+  const [templatePath, email] = await Promise.all([
+    runGit(repoPath, ['config', '--path', 'commit.template']).catch(() => ''),
+    runGit(repoPath, ['config', 'user.email']).catch(() => '')
+  ])
+  const template = await readTemplate(repoPath, templatePath.trim())
+  const author = email.trim() ? [`--author=<${email.trim()}>`] : []
+  const [recentLog, subjects] = await Promise.all([
+    runGit(repoPath, ['log', '--branches', '--no-merges', '--max-count=200', ...author, '--format=%B%x00']).catch(() => ''),
+    runGit(repoPath, ['log', '--branches', '--no-merges', '--max-count=500', '--format=%s']).catch(() => '')
+  ])
+  return {
+    template,
+    recent: parseRecentMessages(recentLog, template),
+    ...learnConventional(subjects.split('\n'))
+  }
+}
+
+async function readTemplate(repoPath: string, path: string): Promise<string | null> {
+  if (!path) return null
+  const expanded = path === '~' || path.startsWith('~/') ? join(homedir(), path.slice(1)) : path
+  // git reads a relative template path from where it runs: the top of the work tree here.
+  const full = isAbsolute(expanded) ? expanded : resolve(repoPath, expanded)
+  try {
+    return cleanTemplate(await fsp.readFile(full, 'utf-8'))
+  } catch {
+    return null
   }
 }
 

@@ -135,6 +135,7 @@ export default function MainArea({
             onAbsorb={commitBox.openAbsorb}
             status={status}
             commitMessage={commitBox.message}
+            commitHints={commitBox.hints}
             onCommitMessageChange={commitBox.setMessage}
             onStage={git.stage}
             onUnstage={git.unstage}

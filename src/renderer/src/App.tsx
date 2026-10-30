@@ -67,7 +67,7 @@ export default function App(): JSX.Element {
   const dialogs = useDialogs(repoPath)
   const git = useGitRunner({ repoPath, refresh: repo.refresh, showError, setNotice })
   const lfs = useLfs({ repoPath, refreshKey: status, git, setNotice })
-  const commitBox = useCommitBox({ repoPath, operation, git, refresh: repo.refresh, showError })
+  const commitBox = useCommitBox({ repoPath, headHash: repo.headHash, operation, git, refresh: repo.refresh, showError })
   const lanes = useLanes({ repo, git, askText, showError, setNotice })
 
   // Amending can reword the last commit with nothing changed, so the WIP row

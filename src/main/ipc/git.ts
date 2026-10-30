@@ -56,6 +56,8 @@ export function registerGitHandlers(): void {
     wrap(() => git.lastCommitMessage(repoPath))
   )
 
+  ipcMain.handle('git:commit-hints', (_e, repoPath: string) => wrap(() => git.getCommitHints(repoPath)))
+
   ipcMain.handle('git:fetch', (_e, repoPath: string) => wrap(() => git.fetchAll(repoPath)))
   ipcMain.handle('git:fetch-remote', (_e, repoPath: string, name: string) => wrap(() => git.fetchRemote(repoPath, name)))
   ipcMain.handle('git:add-remote', (_e, repoPath: string, name: string, url: string) =>

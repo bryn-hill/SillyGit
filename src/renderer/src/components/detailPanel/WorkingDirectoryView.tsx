@@ -9,11 +9,14 @@ import CommitBox from './CommitBox'
 import OperationCommitBox from './OperationCommitBox'
 import LanesView from './LanesView'
 import type { Lanes } from '../../hooks/useLanes'
+import type { CommitHints } from '../../../../shared/commitHints'
 
 export interface WorkingProps {
   repoPath: string
   status: RepoStatus | null
   commitMessage: string
+  /** commit.template, recent messages and Conventional Commits scopes for the commit box. */
+  commitHints: CommitHints
   onCommitMessageChange: (value: string) => void
   onStage: (paths: string[]) => void
   onUnstage: (paths: string[]) => void
@@ -43,6 +46,7 @@ export default function WorkingDirectoryView({
   repoPath,
   status,
   commitMessage,
+  commitHints,
   onCommitMessageChange,
   onStage,
   onUnstage,
@@ -133,6 +137,7 @@ export default function WorkingDirectoryView({
           repoPath={repoPath}
           staged={staged}
           commitMessage={commitMessage}
+          hints={commitHints}
           onCommitMessageChange={onCommitMessageChange}
           onStage={onStage}
           onCommit={onCommit}

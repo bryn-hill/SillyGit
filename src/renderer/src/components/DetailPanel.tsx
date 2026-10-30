@@ -6,6 +6,7 @@ import WorkingDirectoryView from './detailPanel/WorkingDirectoryView'
 import CommitDetailView from './detailPanel/CommitDetailView'
 import MultiCommitView from './detailPanel/MultiCommitView'
 import type { Lanes } from '../hooks/useLanes'
+import type { CommitHints } from '../../../shared/commitHints'
 
 export type { ActiveFile, ConflictActions, MultiCommitActions } from './detailPanel/types'
 
@@ -19,6 +20,7 @@ interface Props {
   onAbsorb: () => void
   status: RepoStatus | null
   commitMessage: string
+  commitHints: CommitHints
   onCommitMessageChange: (value: string) => void
   onStage: (paths: string[]) => void
   onUnstage: (paths: string[]) => void
@@ -69,6 +71,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       repoPath={props.repoPath}
       status={props.status}
       commitMessage={props.commitMessage}
+      commitHints={props.commitHints}
       onCommitMessageChange={props.onCommitMessageChange}
       onStage={props.onStage}
       onUnstage={props.onUnstage}
