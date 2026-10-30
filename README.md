@@ -4,7 +4,7 @@
 
 # SillyGit
 
-**A friendly desktop Git client with a real merge tool, lanes, and Claude built in.**
+**A desktop Git client with a commit graph, line staging, a three-way merge editor and Claude Code built in.**
 
 [![CI](https://github.com/bryn-hill/sillygit/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/bryn-hill/sillygit/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/bryn-hill/sillygit?label=release&color=e8461c)](https://github.com/bryn-hill/sillygit/releases/latest)
@@ -22,27 +22,24 @@
 
 </div>
 
-SillyGit gives you a commit graph, staging down to single lines, a proper three-way merge
-tool, pull requests from GitHub and Azure DevOps, Jira and Azure Boards issues, and a Claude
-panel that can read and change your repo, all in one window. The name is silly; the Git
-underneath is real Git, run with your own config.
+SillyGit draws your history as a graph, lets you stage a single line, gives you a three-way
+editor for merge conflicts, and can run Claude Code in the repository you have open. It also
+handles pull requests from GitHub and Azure DevOps, and issues from GitHub, Jira and Azure
+Boards. It's free and MIT licensed.
 
-## Why SillyGit
+## It runs your Git
 
-- **It's real Git.** Every action runs the `git` on your `PATH` with your config, hooks and
-  credentials, and the activity log shows exactly what ran. Nothing is hidden in a private
-  database, so you can switch to the terminal at any point.
-- **Conflicts stop being scary.** A three-way merge tool with per-chunk and per-line choices,
-  bulk resolution with undo, and optional AI suggestions when you're stuck.
-- **Several things at once, one checkout.** Lanes let you keep changes for different branches in
-  the same working tree and commit each to its own branch.
-- **Claude where your code is.** Chat with Claude Code inside the app, approve each edit or
-  command from a card, and get AI commit messages, reviews and commit splits.
-- **Free and open source.** MIT licensed, no account, no telemetry, no paywalled features.
+SillyGit doesn't bring its own copy of Git. Every button runs the `git` already on your
+machine, with your config, hooks, credentials and signing keys, and **Actions → Activity log**
+lists the exact commands it ran.
+
+So you can drop into a terminal whenever you like. The graph and file list update when the
+repository changes on disk, and **Undo** works from Git's reflog, which means it can take back
+a commit, checkout, merge, rebase or reset even if you ran it in the terminal.
 
 ## Download
 
-Grab the latest build from **[GitHub Releases](https://github.com/bryn-hill/sillygit/releases/latest)**.
+The latest build is on **[GitHub Releases](https://github.com/bryn-hill/sillygit/releases/latest)**. This is an early release.
 
 | Platform | File |
 | --- | --- |
@@ -51,12 +48,12 @@ Grab the latest build from **[GitHub Releases](https://github.com/bryn-hill/sill
 | Windows 10/11, 64-bit | `SillyGit-<version>-win-x64.zip` (portable: unzip and run `SillyGit.exe`) |
 | Linux | Build an AppImage from source with `npm run dist` (see [below](#run-from-source)) |
 
-Builds aren't signed with a paid certificate yet, so the first launch shows a warning. On
+The builds aren't signed yet, so your system warns you the first time you open SillyGit. On
 **macOS**, right-click the app and choose **Open**, or use **System Settings → Privacy &
-Security → Open Anyway**. On **Windows**, click **More info → Run anyway** on the SmartScreen
-prompt. [RELEASING.md](RELEASING.md) has the details and the checksums file.
+Security → Open Anyway**. On **Windows**, if SmartScreen stops it, click **More info**, then
+**Run anyway**. [RELEASING.md](RELEASING.md) has the details and the checksums file.
 
-You'll also want **Git** on your `PATH`. For the integrations, sign in to the
+You need **Git** installed. For the GitHub features, sign in to the
 [GitHub CLI](https://cli.github.com/) with `gh auth login` and to
 [Claude Code](https://claude.com/claude-code) (or set an Anthropic API key in Settings).
 
@@ -69,16 +66,17 @@ You'll also want **Git** on your `PATH`. For the integrations, sign in to the
   <source media="(prefers-color-scheme: light)" srcset="docs/images/conflict-light.webp">
   <img src="docs/images/conflict-dark.webp" alt="The three-way merge tool with the current and incoming sides above the output">
 </picture>
-<b>Three-way merge tool.</b> Take ours, theirs or both per chunk or per line, edit the output
-by hand, resolve many files at once with undo, or ask AI for a suggestion.
+<b>Merge conflicts.</b> Your side and their side next to each other, with the result
+underneath. Pick lines or chunks from either side, edit the result by hand, or take one side
+for many files at once.
 </td>
 <td width="50%" valign="top">
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/images/lanes-light.webp">
   <img src="docs/images/lanes-dark.webp" alt="The lanes panel with two lanes, each with its own files and commit box">
 </picture>
-<b>Lanes.</b> Work on several branches at once in one working tree, move files between
-lanes, then commit each lane to its own branch.
+<b>Lanes.</b> Several branches checked out in one folder. Each change belongs to a lane, and
+each lane commits to its own branch, so an unrelated fix doesn't end up in your feature.
 </td>
 </tr>
 <tr>
@@ -87,16 +85,16 @@ lanes, then commit each lane to its own branch.
   <source media="(prefers-color-scheme: light)" srcset="docs/images/claude-light.webp">
   <img src="docs/images/claude-dark.webp" alt="The Claude panel asking permission to make an edit, showing the diff">
 </picture>
-<b>Claude panel.</b> Chat with Claude Code beside your graph. Every edit and command
-arrives as a card you approve, with the diff right there.
+<b>Claude Code in a side panel.</b> By default it asks before editing a file or running a
+command, and shows you the diff or command first. Its changes land in your working copy.
 </td>
 <td width="50%" valign="top">
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/images/diff-light.webp">
   <img src="docs/images/diff-dark.webp" alt="A file diff with Stage Hunk and Discard Hunk buttons">
 </picture>
-<b>Stage exactly what you mean.</b> Stage, unstage or discard whole files, single hunks or
-individual lines, then fix up or <i>absorb</i> them into earlier commits.
+<b>Staging, fixups and absorb.</b> Stage or discard single lines. Fold fixes into older
+unpushed commits, one at a time or all at once with <b>Absorb</b>.
 </td>
 </tr>
 <tr>
@@ -105,21 +103,21 @@ individual lines, then fix up or <i>absorb</i> them into earlier commits.
   <source media="(prefers-color-scheme: light)" srcset="docs/images/help-light.webp">
   <img src="docs/images/help-dark.webp" alt="The help centre with topics on the left and popular articles">
 </picture>
-<b>Help built in.</b> A first-run walkthrough and over 50 help articles, each with a
-worked example. Press <kbd>F1</kbd> or <kbd>?</kbd> anywhere.
+<b>Help inside the app.</b> Press <kbd>F1</kbd> or <kbd>?</kbd> for 53 short articles, each
+ending with a worked example, plus a walkthrough the first time you open a repository.
 </td>
 <td width="50%" valign="top">
 
-**And much more**
+**Also in there**
 
-- Interactive rebase by drag and drop
-- Guided `git bisect`, git-flow and stacked branches
-- Pull request review, create and check out
-- GitHub, GitLab, Bitbucket, Gitea, Azure DevOps
-- Jira and Azure Boards: **Start work** on a ticket
+- Interactive rebase: drag commits to reorder, squash or drop
+- `git bisect`, git-flow and stacked branches
+- Pull requests: review, open and check out locally
+- Accounts for GitHub, GitLab, Bitbucket, Gitea and Azure DevOps
+- **Start work** on an issue or Jira ticket to get a branch for it
 - Blame, file history and image diffs
 - Built-in editor, terminal and command palette
-- Light, dark or system theme
+- Light and dark themes, or follow the system
 
 </td>
 </tr>

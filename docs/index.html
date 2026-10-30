@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SillyGit: a friendly desktop Git client</title>
-  <meta name="description" content="SillyGit is a free, open-source desktop Git client with a commit graph, line staging, a three-way merge tool, lanes, pull requests and Claude built in.">
+  <title>SillyGit, a desktop Git client</title>
+  <meta name="description" content="SillyGit is a free desktop Git client for macOS and Windows. It draws your history as a graph, stages single lines, has a three-way merge tool, and can run Claude Code in your repository.">
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#1b1d28" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f7f7fb" media="(prefers-color-scheme: light)">
   <meta property="og:title" content="SillyGit">
-  <meta property="og:description" content="A friendly desktop Git client with a real merge tool, lanes, and Claude built in.">
+  <meta property="og:description" content="A desktop Git client with a commit graph, line staging, a three-way merge tool and Claude Code built in.">
   <meta property="og:image" content="https://bryn-hill.github.io/sillygit/images/social-preview.png">
   <meta property="og:url" content="https://bryn-hill.github.io/sillygit/">
   <meta name="twitter:card" content="summary_large_image">
@@ -29,13 +29,13 @@
   <main>
     <section class="hero">
       <img class="hero-logo" src="images/logo.png" alt="SillyGit logo: a Git diamond wearing sunglasses" width="112" height="112">
-      <h1>Git, but friendly.</h1>
-      <p class="lede">SillyGit is a desktop Git client with a clear commit graph, staging down to single lines, a real three-way merge tool, and Claude built in. The name is silly; the Git underneath is real.</p>
+      <h1>SillyGit</h1>
+      <p class="lede">A desktop Git client. It draws your history as a graph, lets you stage a single line, gives you a three-way editor for merge conflicts, and can run Claude Code in the repository you have open.</p>
       <div class="cta">
-        <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download for free</a>
-        <a class="button" href="https://github.com/bryn-hill/sillygit">View on GitHub</a>
+        <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download</a>
+        <a class="button" href="https://github.com/bryn-hill/sillygit">Source on GitHub</a>
       </div>
-      <p class="fine">macOS and Windows builds · Linux from source · MIT licensed</p>
+      <p class="fine">Free and MIT licensed. Builds for macOS and Windows; Linux from source.</p>
       <figure class="shot hero-shot">
         <picture>
           <source media="(prefers-color-scheme: light)" srcset="images/graph-light.webp">
@@ -45,33 +45,19 @@
     </section>
 
     <section class="why">
-      <h2>Why SillyGit</h2>
-      <div class="cards">
-        <article>
-          <h3>It's real Git</h3>
-          <p>Every action runs the <code>git</code> on your <code>PATH</code> with your own config, hooks and credentials. The activity log shows exactly what ran.</p>
-        </article>
-        <article>
-          <h3>Conflicts stop being scary</h3>
-          <p>A three-way merge tool with per-chunk and per-line choices, bulk resolution with undo, and AI suggestions when you're stuck.</p>
-        </article>
-        <article>
-          <h3>One checkout, many branches</h3>
-          <p>Lanes keep changes for different branches in the same working tree, and commit each to its own branch.</p>
-        </article>
-        <article>
-          <h3>Free and open</h3>
-          <p>MIT licensed. No account, no telemetry, no paywalled features. Built in the open on GitHub.</p>
-        </article>
+      <h2>It runs your Git</h2>
+      <div class="prose">
+        <p>SillyGit doesn't bring its own copy of Git. Every button runs the <code>git</code> already on your machine, with your config, hooks, credentials and signing keys. <b>Actions → Activity log</b> lists the exact commands it ran.</p>
+        <p>So you can drop into a terminal whenever you like. The graph and file list update when the repository changes on disk, and <b>Undo</b> works from Git's reflog, which means it can take back a commit, checkout, merge, rebase or reset even if you ran it in the terminal.</p>
       </div>
     </section>
 
     <section id="features" class="features">
       <div class="feature">
         <div class="copy">
-          <p class="kicker">Merge conflicts</p>
-          <h2>A merge tool you'll actually use</h2>
-          <p>See both sides and the result together. Take ours, theirs or both for each chunk or single line, edit the output by hand, and resolve many files at once with undo. Conflicts from merges, rebases, cherry-picks and stash pops all land in the same place.</p>
+          <h2>Merge conflicts</h2>
+          <p>Click a conflicted file and you get your side and their side next to each other, with the result underneath. Tick the lines or chunks you want from each side, in either order, and type into the result for anything neither side has.</p>
+          <p>If a merge leaves a dozen files in conflict, select several and take one side for all of them. There's an undo for that. The same editor handles conflicts from rebases, cherry-picks and stash pops.</p>
         </div>
         <figure class="shot">
           <picture>
@@ -83,9 +69,9 @@
 
       <div class="feature flip">
         <div class="copy">
-          <p class="kicker">Lanes</p>
-          <h2>Work on several branches at once</h2>
-          <p>Fixing a bug in the middle of a feature? Turn on lanes, move each file to the lane it belongs to, and commit every lane to its own branch, all without stashing or switching.</p>
+          <h2>Lanes</h2>
+          <p>Git gives you one checked-out branch per folder. Lanes let you have several. Each lane is a real branch, and each change in your working copy belongs to one lane.</p>
+          <p>Say you're halfway through a feature and spot an unrelated bug. Fix it, drag the file into a second lane, and commit each lane to its own branch. Both sets of changes stay in your working copy the whole time, so you can still build and test them together.</p>
         </div>
         <figure class="shot">
           <picture>
@@ -97,9 +83,9 @@
 
       <div class="feature">
         <div class="copy">
-          <p class="kicker">Claude</p>
-          <h2>Claude, right next to your graph</h2>
-          <p>Chat with Claude Code inside SillyGit. Every edit and command arrives as a card you approve, with the diff right there. AI commit messages, reviews and help splitting a big change are a click away.</p>
+          <h2>Claude Code in a side panel</h2>
+          <p>The Claude panel runs Claude Code in the repository you have open. By default it asks before it edits a file or runs a command, and shows you the diff or the command first.</p>
+          <p>Whatever it changes ends up in your working copy like any other edit, so you review and commit it the usual way. It needs Claude Code signed in or an Anthropic API key. Everything else in SillyGit works without one.</p>
         </div>
         <figure class="shot">
           <picture>
@@ -111,9 +97,9 @@
 
       <div class="feature flip">
         <div class="copy">
-          <p class="kicker">Staging</p>
-          <h2>Commit exactly what you mean</h2>
-          <p>Stage, unstage or discard whole files, single hunks or individual lines. Fix up an earlier commit, or <em>absorb</em> staged hunks into the unpushed commits they belong to.</p>
+          <h2>Staging, fixups and absorb</h2>
+          <p>Stage or discard a single line straight from the diff. To fix an older commit, stage the fix, right-click the commit and choose <b>Fix up this commit with staged changes</b>.</p>
+          <p>If you have fixes for several commits, <b>Absorb</b> works out which unpushed commit last touched each hunk, shows you where each one will go, and folds them in. Both rewrite history, so they're meant for commits you haven't pushed.</p>
         </div>
         <figure class="shot">
           <picture>
@@ -125,9 +111,8 @@
 
       <div class="feature">
         <div class="copy">
-          <p class="kicker">Help</p>
-          <h2>Help that's always one key away</h2>
-          <p>A short walkthrough on first launch and over 50 help articles, each with a worked example. Press <kbd>F1</kbd> or <kbd>?</kbd> anywhere in the app.</p>
+          <h2>Help inside the app</h2>
+          <p>Press <kbd>F1</kbd> or <kbd>?</kbd> for the help centre: 53 short articles, each ending with a worked example. The first time you open a repository there's a quick walkthrough of the window, which you can skip.</p>
         </div>
         <figure class="shot">
           <picture>
@@ -139,42 +124,43 @@
     </section>
 
     <section class="more">
-      <h2>And plenty more</h2>
+      <h2>Also in there</h2>
       <ul class="grid">
-        <li><strong>Interactive rebase</strong> by drag and drop</li>
-        <li><strong>Pull requests</strong>: review, create and check out</li>
+        <li><strong>Interactive rebase</strong> where you drag commits to reorder, squash or drop them</li>
+        <li><strong>Pull requests</strong>: review them, open new ones, check them out locally</li>
         <li><strong>Accounts</strong> for GitHub, GitLab, Bitbucket, Gitea and Azure DevOps</li>
-        <li><strong>Start work</strong> on GitHub issues, Jira tickets and Azure Boards items</li>
-        <li><strong>Guided bisect</strong>, git-flow and stacked branches</li>
-        <li><strong>Blame</strong>, file history and image diffs</li>
-        <li><strong>Built-in editor</strong>, terminal and command palette</li>
-        <li><strong>Multi-repo tabs</strong> that come back where you left them</li>
-        <li><strong>Git LFS</strong>, tags, worktrees and submodules</li>
-        <li><strong>Undo and redo</strong> for everyday operations</li>
-        <li><strong>Search history</strong> by message, author, path or content</li>
-        <li><strong>Light, dark or system</strong> theme</li>
+        <li><strong>Start work</strong> on an issue, Jira ticket or Azure Boards item to get a branch for it</li>
+        <li><strong>Bisect</strong> from the commit menu, optionally running a test command for you</li>
+        <li><strong>git-flow</strong> and <strong>stacked branches</strong>, with no extra tools to install</li>
+        <li><strong>Blame</strong>, file history, and image diffs as swipe or onion skin</li>
+        <li><strong>An editor</strong> for quick fixes, a terminal, and a command palette</li>
+        <li><strong>Tabs</strong> for several repositories, restored when you reopen the app</li>
+        <li><strong>Git LFS</strong>, tags, worktrees and submodules in the sidebar</li>
+        <li><strong>History search</strong> by message, author, path or changed content</li>
+        <li><strong>Light and dark themes</strong>, or follow the system</li>
       </ul>
     </section>
 
     <section id="download" class="download">
-      <h2>Get SillyGit</h2>
+      <h2>Download</h2>
+      <p class="note">This is an early release. The builds aren't signed yet, so your system will warn you the first time you open SillyGit.</p>
       <div class="cards">
         <article>
           <h3>macOS</h3>
-          <p>Apple silicon and Intel, as a <code>.dmg</code>.</p>
-          <p class="fine">First launch: right-click the app and choose <b>Open</b>.</p>
+          <p>A <code>.dmg</code> for Apple silicon or Intel.</p>
+          <p class="fine">The first time, right-click the app and choose <b>Open</b>.</p>
           <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download</a>
         </article>
         <article>
           <h3>Windows</h3>
-          <p>Windows 10 and 11, 64-bit. Unzip and run <code>SillyGit.exe</code>.</p>
-          <p class="fine">On the SmartScreen prompt, click <b>More info → Run anyway</b>.</p>
+          <p>A <code>.zip</code> for 64-bit Windows 10 and 11. Unzip it and run <code>SillyGit.exe</code>.</p>
+          <p class="fine">If SmartScreen stops it, click <b>More info</b>, then <b>Run anyway</b>.</p>
           <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download</a>
         </article>
         <article>
-          <h3>Linux and source</h3>
-          <p>Run it from a clone with Node.js 22, or build an AppImage with <code>npm run dist</code>.</p>
-          <p class="fine">Needs Git on your <code>PATH</code>.</p>
+          <h3>Linux</h3>
+          <p>No prebuilt download yet. Run it from a clone, or make an AppImage with <code>npm run dist</code>.</p>
+          <p class="fine">Needs Git and Node.js 22.</p>
           <a class="button" href="https://github.com/bryn-hill/sillygit#run-from-source">Build from source</a>
         </article>
       </div>
