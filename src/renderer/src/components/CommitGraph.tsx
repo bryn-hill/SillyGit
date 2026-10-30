@@ -20,6 +20,7 @@ import { useBisectState } from '../lib/bisectMenu'
 import { bisectMarks, markLabel } from '../../../shared/bisect'
 import Select from './Select'
 import GraphScopeBar from './commitGraph/GraphScopeBar'
+import { BranchIcon } from './topBar/icons'
 import type { GraphScopeActions } from '../hooks/useBranchActions'
 import {
   graphFilterLabel,
@@ -442,10 +443,12 @@ export default function CommitGraph({
         <button
           className={`graph-scope-toggle${scope.scope.currentOnly ? ' active' : ''}`}
           aria-pressed={scope.scope.currentOnly}
+          aria-label="Current branch"
           title="Show only the checked-out branch and its upstream"
           onClick={scope.toggleCurrentOnly}
         >
-          Current branch
+          <BranchIcon />
+          <span className="graph-scope-toggle-label">Current branch</span>
         </button>
         <div className="graph-search">
           <Select<CommitSearchMode>

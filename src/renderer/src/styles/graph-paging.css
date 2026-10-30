@@ -107,6 +107,10 @@ button.graph-filter-clear:hover {
 /* "Current branch" toggle in the graph header: limits the graph to the checked-out branch. */
 button.graph-scope-toggle {
   margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 1px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -123,6 +127,17 @@ button.graph-scope-toggle.active {
 
 .graph-scope-toggle + .graph-search {
   margin-left: 0;
+}
+
+/* Below about 700px the toggle is just its icon, so the search box keeps its room. */
+@container commit-graph (max-width: 700px) {
+  .graph-scope-toggle-label {
+    display: none;
+  }
+
+  button.graph-scope-toggle {
+    padding: 2px 5px;
+  }
 }
 
 .graph-scope-bar {
