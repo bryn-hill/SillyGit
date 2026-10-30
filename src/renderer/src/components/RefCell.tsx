@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type JSX, type MouseEvent, type ReactNode } from 'react'
 import type { RefBadge, RefPill } from '../lib/refs'
 import { dropTarget, useRefDrag } from './RefDrag'
 
@@ -184,12 +184,15 @@ export default function RefCell({
   pills,
   color,
   width,
-  handlers
+  handlers,
+  burst
 }: {
   pills: RefPill[]
   color: string
   width: number
   handlers: RefHandlers
+  /** Set when the row's commit has just arrived: the line grows out to it in step with its animation. */
+  burst?: { id: number; delay: number }
 }): JSX.Element {
   return (
     <div className="ref-cell" data-testid="ref-cell" style={{ width }}>
@@ -197,7 +200,17 @@ export default function RefCell({
         <>
           <Pill pill={pills[0]} color={color} handlers={handlers} />
           {pills.length > 1 && <Overflow pills={pills.slice(1)} color={color} handlers={handlers} />}
-          <span className="ref-connector" style={{ background: color }} aria-hidden="true" />
+          <span
+            // Keyed so the line regrows for each new animation.
+            key={`connector-${burst?.id ?? 'still'}`}
+            data-testid="ref-connector"
+            className={`ref-connector ${burst !== undefined ? 'ref-connector-burst' : ''}`}
+            style={{
+              background: color,
+              ...(burst && ({ '--burst-delay': `${burst.delay}ms` } as CSSProperties))
+            }}
+            aria-hidden="true"
+          />
         </>
       )}
     </div>

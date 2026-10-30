@@ -56,6 +56,28 @@
   animation: merge-fade-in 1ms linear calc(var(--burst-delay, 0ms) + 460ms) forwards;
 }
 
+/* The line from a branch / tag pill races out to the arriving commit and
+   reaches it as the lines from below do, just as its station pops in. It runs
+   in two pieces, speeding out of the pill and easing into the node. */
+.ref-connector-burst {
+  transform-origin: left center;
+  animation: ref-connector-grow 230ms cubic-bezier(0.55, 0, 1, 0.45) calc(var(--burst-delay, 0ms) + 100ms) both;
+}
+
+.ref-connector-burst-node {
+  stroke-dasharray: 1 2;
+  animation: merge-line-grow 130ms cubic-bezier(0, 0.55, 0.45, 1) calc(var(--burst-delay, 0ms) + 330ms) both;
+}
+
+@keyframes ref-connector-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 @keyframes merge-line-grow {
   from {
     stroke-dashoffset: 1.05;
@@ -117,7 +139,9 @@
     animation: merge-fade-in 1ms linear calc(var(--burst-delay, 0ms) + 900ms) forwards;
   }
   .merge-burst-join,
-  .commit-burst-avatar {
+  .commit-burst-avatar,
+  .ref-connector-burst,
+  .ref-connector-burst-node {
     animation: none;
     opacity: 1;
   }

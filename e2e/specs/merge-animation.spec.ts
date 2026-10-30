@@ -27,7 +27,10 @@ test.describe('new commit animation', () => {
 
     const row = sillygit.graph.row('Commit from the command line')
     await expect(row.getByTestId('merge-burst')).toHaveCount(1)
+    // The branch pill moved up with it, and its line grows out to the node.
+    await expect(row.getByTestId('ref-connector')).toHaveClass(/ref-connector-burst/)
     await expect(sillygit.graph.mergeBurst).toHaveCount(0)
+    await expect(row.getByTestId('ref-connector')).not.toHaveClass(/ref-connector-burst/)
   })
 
   test('plays over each commit a fetch brings in', async ({ sillygit, repo }) => {

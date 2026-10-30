@@ -279,6 +279,7 @@ export default function CommitGraph({
           color={row.color}
           width={refColumnWidth}
           handlers={refHandlers(row.commit.hash, isSelected)}
+          burst={burstFor(row.commit.hash)}
         />
         <GraphCell
           row={row}

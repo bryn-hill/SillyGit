@@ -68,7 +68,19 @@ export default function GraphCell({
   // Drawn first so the lanes it crosses stay on top.
   if (connector) {
     elements.push(
-      <line key="ref" x1={0} y1={cy} x2={laneX(row.lane)} y2={cy} stroke={row.color} strokeWidth={2} />
+      <line
+        key={`ref-${burst?.id ?? 'still'}`}
+        // While a new commit arrives, the line from its pill finishes growing
+        // here, meeting the node as it pops in.
+        className={burst !== undefined ? 'ref-connector-burst-node' : undefined}
+        pathLength={burst !== undefined ? 1 : undefined}
+        x1={0}
+        y1={cy}
+        x2={laneX(row.lane)}
+        y2={cy}
+        stroke={row.color}
+        strokeWidth={2}
+      />
     )
   }
 
