@@ -409,6 +409,10 @@ const api = {
   getThemePreference: (): Promise<import('../shared/theme').ThemePreference> => ipcRenderer.invoke('settings:get-theme'),
   setThemePreference: (preference: import('../shared/theme').ThemePreference): Wrapped<void> =>
     ipcRenderer.invoke('settings:set-theme', preference),
+  getHelpSettings: (): Promise<import('../shared/help/types').HelpSettings> => ipcRenderer.invoke('settings:get-help'),
+  setHelpSettings: (
+    next: import('../shared/help/types').HelpSettings
+  ): Wrapped<import('../shared/help/types').HelpSettings> => ipcRenderer.invoke('settings:set-help', next),
   getMergeAnimation: (): Promise<boolean> => ipcRenderer.invoke('settings:get-merge-animation'),
   setMergeAnimation: (on: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-merge-animation', on),
   /** Avatar images (data: URLs) by lower-cased email; null or missing means show initials. */

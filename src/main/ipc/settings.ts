@@ -12,6 +12,7 @@ import type { SavedLayout, SavedSession, SavedTabs } from '../../shared/types'
 import { wrap } from './wrap'
 import { applyThemePreference } from '../theme'
 import type { ThemePreference } from '../../shared/theme'
+import type { HelpSettings } from '../../shared/help/types'
 
 /** Settings, the saved session (tabs, recents, layout), per-repo Run commands and favourite branches. */
 export function registerSettingsHandlers(): void {
@@ -124,6 +125,10 @@ export function registerSettingsHandlers(): void {
       applyThemePreference(preference)
     })
   )
+
+  ipcMain.handle('settings:get-help', () => settings.getHelpSettings())
+
+  ipcMain.handle('settings:set-help', (_e, next: HelpSettings) => wrap(() => settings.setHelpSettings(next)))
 
   ipcMain.handle('settings:get-merge-animation', () => settings.getMergeAnimation())
 

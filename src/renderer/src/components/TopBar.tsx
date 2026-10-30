@@ -258,6 +258,7 @@ export default function TopBar({
         <div className="toolbar" role="toolbar" aria-label="Git actions">
           <ToolButton
             label="Undo"
+            tour="toolbar-undo"
             icon={<UndoIcon />}
             disabled={busy || !undoLabel}
             onClick={onUndo}
@@ -271,7 +272,7 @@ export default function TopBar({
             onClick={onRedo}
             title={redoLabel ? `${redoLabel} (${MOD}⇧Z)` : 'Nothing to redo'}
           />
-          <div className="tool-split">
+          <div className="tool-split" data-tour="toolbar-pull">
             <ToolButton
               label={fetching ? 'Fetching' : 'Pull'}
               ariaLabel="Pull"
@@ -549,6 +550,7 @@ export default function TopBar({
         )}
         <ToolButton
           label="Actions"
+          tour="command-palette"
           icon={<ActionsIcon />}
           active={actionsOpen}
           onClick={onToggleActions}
@@ -558,6 +560,7 @@ export default function TopBar({
           <button
             className={`icon-button ${claudeVisible ? 'icon-button-active' : ''}`}
             onClick={onToggleClaude}
+            data-tour="ai-panel"
             title="Claude Code (Ctrl+Esc)"
           >
             <SparkIcon />
@@ -572,7 +575,7 @@ export default function TopBar({
             <TerminalIcon />
           </button>
         )}
-        <button className="icon-button" onClick={onOpenSettings} title="Settings">
+        <button className="icon-button" onClick={onOpenSettings} title="Settings" data-tour="settings">
           <GearIcon />
         </button>
       </div>

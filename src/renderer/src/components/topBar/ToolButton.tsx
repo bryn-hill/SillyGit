@@ -11,6 +11,8 @@ interface ToolButtonProps {
   active?: boolean
   badge?: number
   className?: string
+  /** The walkthrough step that points at this button (its `data-tour` target). */
+  tour?: string
 }
 
 /** A GitKraken-style toolbar button: a small label above its icon. */
@@ -23,7 +25,8 @@ export default function ToolButton({
   ariaLabel,
   active,
   badge,
-  className
+  className,
+  tour
 }: ToolButtonProps): JSX.Element {
   return (
     <button
@@ -32,6 +35,7 @@ export default function ToolButton({
       onClick={onClick}
       title={title}
       aria-label={ariaLabel ?? label}
+      data-tour={tour}
     >
       <span className="tool-label">{label}</span>
       <span className="tool-icon">

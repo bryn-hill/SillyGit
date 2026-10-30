@@ -127,7 +127,7 @@ export default function CommitBox({
   }
 
   return (
-    <div className="commit-box">
+    <div className="commit-box" data-tour="commit-box">
       <div className="commit-box-toolbar">
         <button
           className="link-button"

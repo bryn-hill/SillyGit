@@ -270,13 +270,14 @@ export default function TabBar({
       >
         <FolderIcon />
       </button>
-      <div className="tab-strip" role="tablist" aria-label="Open repositories">
+      <div className="tab-strip" role="tablist" aria-label="Open repositories" data-tour="repo-tabs">
         <div
           role="tab"
           aria-selected={launchpadActive}
           tabIndex={launchpadActive ? 0 : -1}
           className={`repo-tab launchpad-tab ${launchpadActive ? 'repo-tab-active' : ''}`}
           title="Launchpad — your open pull requests"
+          data-tour="launchpad"
           onClick={onOpenLaunchpad}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {

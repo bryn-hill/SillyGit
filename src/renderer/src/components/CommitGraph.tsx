@@ -384,7 +384,7 @@ export default function CommitGraph({
   }
 
   return (
-    <div className="commit-graph">
+    <div className="commit-graph" data-tour="graph">
       <div className="commit-graph-header">
         <div className="col-refs" style={{ width: refColumnWidth }}>
           Branch / Tag

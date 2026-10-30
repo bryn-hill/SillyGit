@@ -43,6 +43,7 @@ import { useEscapeToLeaveFocus } from './hooks/useEscapeToLeaveFocus'
 import { useLfs } from './hooks/useLfs'
 import { useEditor } from './hooks/useEditor'
 import { useLanes } from './hooks/useLanes'
+import { HelpProvider } from './help'
 
 /**
  * The window: repo tabs, the toolbar, banners, the main area with the
@@ -169,246 +170,249 @@ export default function App(): JSX.Element {
   const { showTerminal, setShowTerminal, showClaude, setShowClaude } = layout
 
   return (
-    <div className="app">
-      <TabBar
-        tabs={tabs.tabs}
-        pinned={tabs.pinnedTabs}
-        activeTab={repoPath}
-        launchpadActive={view.showLaunchpad}
-        onSelect={tabs.selectTab}
-        onClose={tabs.closeTabs}
-        onNewTab={tabs.openRepo}
-        onOpenLaunchpad={() => view.setShowLaunchpad(true)}
-        onTogglePin={tabs.togglePin}
-        onMove={tabs.move}
-        onCopyPath={actions.copyText}
-      />
-      <TopBar
-        repoPath={repoPath}
-        status={status}
-        branches={repo.branches}
-        busy={git.busy}
-        onOpenRepo={tabs.openRepo}
-        recentRepos={tabs.recentRepos}
-        onOpenRecentRepo={(path) => tabs.openRecentRepo(path, true)}
-        onPush={actions.push}
-        onPull={actions.pull}
-        pullMode={actions.pullMode}
-        onFetch={actions.fetch}
-        fetching={repo.fetching}
-        hasRemotes={repo.remotes.length > 0}
-        undoLabel={repo.undoLabel}
-        onUndo={actions.undo}
-        redoLabel={repo.redoLabel}
-        onRedo={actions.redo}
-        onCreateBranch={branches.promptCreateBranch}
-        hasChanges={!!status && (status.staged.length > 0 || status.unstaged.length > 0) && !operation}
-        stashCount={repo.stashes.length}
-        actionsOpen={dialogs.palette === 'dropdown'}
-        onToggleActions={() => dialogs.setPalette((v) => (v === 'dropdown' ? null : 'dropdown'))}
-        onStash={actions.stash}
-        onStashPop={actions.stashPop}
-        onCheckout={actions.checkout}
-        onOpenSettings={() => dialogs.setShowSettings(true)}
-        runCommand={run.command}
-        runCommit={run.commit}
-        runMode={run.mode}
-        running={run.running}
-        preparingRun={run.preparing}
-        onRun={(mode) => void run.run(mode)}
-        onStopRun={run.stop}
-        onEditRunCommand={() => void run.editCommand()}
-        terminalVisible={showTerminal}
-        onToggleTerminal={() => setShowTerminal((v) => !v)}
-        editor={editor.current}
-        editors={editor.installed}
-        onOpenInEditor={() => editor.open()}
-        onChooseEditor={editor.choose}
-        claudeVisible={showClaude}
-        onToggleClaude={() => setShowClaude((v) => !v)}
-        selfUpdate={selfUpdate?.status ?? NO_SELF_UPDATE}
-        updating={!!selfUpdate?.step}
-        onOpenUpdate={() => dialogs.setShowUpdate(true)}
-      />
-      <StatusBanners
-        error={error}
-        onDismissError={() => showError(null)}
-        notice={notice}
-        onDismissNotice={() => setNotice(null)}
-        undoMessage={conflicts.undoMessage}
-        onUndo={conflicts.undoLast}
-        onDismissUndo={conflicts.dismissUndo}
-        restoreMessage={cleanup.restoreMessage}
-        onRestore={cleanup.restoreBranches}
-        onDismissRestore={cleanup.dismissRestore}
-        bisect={
-          bisect.state && {
-            state: bisect.state,
-            busy: git.busy,
-            running: bisect.running,
-            onMark: (verdict) => bisect.mark(verdict),
-            onReset: bisect.reset,
-            commandChoices: bisect.commandChoices,
-            onRunWith: (command) => void bisect.runWith(command),
-            onStopRun: bisect.stopRun,
-            onShowCommit: view.showCommitInGraph
+    // The walkthrough waits for the window to be up with a repo in it.
+    <HelpProvider repoOpen={startupReady && !!repoPath}>
+      <div className="app">
+        <TabBar
+          tabs={tabs.tabs}
+          pinned={tabs.pinnedTabs}
+          activeTab={repoPath}
+          launchpadActive={view.showLaunchpad}
+          onSelect={tabs.selectTab}
+          onClose={tabs.closeTabs}
+          onNewTab={tabs.openRepo}
+          onOpenLaunchpad={() => view.setShowLaunchpad(true)}
+          onTogglePin={tabs.togglePin}
+          onMove={tabs.move}
+          onCopyPath={actions.copyText}
+        />
+        <TopBar
+          repoPath={repoPath}
+          status={status}
+          branches={repo.branches}
+          busy={git.busy}
+          onOpenRepo={tabs.openRepo}
+          recentRepos={tabs.recentRepos}
+          onOpenRecentRepo={(path) => tabs.openRecentRepo(path, true)}
+          onPush={actions.push}
+          onPull={actions.pull}
+          pullMode={actions.pullMode}
+          onFetch={actions.fetch}
+          fetching={repo.fetching}
+          hasRemotes={repo.remotes.length > 0}
+          undoLabel={repo.undoLabel}
+          onUndo={actions.undo}
+          redoLabel={repo.redoLabel}
+          onRedo={actions.redo}
+          onCreateBranch={branches.promptCreateBranch}
+          hasChanges={!!status && (status.staged.length > 0 || status.unstaged.length > 0) && !operation}
+          stashCount={repo.stashes.length}
+          actionsOpen={dialogs.palette === 'dropdown'}
+          onToggleActions={() => dialogs.setPalette((v) => (v === 'dropdown' ? null : 'dropdown'))}
+          onStash={actions.stash}
+          onStashPop={actions.stashPop}
+          onCheckout={actions.checkout}
+          onOpenSettings={() => dialogs.setShowSettings(true)}
+          runCommand={run.command}
+          runCommit={run.commit}
+          runMode={run.mode}
+          running={run.running}
+          preparingRun={run.preparing}
+          onRun={(mode) => void run.run(mode)}
+          onStopRun={run.stop}
+          onEditRunCommand={() => void run.editCommand()}
+          terminalVisible={showTerminal}
+          onToggleTerminal={() => setShowTerminal((v) => !v)}
+          editor={editor.current}
+          editors={editor.installed}
+          onOpenInEditor={() => editor.open()}
+          onChooseEditor={editor.choose}
+          claudeVisible={showClaude}
+          onToggleClaude={() => setShowClaude((v) => !v)}
+          selfUpdate={selfUpdate?.status ?? NO_SELF_UPDATE}
+          updating={!!selfUpdate?.step}
+          onOpenUpdate={() => dialogs.setShowUpdate(true)}
+        />
+        <StatusBanners
+          error={error}
+          onDismissError={() => showError(null)}
+          notice={notice}
+          onDismissNotice={() => setNotice(null)}
+          undoMessage={conflicts.undoMessage}
+          onUndo={conflicts.undoLast}
+          onDismissUndo={conflicts.dismissUndo}
+          restoreMessage={cleanup.restoreMessage}
+          onRestore={cleanup.restoreBranches}
+          onDismissRestore={cleanup.dismissRestore}
+          bisect={
+            bisect.state && {
+              state: bisect.state,
+              busy: git.busy,
+              running: bisect.running,
+              onMark: (verdict) => bisect.mark(verdict),
+              onReset: bisect.reset,
+              commandChoices: bisect.commandChoices,
+              onRunWith: (command) => void bisect.runWith(command),
+              onStopRun: bisect.stopRun,
+              onShowCommit: view.showCommitInGraph
+            }
           }
-        }
-        lfsMissing={lfs.showMissingNote}
-        onInstallLfs={lfs.installLfs}
-        onDismissLfsMissing={lfs.dismissMissingNote}
-      />
-      <div className="workspace-row">
-        <div className="workspace">
-          <div className="workspace-main">
-            <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
-              <EditorContext value={{ name: editor.current?.name ?? null, open: editor.open }}>
-                <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
-                  <LfsContext value={{ info: lfs.info, track: lfs.track }}>
-                    <MainArea
-                      repo={repo}
-                      view={view}
-                      settings={settings}
-                      layout={layout}
-                      git={actions}
-                      branches={branches}
-                      cleanup={cleanup}
-                      conflicts={conflicts}
-                      commitBox={commitBox}
-                      tabs={tabs}
-                      lanes={lanes}
-                      hasWorkingChanges={hasWorkingChanges}
-                      onOpenTerminal={() => setShowTerminal(true)}
-                      onCheckoutPullRequest={checkoutPullRequest}
-                      showError={showError}
-                      setNotice={setNotice}
-                    />
-                  </LfsContext>
-                </BisectContext>
-              </EditorContext>
-            </CustomCommandsContext>
+          lfsMissing={lfs.showMissingNote}
+          onInstallLfs={lfs.installLfs}
+          onDismissLfsMissing={lfs.dismissMissingNote}
+        />
+        <div className="workspace-row">
+          <div className="workspace">
+            <div className="workspace-main">
+              <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
+                <EditorContext value={{ name: editor.current?.name ?? null, open: editor.open }}>
+                  <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
+                    <LfsContext value={{ info: lfs.info, track: lfs.track }}>
+                      <MainArea
+                        repo={repo}
+                        view={view}
+                        settings={settings}
+                        layout={layout}
+                        git={actions}
+                        branches={branches}
+                        cleanup={cleanup}
+                        conflicts={conflicts}
+                        commitBox={commitBox}
+                        tabs={tabs}
+                        lanes={lanes}
+                        hasWorkingChanges={hasWorkingChanges}
+                        onOpenTerminal={() => setShowTerminal(true)}
+                        onCheckoutPullRequest={checkoutPullRequest}
+                        showError={showError}
+                        setNotice={setNotice}
+                      />
+                    </LfsContext>
+                  </BisectContext>
+                </EditorContext>
+              </CustomCommandsContext>
+            </div>
+            <TerminalPanel
+              ref={terminalRef}
+              onRunningChange={run.setRunningKeys}
+              cwd={repoPath}
+              theme={settings.theme}
+              visible={showTerminal}
+              height={layout.terminalHeight}
+              onToggle={() => setShowTerminal(false)}
+              onHeightChange={layout.setTerminalHeight}
+            />
           </div>
-          <TerminalPanel
-            ref={terminalRef}
-            onRunningChange={run.setRunningKeys}
-            cwd={repoPath}
-            theme={settings.theme}
-            visible={showTerminal}
-            height={layout.terminalHeight}
-            onToggle={() => setShowTerminal(false)}
-            onHeightChange={layout.setTerminalHeight}
-          />
+          {repoPath && (
+            <ClaudePanel
+              key={repoPath}
+              repoPath={repoPath}
+              visible={showClaude}
+              width={layout.claudeWidth}
+              onWidthChange={layout.setClaudeWidth}
+              onClose={() => setShowClaude(false)}
+              onFilesChanged={repo.refreshSoon}
+            />
+          )}
         </div>
-        {repoPath && (
-          <ClaudePanel
-            key={repoPath}
+        {cleanup.dialogOpen && repoPath && (
+          <BranchCleanupDialog
             repoPath={repoPath}
-            visible={showClaude}
-            width={layout.claudeWidth}
-            onWidthChange={layout.setClaudeWidth}
-            onClose={() => setShowClaude(false)}
-            onFilesChanged={repo.refreshSoon}
+            favourites={branches.favourites}
+            settings={settings.branchList}
+            nowMs={repo.branchesListedAt}
+            onDelete={cleanup.deleteBranches}
+            onClose={cleanup.close}
           />
         )}
+        {commitBox.absorbOpen && repoPath && (
+          <AbsorbDialog
+            repoPath={repoPath}
+            onAbsorb={(head, diff, assignments) => {
+              commitBox.closeAbsorb()
+              actions.absorb(head, diff, assignments)
+            }}
+            onClose={commitBox.closeAbsorb}
+          />
+        )}
+        {branches.createPullRequest && repoPath && (
+          <CreatePullRequestDialog
+            repoPath={repoPath}
+            branches={repo.branches}
+            remotes={repo.remotes}
+            request={branches.createPullRequest}
+            onCreated={branches.pullRequestCreated}
+            onOpenUrl={actions.openUrl}
+            onClose={branches.closeCreatePullRequest}
+          />
+        )}
+        {branches.gitFlow.setup && (
+          <GitFlowSetupDialog
+            initial={branches.gitFlow.setup}
+            onSave={branches.gitFlow.saveSetup}
+            onCancel={branches.gitFlow.closeSetup}
+          />
+        )}
+        {dialogs.showSettings && (
+          <SettingsModal
+            onClose={() => dialogs.setShowSettings(false)}
+            themePreference={settings.themePreference}
+            onThemePreferenceChange={settings.setThemePreference}
+            autoFetchMinutes={settings.autoFetchMinutes ?? 0}
+            onAutoFetchChange={settings.setAutoFetchMinutes}
+            sprints={settings.sprints}
+            onSprintsChange={settings.setSprints}
+            branchList={settings.branchList}
+            onBranchListChange={settings.setBranchList}
+            mergeTool={settings.mergeTool}
+            onMergeToolChange={settings.setMergeTool}
+            editor={settings.editor}
+            installedEditors={editor.installed}
+            onEditorChange={settings.setEditor}
+            onRescanEditors={editor.rescan}
+            mergeAnimation={settings.mergeAnimation}
+            onMergeAnimationChange={settings.setMergeAnimation}
+            customCommands={settings.customCommands}
+            onCustomCommandsChange={settings.setCustomCommands}
+          />
+        )}
+        {dialogs.palette && (
+          <CommandPalette
+            commands={appCommands({
+              repo,
+              view,
+              git: actions,
+              branches,
+              cleanup,
+              conflicts,
+              commitBox,
+              run,
+              tabs,
+              layout,
+              dialogs,
+              lanes,
+              selfUpdate,
+              lfs,
+              hasWorkingChanges,
+              customCommands: settings.customCommands,
+              pullRequests,
+              checkoutPullRequest,
+              editor
+            })}
+            variant={dialogs.palette}
+            onClose={() => dialogs.setPalette(null)}
+          />
+        )}
+        {dialogs.showUpdate && selfUpdate?.status.supported && (
+          <UpdateDialog
+            status={selfUpdate.status}
+            step={selfUpdate.step}
+            onClose={() => dialogs.setShowUpdate(false)}
+          />
+        )}
+        {dialogs.showActivity && <ActivityLog repoPath={repoPath} onClose={() => dialogs.setShowActivity(false)} />}
+        {promptDialog}
+        <RefDropMenu repoPath={repoPath} onError={showError} onPick={actions.runDropAction} />
       </div>
-      {cleanup.dialogOpen && repoPath && (
-        <BranchCleanupDialog
-          repoPath={repoPath}
-          favourites={branches.favourites}
-          settings={settings.branchList}
-          nowMs={repo.branchesListedAt}
-          onDelete={cleanup.deleteBranches}
-          onClose={cleanup.close}
-        />
-      )}
-      {commitBox.absorbOpen && repoPath && (
-        <AbsorbDialog
-          repoPath={repoPath}
-          onAbsorb={(head, diff, assignments) => {
-            commitBox.closeAbsorb()
-            actions.absorb(head, diff, assignments)
-          }}
-          onClose={commitBox.closeAbsorb}
-        />
-      )}
-      {branches.createPullRequest && repoPath && (
-        <CreatePullRequestDialog
-          repoPath={repoPath}
-          branches={repo.branches}
-          remotes={repo.remotes}
-          request={branches.createPullRequest}
-          onCreated={branches.pullRequestCreated}
-          onOpenUrl={actions.openUrl}
-          onClose={branches.closeCreatePullRequest}
-        />
-      )}
-      {branches.gitFlow.setup && (
-        <GitFlowSetupDialog
-          initial={branches.gitFlow.setup}
-          onSave={branches.gitFlow.saveSetup}
-          onCancel={branches.gitFlow.closeSetup}
-        />
-      )}
-      {dialogs.showSettings && (
-        <SettingsModal
-          onClose={() => dialogs.setShowSettings(false)}
-          themePreference={settings.themePreference}
-          onThemePreferenceChange={settings.setThemePreference}
-          autoFetchMinutes={settings.autoFetchMinutes ?? 0}
-          onAutoFetchChange={settings.setAutoFetchMinutes}
-          sprints={settings.sprints}
-          onSprintsChange={settings.setSprints}
-          branchList={settings.branchList}
-          onBranchListChange={settings.setBranchList}
-          mergeTool={settings.mergeTool}
-          onMergeToolChange={settings.setMergeTool}
-          editor={settings.editor}
-          installedEditors={editor.installed}
-          onEditorChange={settings.setEditor}
-          onRescanEditors={editor.rescan}
-          mergeAnimation={settings.mergeAnimation}
-          onMergeAnimationChange={settings.setMergeAnimation}
-          customCommands={settings.customCommands}
-          onCustomCommandsChange={settings.setCustomCommands}
-        />
-      )}
-      {dialogs.palette && (
-        <CommandPalette
-          commands={appCommands({
-            repo,
-            view,
-            git: actions,
-            branches,
-            cleanup,
-            conflicts,
-            commitBox,
-            run,
-            tabs,
-            layout,
-            dialogs,
-            lanes,
-            selfUpdate,
-            lfs,
-            hasWorkingChanges,
-            customCommands: settings.customCommands,
-            pullRequests,
-            checkoutPullRequest,
-            editor
-          })}
-          variant={dialogs.palette}
-          onClose={() => dialogs.setPalette(null)}
-        />
-      )}
-      {dialogs.showUpdate && selfUpdate?.status.supported && (
-        <UpdateDialog
-          status={selfUpdate.status}
-          step={selfUpdate.step}
-          onClose={() => dialogs.setShowUpdate(false)}
-        />
-      )}
-      {dialogs.showActivity && <ActivityLog repoPath={repoPath} onClose={() => dialogs.setShowActivity(false)} />}
-      {promptDialog}
-      <RefDropMenu repoPath={repoPath} onError={showError} onPick={actions.runDropAction} />
-    </div>
+    </HelpProvider>
   )
 }

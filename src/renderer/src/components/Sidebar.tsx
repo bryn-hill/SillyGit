@@ -357,7 +357,7 @@ export default function Sidebar({
   }
 
   return (
-    <nav className="sidebar" aria-label="Branches" style={width ? { width } : undefined}>
+    <nav className="sidebar" aria-label="Branches" data-tour="branch-sidebar" style={width ? { width } : undefined}>
       <div className="sidebar-filter-row">
         <input
           className="filter-input"

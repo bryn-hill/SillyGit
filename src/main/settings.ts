@@ -9,6 +9,8 @@ import { normalizeBranchListSettings, type BranchListSettings } from '../shared/
 import { normalizeCustomCommands, type CustomCommand } from '../shared/customCommands'
 import { normalizeThemePreference, type ThemePreference } from '../shared/theme'
 import { normalizeEditorSettings, type EditorSettings } from '../shared/editors'
+import { normalizeHelpSettings } from '../shared/help/tour'
+import type { HelpSettings } from '../shared/help/types'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -46,6 +48,8 @@ interface StoredSettings {
   favouriteBranches?: Record<string, string[]>
   /** Per repo: when the branch cleanup banner may show again, in ms. */
   cleanupSnoozedUntil?: Record<string, number>
+  /** The first-use walkthrough: whether it was finished (or skipped) and which version. */
+  help?: Partial<HelpSettings>
 }
 
 const MAX_RECENT_REPOS = 10
@@ -155,6 +159,18 @@ export async function getMergeAnimation(): Promise<boolean> {
 export async function setMergeAnimation(on: boolean): Promise<void> {
   await updateSettings((current) => {
     current.mergeAnimation = on
+  })
+}
+
+export async function getHelpSettings(): Promise<HelpSettings> {
+  return normalizeHelpSettings((await readSettings()).help)
+}
+
+export async function setHelpSettings(next: HelpSettings): Promise<HelpSettings> {
+  return updateSettings((current) => {
+    const help = normalizeHelpSettings(next)
+    current.help = help
+    return help
   })
 }
 

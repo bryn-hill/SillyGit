@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { SillyGitApp } from './pages/SillyGitApp'
 import { FixtureRepo } from './support/fixtureRepo'
+import { completedHelpSettings } from '../src/shared/help/tour'
 
 const APP_DIR = resolve(__dirname, '..')
 
@@ -53,8 +54,12 @@ function launchApp(userData: string, appEnv: Record<string, string> = {}): Promi
 function makeUserData(): string {
   const userData = mkdtempSync(join(tmpdir(), 'sillygit-e2e-userdata-'))
   // Background fetches and avatar lookups are off so nothing reaches the
-  // network or prunes a test's fake remote branches.
-  writeFileSync(join(userData, 'sillygit-settings.json'), JSON.stringify({ autoFetchMinutes: 0, showAvatars: false }))
+  // network or prunes a test's fake remote branches, and the first-use
+  // walkthrough counts as seen so it doesn't cover the app.
+  writeFileSync(
+    join(userData, 'sillygit-settings.json'),
+    JSON.stringify({ autoFetchMinutes: 0, showAvatars: false, help: completedHelpSettings() })
+  )
   return userData
 }
 
