@@ -32,6 +32,7 @@ const READ_ONLY = new Set([
   'ls-tree',
   'ls-remote',
   'merge-base',
+  'merge-tree',
   'blame',
   'describe',
   'format-patch',

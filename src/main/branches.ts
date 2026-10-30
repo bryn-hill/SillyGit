@@ -158,7 +158,7 @@ export async function pullBranch(repoPath: string, name: string): Promise<{ upda
 }
 
 /** The branch "merged" is measured against: the remote's default branch, else a local main or master. */
-async function mergeBase(repoPath: string): Promise<{ ref: string; local: string } | null> {
+export async function mergeBase(repoPath: string): Promise<{ ref: string; local: string } | null> {
   for (const remote of await listRemotes(repoPath)) {
     try {
       const head = (await runGit(repoPath, ['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`])).trim()

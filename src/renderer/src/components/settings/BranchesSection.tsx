@@ -43,9 +43,18 @@ export default function BranchesSection({
           </div>
         </div>
       )}
+      <label className="settings-checkbox">
+        <input
+          type="checkbox"
+          checked={branchList.conflictWarnings}
+          onChange={(e) => onChange({ ...branchList, conflictWarnings: e.target.checked })}
+        />
+        Warn about branches that would conflict
+      </label>
       <div className="modal-hint">
         The branch list tags a branch &quot;stale&quot; with how long since its last commit. Branches deleted on the
-        remote are tagged &quot;deleted&quot; after a fetch.
+        remote are tagged &quot;deleted&quot; after a fetch. A &quot;conflicts&quot; tag means merging the branch into
+        the default branch, or into the one you&apos;re on, would stop with conflicts; hover it for the files.
       </div>
     </section>
   )

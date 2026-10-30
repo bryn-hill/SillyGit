@@ -34,6 +34,16 @@ export class Sidebar {
     return this.branchNamed(fullName).getByTestId('branch-tag-stale')
   }
 
+  /** The "conflicts" tag on a branch that would conflict if merged. */
+  conflictTag(fullName: string): Locator {
+    return this.branchNamed(fullName).getByTestId('branch-tag-conflict')
+  }
+
+  /** The card that hovering a "conflicts" tag shows (it's portalled outside the sidebar). */
+  get conflictCard(): Locator {
+    return this.page.getByTestId('conflict-card')
+  }
+
   /** The ↑ahead ↓behind counts against the upstream. */
   syncCounts(fullName: string): Locator {
     return this.branchNamed(fullName).getByTestId('branch-sync')

@@ -5,13 +5,16 @@ export interface BranchListSettings {
   /** Tag branches whose last commit is older than `staleDays`. */
   staleEnabled: boolean
   staleDays: number
+  /** Tag branches that would conflict with the default branch or the current one. */
+  conflictWarnings: boolean
 }
 
 export const STALE_DAY_CHOICES = [7, 14, 30, 60, 90, 180, 365]
 
 export const DEFAULT_BRANCH_LIST_SETTINGS: BranchListSettings = {
   staleEnabled: true,
-  staleDays: 30
+  staleDays: 30,
+  conflictWarnings: true
 }
 
 /** Fills in anything missing or malformed in stored settings with the defaults. */
@@ -21,7 +24,8 @@ export function normalizeBranchListSettings(stored: unknown): BranchListSettings
   const days = s.staleDays
   return {
     staleEnabled: typeof s.staleEnabled === 'boolean' ? s.staleEnabled : d.staleEnabled,
-    staleDays: typeof days === 'number' && days >= 1 && days <= 3650 ? Math.round(days) : d.staleDays
+    staleDays: typeof days === 'number' && days >= 1 && days <= 3650 ? Math.round(days) : d.staleDays,
+    conflictWarnings: typeof s.conflictWarnings === 'boolean' ? s.conflictWarnings : d.conflictWarnings
   }
 }
 

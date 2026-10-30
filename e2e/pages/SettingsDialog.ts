@@ -26,6 +26,7 @@ export class SettingsDialog {
   readonly mergeTool: Locator
   readonly staleEnabled: Locator
   readonly staleDays: Locator
+  readonly conflictWarnings: Locator
   readonly mergeToolCommand: Locator
 
   constructor(private readonly page: Page) {
@@ -51,6 +52,7 @@ export class SettingsDialog {
     this.sprintNumber = this.sprints.getByLabel('and was number')
     this.staleEnabled = this.root.getByRole('checkbox', { name: 'Tag stale branches' })
     this.staleDays = this.root.getByLabel('Stale after no commits for')
+    this.conflictWarnings = this.root.getByRole('checkbox', { name: 'Warn about branches that would conflict' })
     this.mergeTool = this.root.getByLabel('External merge tool')
     this.mergeToolCommand = this.root.getByLabel('Merge tool command')
   }

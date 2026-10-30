@@ -40,7 +40,8 @@ describe('groupCandidates', () => {
   it('has no stale group when stale tags are off', () => {
     const groups = groupCandidates([candidate({ lastCommitAt: daysAgo(400) })], NOW_MS, {
       staleEnabled: false,
-      staleDays: 30
+      staleDays: 30,
+      conflictWarnings: true
     })
     expect(groups).toEqual([])
   })

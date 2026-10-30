@@ -187,3 +187,52 @@ button.tidy-banner-dismiss {
   background: var(--accent);
   opacity: 0.4;
 }
+
+.branch-tag-conflict {
+  color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
+  cursor: default;
+}
+
+/* Portalled to the body, so it isn't clipped by the sidebar's scroll area. */
+.conflict-card {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 40%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+.conflict-card-kind,
+.conflict-card-more,
+.conflict-card-hint {
+  color: var(--text-dim);
+}
+
+.conflict-card-files {
+  margin: 3px 0 0;
+  padding-left: 16px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.conflict-card-more {
+  list-style: none;
+  margin-left: -16px;
+  font-family: inherit;
+}
+
+.conflict-card-hint {
+  font-size: 11px;
+}

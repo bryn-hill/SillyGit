@@ -3,6 +3,7 @@ import { basename, dirname, join } from 'path'
 import * as branches from '../branches'
 import * as stacks from '../stacks'
 import * as gitflow from '../gitflow'
+import { forecastConflicts } from '../conflictForecast'
 import type { DeletedBranch } from '../../shared/branchCleanup'
 import type { GitFlowConfig, GitFlowKind } from '../../shared/gitflow'
 import { wrap } from './wrap'
@@ -26,6 +27,8 @@ export function registerBranchHandlers(): void {
   ipcMain.handle('git:cleanup-candidates', (_e, repoPath: string) =>
     wrap(() => branches.listCleanupCandidates(repoPath))
   )
+
+  ipcMain.handle('git:conflict-forecast', (_e, repoPath: string) => wrap(() => forecastConflicts(repoPath)))
 
   ipcMain.handle('git:delete-branches', (_e, repoPath: string, names: string[]) =>
     wrap(() => branches.deleteBranches(repoPath, names))

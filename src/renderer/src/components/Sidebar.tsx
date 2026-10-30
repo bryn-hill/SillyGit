@@ -1,4 +1,5 @@
 import { useMemo, useState, type JSX } from 'react'
+import { createPortal } from 'react-dom'
 import type { BranchInfo, RepoRemote, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
@@ -10,6 +11,8 @@ import { pressable } from '../lib/pressable'
 import { favouriteBranches, staleAge, type BranchListSettings } from '../../../shared/branchStatus'
 import { CLEANUP_SNOOZE_DAYS, formatCount, tidyCount } from '../../../shared/branchCleanup'
 import { WORKSPACE_BRANCH } from '../../../shared/lanes'
+import { conflictSummary, type ConflictForecast, type ConflictWarning } from '../../../shared/conflictForecast'
+import { useConflictForecast } from '../hooks/useConflictForecast'
 
 interface TreeNode {
   name: string
@@ -96,14 +99,80 @@ interface RowHandlers {
   onToggleFavourite: (name: string) => void
   settings: BranchListSettings
   listedAt: number
+  conflicts: ConflictForecast
 }
 
 function pluralCommits(n: number): string {
   return `${n} commit${n === 1 ? '' : 's'}`
 }
 
+const CARD_FILES = 8
+
+/** The hover card on a "conflicts" tag: which branch it would conflict with, and in which files. */
+function ConflictCard({ id, warnings, at }: { id: string; warnings: ConflictWarning[]; at: DOMRect }): JSX.Element {
+  // Below the tag, or above it when there isn't room.
+  const below = at.bottom + 240 < window.innerHeight
+  return createPortal(
+    <div
+      className="conflict-card"
+      role="tooltip"
+      id={id}
+      data-testid="conflict-card"
+      style={{ left: at.left, ...(below ? { top: at.bottom + 6 } : { bottom: window.innerHeight - at.top + 6 }) }}
+    >
+      {warnings.map((w) => (
+        <div key={w.with} className="conflict-card-section">
+          <div className="conflict-card-title">
+            Would conflict with <strong>{w.with}</strong>
+            {w.kind === 'current' && <span className="conflict-card-kind"> (checked out)</span>}
+          </div>
+          <ul className="conflict-card-files">
+            {w.files.slice(0, CARD_FILES).map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+            {w.files.length > CARD_FILES && <li className="conflict-card-more">and {w.files.length - CARD_FILES} more</li>}
+          </ul>
+        </div>
+      ))}
+      <div className="conflict-card-hint">From a trial merge; nothing was changed. Merge or rebase soon to keep it small.</div>
+    </div>,
+    document.body
+  )
+}
+
+/** The "conflicts" tag, with its hover card. */
+function ConflictTag({ branch, warnings }: { branch: string; warnings: ConflictWarning[] }): JSX.Element {
+  const [at, setAt] = useState<DOMRect | null>(null)
+  const id = `conflict-card-${branch}`
+  return (
+    <span
+      className="branch-tag branch-tag-conflict"
+      data-testid="branch-tag-conflict"
+      aria-label={conflictSummary(warnings)}
+      aria-describedby={at ? id : undefined}
+      // An empty title keeps the row's own tooltip from covering the card.
+      title=""
+      onMouseEnter={(e) => setAt(e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => setAt(null)}
+    >
+      conflicts
+      {at && <ConflictCard id={id} warnings={warnings} at={at} />}
+    </span>
+  )
+}
+
 /** Deleted-on-remote, stale and ahead/behind tags for one branch. */
-function BranchTags({ branch, settings, listedAt }: { branch: BranchInfo; settings: BranchListSettings; listedAt: number }): JSX.Element {
+function BranchTags({
+  branch,
+  settings,
+  listedAt,
+  conflicts
+}: {
+  branch: BranchInfo
+  settings: BranchListSettings
+  listedAt: number
+  conflicts?: ConflictWarning[]
+}): JSX.Element {
   const stale = staleAge(branch, listedAt, settings)
   const ahead = branch.ahead ?? 0
   const behind = branch.behind ?? 0
@@ -132,6 +201,7 @@ function BranchTags({ branch, settings, listedAt }: { branch: BranchInfo; settin
           gone
         </span>
       )}
+      {conflicts && conflicts.length > 0 && <ConflictTag branch={branch.name} warnings={conflicts} />}
       {stale && (
         <span
           className="branch-tag branch-tag-stale"
@@ -173,7 +243,12 @@ function BranchRow({
     >
       {branch.current ? <span className="current-dot">●</span> : <span className="tree-caret-spacer" />}
       <span className="branch-name">{label}</span>
-      <BranchTags branch={branch} settings={handlers.settings} listedAt={handlers.listedAt} />
+      <BranchTags
+        branch={branch}
+        settings={handlers.settings}
+        listedAt={handlers.listedAt}
+        conflicts={branch.remote ? undefined : handlers.conflicts[branch.name]}
+      />
       <button
         className={`branch-star ${starred ? 'starred' : ''}`}
         aria-label={starred ? `Remove ${branch.name} from favourites` : `Add ${branch.name} to favourites`}
@@ -272,6 +347,7 @@ export default function Sidebar({
   const [newBranch, setNewBranch] = useState('')
   const [showNewBranch, setShowNewBranch] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['remote-root']))
+  const conflicts = useConflictForecast(repoPath, branches, branchListSettings.conflictWarnings)
 
   const filtered = useMemo(
     // SillyGit's own lanes workspace branch isn't one to check out or manage.
@@ -345,7 +421,8 @@ export default function Sidebar({
     favourites: favouriteSet,
     onToggleFavourite,
     settings: branchListSettings,
-    listedAt
+    listedAt,
+    conflicts
   }
 
   const submitNewBranch = (): void => {

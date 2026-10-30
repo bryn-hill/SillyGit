@@ -314,6 +314,8 @@ const api = {
     ipcRenderer.invoke('git:delete-branch', repoPath, name, force),
   cleanupCandidates: (repoPath: string): Wrapped<import('../shared/branchCleanup').CleanupCandidate[]> =>
     ipcRenderer.invoke('git:cleanup-candidates', repoPath),
+  conflictForecast: (repoPath: string): Wrapped<import('../shared/conflictForecast').ConflictForecast | null> =>
+    ipcRenderer.invoke('git:conflict-forecast', repoPath),
   deleteBranches: (
     repoPath: string,
     names: string[]

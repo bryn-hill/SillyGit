@@ -52,7 +52,7 @@ describe('formatAge', () => {
 })
 
 describe('staleAge', () => {
-  const settings = { staleEnabled: true, staleDays: 30 }
+  const settings = { staleEnabled: true, staleDays: 30, conflictWarnings: true }
 
   it('tags branches at or past the threshold', () => {
     expect(staleAge(branch('old', 30), now, settings)).toBe('4w')
@@ -76,9 +76,10 @@ describe('normalizeBranchListSettings', () => {
   })
 
   it('keeps valid values', () => {
-    expect(normalizeBranchListSettings({ staleEnabled: false, staleDays: 90 })).toEqual({
+    expect(normalizeBranchListSettings({ staleEnabled: false, staleDays: 90, conflictWarnings: false })).toEqual({
       staleEnabled: false,
-      staleDays: 90
+      staleDays: 90,
+      conflictWarnings: false
     })
   })
 })
