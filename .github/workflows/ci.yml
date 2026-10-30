@@ -75,7 +75,9 @@ jobs:
 
       - run: npm test
 
+      # Only for main (pushes and pull requests into it); dev skips e2e.
       - name: End-to-end tests
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         run: npm run test:e2e
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
