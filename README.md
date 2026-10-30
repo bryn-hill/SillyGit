@@ -22,18 +22,17 @@
 
 </div>
 
-SillyGit draws your history as a graph, lets you stage a single line, gives you a three-way
-editor for merge conflicts, and can run Claude Code in the repository you have open. It also
-handles pull requests from GitHub and Azure DevOps, and issues from GitHub, Jira and Azure
-Boards. It's free and MIT licensed.
+SillyGit is free and MIT licensed. Besides the graph, staging and conflict tools, it handles
+pull requests from GitHub and Azure DevOps and issues from GitHub, Jira and Azure Boards, and
+it can run Claude Code in the repository you have open.
 
 ## It runs your Git
 
-SillyGit doesn't bring its own copy of Git. Every button runs the `git` already on your
-machine, with your config, hooks, credentials and signing keys, and **Actions → Activity log**
-lists the exact commands it ran.
+Every button runs the `git` already on your machine, with your config, hooks, credentials and
+signing keys. SillyGit doesn't ship its own copy. **Actions → Activity log** lists the exact
+commands it ran.
 
-So you can drop into a terminal whenever you like. The graph and file list update when the
+You can switch to a terminal at any point. The graph and file list update when the
 repository changes on disk, and **Undo** works from Git's reflog, which means it can take back
 a commit, checkout, merge, rebase or reset even if you ran it in the terminal.
 
@@ -49,11 +48,11 @@ The latest build is on **[GitHub Releases](https://github.com/bryn-hill/sillygit
 | Linux | Build an AppImage from source with `npm run dist` (see [below](#run-from-source)) |
 
 The builds aren't signed yet, so your system warns you the first time you open SillyGit. On
-**macOS**, right-click the app and choose **Open**, or use **System Settings → Privacy &
-Security → Open Anyway**. On **Windows**, if SmartScreen stops it, click **More info**, then
+macOS, right-click the app and choose **Open**, or use **System Settings → Privacy &
+Security → Open Anyway**. On Windows, if SmartScreen stops it, click **More info**, then
 **Run anyway**. [RELEASING.md](RELEASING.md) has the details and the checksums file.
 
-You need **Git** installed. For the GitHub features, sign in to the
+You need Git installed. For the GitHub features, sign in to the
 [GitHub CLI](https://cli.github.com/) with `gh auth login` and to
 [Claude Code](https://claude.com/claude-code) (or set an Anthropic API key in Settings).
 
@@ -178,7 +177,7 @@ ending with a worked example, plus a walkthrough the first time you open a repos
 - git-flow start and finish for features, releases and hotfixes, without the
   git-flow binary.
 - Stacked branches with one-click restack.
-- **Lanes**: work on several branches at once in one working tree, then commit
+- Lanes, for working on several branches at once in one working tree and committing
   each lane to its own branch.
 - Toolbar with Undo, Redo, Pull (merge, rebase or fast-forward only), Push,
   Branch, Stash, Pop, Terminal and an Actions menu.
@@ -211,8 +210,8 @@ ending with a worked example, plus a walkthrough the first time you open a repos
 
 ### AI and Claude
 
-- **Claude panel**: a chat with Claude Code inside the app, with permission
-  cards for edits and commands, and plan approval.
+- A Claude panel that runs Claude Code inside the app, asks permission before edits
+  and commands, and lets you approve its plan.
 - AI review of a diff, AI commit messages, and AI help splitting a large change
   into several commits.
 - AI suggestions in the merge conflict tool.
@@ -230,19 +229,16 @@ ending with a worked example, plus a walkthrough the first time you open a repos
 
 ### Walkthrough and help
 
-- **First-use walkthrough**: the first time a repository is open, a short tour
-  spotlights the main areas (tabs, graph, branches, committing, pull and push,
-  undo, Launchpad, the command palette, Claude, Settings) one at a time. Skip it
-  with **Skip tour** or Esc, move with the arrow keys, and start it again any
-  time from **Help → Start walkthrough** or **Help: Start walkthrough** in the
-  command palette.
-- **Help centre**: over 50 articles, each with a worked example, covering every
-  feature from the graph to lanes, conflicts, integrations and Claude. Open it
-  with **F1**, **?**, the **Help** button next to Settings, or **Help: Open help
-  centre** in the palette; every article is also in the palette by title. Search
-  matches titles, summaries, keywords and article text, with results grouped by
-  topic. **Help → Keyboard shortcuts** lists every shortcut, and each walkthrough
-  step's **Learn more** opens the article for that area.
+- The first time a repository is open, a short walkthrough points out the main
+  areas one at a time: tabs, graph, branches, committing, pull and push, undo,
+  Launchpad, the command palette, Claude and Settings. Press Esc or **Skip tour**
+  to leave it, use the arrow keys to move, and restart it from **Help → Start
+  walkthrough** or the command palette.
+- The help centre has over 50 articles, each with a worked example. Open it with
+  <kbd>F1</kbd>, <kbd>?</kbd>, the **Help** button next to Settings, or the command
+  palette, where every article is also listed by title. Search covers titles,
+  summaries, keywords and article text. **Help → Keyboard shortcuts** lists every
+  shortcut, and **Learn more** on a walkthrough step opens the article for that area.
 
 </details>
 
@@ -252,7 +248,7 @@ are also readable on GitHub in
 
 ## Run from source
 
-You need **Node.js 22** (what CI uses), npm, and **Git** on your `PATH`. Git LFS is optional;
+You need Node.js 22 (the version CI uses), npm, and Git on your `PATH`. Git LFS is optional;
 SillyGit tells you when it's missing.
 
 ```bash
@@ -331,14 +327,14 @@ New tests should find elements by ARIA role, label or a `data-testid`, not by CS
 
 Contributions are welcome. The short version:
 
-1. **Branch from `dev` and open pull requests against `dev`.** `main` is the stable branch and
-   only receives `dev` when a release is promoted. Don't target `main` directly.
-2. **Write [Conventional Commits](#commit-messages)** and run `npm run lint:commits` before you
+1. Branch from `dev` and open pull requests against `dev`. `main` is the stable branch and
+   only receives `dev` when a release is promoted.
+2. Write [Conventional Commits](#commit-messages) and run `npm run lint:commits` before you
    push.
-3. **Run `npm run typecheck`, `npm run lint` and `npm test`.** If you change behaviour that an
+3. Run `npm run typecheck`, `npm run lint` and `npm test`. If you change behaviour that an
    e2e spec covers, run that spec too.
-4. **Follow the [renderer rules](#renderer-code)**, and when you add or change a feature,
-   update its help article too.
+4. Follow the [renderer rules](#renderer-code). When you add or change a feature, update its
+   help article.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the full details, everyone is expected to follow the
 [Code of Conduct](CODE_OF_CONDUCT.md), and [CLAUDE.md](CLAUDE.md) holds the same rules for AI
@@ -387,13 +383,13 @@ finished it, bump `TOUR_VERSION` in `src/shared/help/tour.ts`.
 
 CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `dev` and `main`:
 
-- **commits** checks every new commit message.
-- **test** runs `npm ci`, typecheck, lint and the unit tests.
-- **End-to-end tests** only run for `main` (pushes to it and pull requests into it), so merging
+- `commits` checks every new commit message.
+- `test` runs `npm ci`, typecheck, lint and the unit tests.
+- The end-to-end tests only run for `main` (pushes to it and pull requests into it), so merging
   into `dev` stays quick. Run the e2e specs you touch yourself.
 
-The runner is a self-hosted macOS (Apple silicon) machine. Pull requests from forks don't run
-on it, so a maintainer will run checks for those. Actions are pinned to commit SHAs and jobs get
+The runner is a self-hosted macOS (Apple silicon) machine. A maintainer has to approve checks on pull
+requests from forks before they run. Actions are pinned to commit SHAs and jobs get
 a read-only token.
 
 ### Project layout
