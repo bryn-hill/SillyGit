@@ -384,3 +384,36 @@ export interface DropRelation {
   /** The source is ahead of the target, so the target can fast-forward to it. */
   sourceContainsTarget: boolean
 }
+
+export interface TagInfo {
+  name: string
+  /** The commit the tag points at (peeled, for an annotated tag). */
+  hash: string
+  annotated: boolean
+  /** The annotation's first line, or the commit's subject for a lightweight tag. */
+  subject: string
+  /** Unix seconds: when an annotated tag was made, or its commit's date. */
+  date: number
+}
+
+export interface WorktreeInfo {
+  path: string
+  /** The checked-out branch, or null when detached. */
+  branch: string | null
+  head: string | null
+  /** The repository's own working tree, which can't be removed. */
+  main: boolean
+  /** The worktree this window has open. */
+  current: boolean
+  locked: boolean
+  /** Its folder is gone, so `git worktree prune` would drop it. */
+  prunable: boolean
+}
+
+export interface SubmoduleInfo {
+  path: string
+  /** The commit checked out in it, or recorded for it when it isn't checked out. */
+  hash: string
+  /** ok, not checked out yet, on a different commit than the one recorded, or conflicted. */
+  state: 'ok' | 'uninitialized' | 'modified' | 'conflict'
+}

@@ -75,6 +75,21 @@ const api = {
     lines: number[] | null,
     action: import('../shared/lineStaging').PartialAction
   ): Wrapped<void> => ipcRenderer.invoke('git:apply-partial', repoPath, diffText, unitId, lines, action),
+  tags: (repoPath: string): Wrapped<import('../shared/types').TagInfo[]> => ipcRenderer.invoke('git:tags', repoPath),
+  pushTag: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('git:push-tag', repoPath, name),
+  /** Deletes a tag here, and from the remote too when `remote` is set. */
+  deleteTag: (repoPath: string, name: string, remote: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('git:delete-tag', repoPath, name, remote),
+  worktrees: (repoPath: string): Wrapped<import('../shared/types').WorktreeInfo[]> =>
+    ipcRenderer.invoke('git:worktrees', repoPath),
+  removeWorktree: (repoPath: string, path: string, force: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('git:remove-worktree', repoPath, path, force),
+  pruneWorktrees: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:prune-worktrees', repoPath),
+  submodules: (repoPath: string): Wrapped<import('../shared/types').SubmoduleInfo[]> =>
+    ipcRenderer.invoke('git:submodules', repoPath),
+  /** Updates one submodule, or all of them when `path` is null. */
+  updateSubmodules: (repoPath: string, path: string | null): Wrapped<void> =>
+    ipcRenderer.invoke('git:update-submodules', repoPath, path),
   branches: (repoPath: string): Wrapped<import('../shared/types').BranchInfo[]> =>
     ipcRenderer.invoke('git:branches', repoPath),
   checkout: (repoPath: string, branch: string): Wrapped<void> =>

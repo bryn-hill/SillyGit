@@ -1,9 +1,10 @@
 import { toggleFavourite } from '../../../shared/branchStatus'
 import { resolveBranchRemote } from '../../../shared/branchRemote'
 import { withPullRequestText } from '../../../shared/quickActions'
-import type { OpenPullRequest } from '../../../shared/types'
+import type { OpenPullRequest, WorktreeInfo } from '../../../shared/types'
 import type { PromptRequest } from '../components/PromptDialog'
 import type { RefActions, RefTarget } from '../components/RefContextMenu'
+import type { SidebarListActions } from '../components/SidebarLists'
 import type { GitActions } from './useGitActions'
 import type { GitRunner } from './useGitRunner'
 import type { MainView } from './useMainView'
@@ -129,6 +130,43 @@ export function useBranchActions({
     window.api.setFavouriteBranches(repoPath, names).then((res) => !res.ok && showError(res.error))
   }
 
+  const pushTag = (name: string): void => runGit((path) => window.api.pushTag(path, name), () => setNotice(`Pushed tag ${name}.`))
+
+  const deleteTag = (name: string, remote: boolean): void => {
+    const question = remote
+      ? `Delete tag ${name} here and from the remote? Anyone who fetched it keeps their copy.`
+      : `Delete tag ${name}? The commit it points at stays.`
+    if (window.confirm(question)) runGit((path) => window.api.deleteTag(path, name, remote))
+  }
+
+  /** Removes a linked worktree, asking before throwing away changes left in it. */
+  const removeWorktree = (worktree: WorktreeInfo): void => {
+    if (!repoPath) return
+    if (!window.confirm(`Remove the worktree at ${worktree.path}? Its folder is deleted; its branch stays.`)) return
+    withBusy(async () => {
+      let res = await window.api.removeWorktree(repoPath, worktree.path, false)
+      if (!res.ok && /uncommitted changes/.test(res.error)) {
+        if (window.confirm(`${worktree.path} has uncommitted changes. Remove it anyway? Those changes will be lost.`)) {
+          res = await window.api.removeWorktree(repoPath, worktree.path, true)
+        } else res = { ok: true, data: undefined }
+      }
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const listActions: Pick<SidebarListActions, 'pushTag' | 'deleteTag' | 'removeWorktree' | 'pruneWorktrees' | 'updateSubmodules'> = {
+    pushTag,
+    deleteTag,
+    removeWorktree,
+    pruneWorktrees: () => runGit((path) => window.api.pruneWorktrees(path)),
+    updateSubmodules: (path) =>
+      runGit(
+        (repo) => window.api.updateSubmodules(repo, path),
+        () => setNotice(path ? `Updated ${path}.` : 'Updated the submodules.')
+      )
+  }
+
   const refActions: RefActions = {
     checkout: actions.checkout,
     checkoutRemote: actions.checkoutRemote,
@@ -172,7 +210,8 @@ export function useBranchActions({
     promptCreateBranch,
     deleteBranch,
     renameBranch,
-    refActions
+    refActions,
+    listActions
   }
 }
 

@@ -113,6 +113,21 @@ export function registerGitHandlers(): void {
       wrap(() => git.applyPartial(repoPath, diffText, unitId, lines, action))
   )
 
+  ipcMain.handle('git:tags', (_e, repoPath: string) => wrap(() => git.listTags(repoPath)))
+  ipcMain.handle('git:push-tag', (_e, repoPath: string, name: string) => wrap(() => git.pushTag(repoPath, name)))
+  ipcMain.handle('git:delete-tag', (_e, repoPath: string, name: string, remote: boolean) =>
+    wrap(() => git.deleteTag(repoPath, name, remote))
+  )
+  ipcMain.handle('git:worktrees', (_e, repoPath: string) => wrap(() => git.listWorktrees(repoPath)))
+  ipcMain.handle('git:remove-worktree', (_e, repoPath: string, path: string, force: boolean) =>
+    wrap(() => git.removeWorktree(repoPath, path, force))
+  )
+  ipcMain.handle('git:prune-worktrees', (_e, repoPath: string) => wrap(() => git.pruneWorktrees(repoPath)))
+  ipcMain.handle('git:submodules', (_e, repoPath: string) => wrap(() => git.listSubmodules(repoPath)))
+  ipcMain.handle('git:update-submodules', (_e, repoPath: string, path: string | null) =>
+    wrap(() => git.updateSubmodules(repoPath, path))
+  )
+
   ipcMain.handle('git:branches', (_e, repoPath: string) => wrap(() => git.listBranches(repoPath)))
 
   ipcMain.handle('git:checkout', (_e, repoPath: string, branch: string) =>

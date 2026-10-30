@@ -2,6 +2,7 @@ import { useMemo, useState, type JSX } from 'react'
 import type { BranchInfo, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
+import SidebarLists, { type SidebarListActions } from './SidebarLists'
 import { dropTarget, useRefDrag } from './RefDrag'
 import { pressable } from '../lib/pressable'
 import { favouriteBranches, staleAge, type BranchListSettings } from '../../../shared/branchStatus'
@@ -45,6 +46,7 @@ export interface StashActions {
 }
 
 interface Props {
+  repoPath: string
   /** Dragged width; the CSS default applies until set. */
   width?: number
   branches: BranchInfo[]
@@ -66,6 +68,9 @@ interface Props {
   cleanupSnoozed: boolean
   onOpenCleanup: () => void
   onSnoozeCleanup: () => void
+  hasRemotes: boolean
+  /** Tags, worktrees and submodules. */
+  listActions: SidebarListActions
 }
 
 /** "WIP on main: 1a2b3c4 Subject" -> "Subject"; "On main: my note" -> "my note". */
@@ -235,6 +240,7 @@ function TreeView({
 }
 
 export default function Sidebar({
+  repoPath,
   width,
   branches,
   headHash,
@@ -250,7 +256,9 @@ export default function Sidebar({
   listedAt,
   cleanupSnoozed,
   onOpenCleanup,
-  onSnoozeCleanup
+  onSnoozeCleanup,
+  hasRemotes,
+  listActions
 }: Props): JSX.Element {
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget } | null>(null)
   const [stashMenu, setStashMenu] = useState<{ x: number; y: number; stash: StashEntry } | null>(null)
@@ -430,6 +438,16 @@ export default function Sidebar({
         {!collapsed.has('remote-root') && (
           <TreeView node={remoteTree} depth={0} collapsed={collapsed} onToggle={toggle} handlers={handlers} />
         )}
+
+        <SidebarLists
+          repoPath={repoPath}
+          refreshKey={branches}
+          hasRemotes={hasRemotes}
+          filter={filter}
+          collapsed={collapsed}
+          onToggle={toggle}
+          actions={listActions}
+        />
 
         <div className="tree-group-header" aria-expanded={!collapsed.has('stash-root')} {...pressable(() => toggle('stash-root'))}>
           <span className="tree-caret" aria-hidden="true">{collapsed.has('stash-root') ? '▸' : '▾'}</span>

@@ -269,6 +269,7 @@ export default function MainArea({
     <div className={cover && panelBeside && detailPanel ? 'main-layout file-focus' : 'main-layout'}>
       <Activity mode={cover ? 'hidden' : 'visible'}>
         <Sidebar
+          repoPath={repoPath}
           width={layout.sidebarWidth}
           branches={repo.branches}
           headHash={headHash}
@@ -285,6 +286,15 @@ export default function MainArea({
           cleanupSnoozed={cleanup.snoozed}
           onOpenCleanup={cleanup.open}
           onSnoozeCleanup={cleanup.snooze}
+          hasRemotes={repo.remotes.length > 0}
+          listActions={{
+            ...branches.listActions,
+            selectCommit: view.selectBranchCommit,
+            checkout: git.checkout,
+            openRepo: (path) => void tabs.openRecentRepo(path),
+            reveal: git.revealRepo,
+            copyText: git.copyText
+          }}
         />
         <PanelResizer
           side="before"

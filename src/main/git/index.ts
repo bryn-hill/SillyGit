@@ -52,4 +52,14 @@ export {
   revertHunk
 } from './commits'
 export { redo, redoLabel, undo, undoLabel } from './undo'
+export {
+  deleteTag,
+  listSubmodules,
+  listTags,
+  listWorktrees,
+  pruneWorktrees,
+  pushTag,
+  removeWorktree,
+  updateSubmodules
+} from './sidebarLists'
 export { GitError, activityLog } from '../gitExec'

@@ -62,3 +62,57 @@ button.link-button.danger {
   color: var(--text-dim);
   flex-shrink: 0;
 }
+
+/* --- Tags, worktrees and submodules --- */
+
+.side-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.side-list-row {
+  padding-left: 22px;
+}
+
+.side-list-icon {
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.side-list-row.current .side-list-icon {
+  color: var(--accent);
+}
+
+.side-list-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-list-note {
+  margin-left: auto;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.side-list-row.missing .side-list-name {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.submodule-uninitialized,
+.submodule-modified {
+  color: var(--yellow);
+}
+
+.submodule-conflict {
+  color: var(--red);
+}
