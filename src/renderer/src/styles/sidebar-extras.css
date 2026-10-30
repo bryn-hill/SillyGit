@@ -118,3 +118,58 @@ button.link-button.danger {
 .submodule-conflict {
   color: var(--red);
 }
+
+/* --- Stacked branches --- */
+
+.stack + .stack {
+  margin-top: 2px;
+}
+
+.stack-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 0 22px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.stack-restack {
+  margin-left: auto;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.stack-restack:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.stack-ahead {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.stack-ahead::before {
+  content: '+';
+}
+
+.stack-chip {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 10.5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--yellow) 18%, transparent);
+  color: var(--yellow);
+}
+
+.stack-chip-warn {
+  background: color-mix(in srgb, var(--red) 18%, transparent);
+  color: var(--red);
+}

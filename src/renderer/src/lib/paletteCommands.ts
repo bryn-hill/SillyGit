@@ -18,6 +18,8 @@ export interface PaletteContext {
   undoLabel: string | null
   redoLabel: string | null
   hasWorkingChanges: boolean
+  /** The checked-out branch's stack, if it's in one: its bottom branch and whether anything in it is behind. */
+  currentStack?: { id: string; needsRestack: boolean } | null
   /** A single commit is selected that Run can act on. */
   canRunCommit: boolean
   /** Every tracked file, for the Blame and File history pickers. */
@@ -48,6 +50,10 @@ export interface PaletteContext {
     applyStash: (stash: StashEntry) => void
     popStash: (stash: StashEntry) => void
     createBranch: () => void
+    createStackedBranch: (parent: string) => void
+    stackCurrentBranch: (branch: string) => void
+    restack: (branch: string) => void
+    pushStack: (branch: string) => void
     cleanUpBranches: () => void
     checkout: (branch: string) => void
     checkoutRemote: (branch: string) => void
@@ -135,6 +141,15 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       stashes.map((stash) => ({ id: stash.ref, label: `${stash.ref}: ${stash.message}`, run: () => a.popStash(stash) }))
     )
     add('new-branch', 'Create branch…', a.createBranch)
+    if (status?.branch) {
+      const branch = status.branch
+      add('new-stacked-branch', `New branch stacked on ${branch}…`, () => a.createStackedBranch(branch))
+      if (ctx.currentStack) {
+        const id = ctx.currentStack.id
+        add('restack', ctx.currentStack.needsRestack ? `Restack the ${id} stack` : `Restack the ${id} stack (up to date)`, () => a.restack(branch))
+        if (ctx.hasRemotes) add('push-stack', `Push the ${id} stack (force with lease)`, () => a.pushStack(branch))
+      } else add('stack-on', `Stack ${branch} on another branch…`, () => a.stackCurrentBranch(branch))
+    }
     add('cleanup-branches', 'Clean up branches…', a.cleanUpBranches)
     const checkouts: Command[] = []
     for (const b of branches) {

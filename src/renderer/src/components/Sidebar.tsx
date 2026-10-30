@@ -3,6 +3,8 @@ import type { BranchInfo, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import SidebarLists, { type SidebarListActions } from './SidebarLists'
+import SidebarStacks from './SidebarStacks'
+import type { StackInfo } from '../../../shared/stacks'
 import { dropTarget, useRefDrag } from './RefDrag'
 import { pressable } from '../lib/pressable'
 import { favouriteBranches, staleAge, type BranchListSettings } from '../../../shared/branchStatus'
@@ -71,6 +73,7 @@ interface Props {
   hasRemotes: boolean
   /** Tags, worktrees and submodules. */
   listActions: SidebarListActions
+  stacks: StackInfo[]
 }
 
 /** "WIP on main: 1a2b3c4 Subject" -> "Subject"; "On main: my note" -> "my note". */
@@ -258,7 +261,8 @@ export default function Sidebar({
   onOpenCleanup,
   onSnoozeCleanup,
   hasRemotes,
-  listActions
+  listActions,
+  stacks
 }: Props): JSX.Element {
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget } | null>(null)
   const [stashMenu, setStashMenu] = useState<{ x: number; y: number; stash: StashEntry } | null>(null)
@@ -430,6 +434,18 @@ export default function Sidebar({
         {!collapsed.has('local-root') && (
           <TreeView node={localTree} depth={0} collapsed={collapsed} onToggle={toggle} handlers={handlers} />
         )}
+
+        <SidebarStacks
+          stacks={stacks}
+          branches={branches}
+          filter={filter}
+          collapsed={collapsed}
+          onToggle={toggle}
+          onSelect={selectBranch}
+          onCheckout={checkoutBranch}
+          onContextMenu={openMenu}
+          onRestack={actions.restack}
+        />
 
         <div className="tree-group-header" aria-expanded={!collapsed.has('remote-root')} {...pressable(() => toggle('remote-root'))}>
           <span className="tree-caret" aria-hidden="true">{collapsed.has('remote-root') ? '▸' : '▾'}</span>

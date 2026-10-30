@@ -1,6 +1,7 @@
 import { ipcMain, dialog } from 'electron'
 import { basename, dirname, join } from 'path'
 import * as branches from '../branches'
+import * as stacks from '../stacks'
 import type { DeletedBranch } from '../../shared/branchCleanup'
 import { wrap } from './wrap'
 
@@ -43,6 +44,20 @@ export function registerBranchHandlers(): void {
   ipcMain.handle('git:rename-branch', (_e, repoPath: string, from: string, to: string) =>
     wrap(() => branches.renameBranch(repoPath, from, to))
   )
+
+  ipcMain.handle('git:stacks', (_e, repoPath: string) => wrap(() => stacks.listStacks(repoPath)))
+
+  ipcMain.handle('git:set-stack-parent', (_e, repoPath: string, branch: string, parent: string | null) =>
+    wrap(() => stacks.setStackParent(repoPath, branch, parent))
+  )
+
+  ipcMain.handle('git:create-stacked-branch', (_e, repoPath: string, parent: string, name: string) =>
+    wrap(() => stacks.createStackedBranch(repoPath, parent, name))
+  )
+
+  ipcMain.handle('git:restack', (_e, repoPath: string, branch: string) => wrap(() => stacks.restack(repoPath, branch)))
+
+  ipcMain.handle('git:push-stack', (_e, repoPath: string, branch: string) => wrap(() => stacks.pushStack(repoPath, branch)))
 
   // Asks where to put the worktree (next to the repo by default), then adds it.
   // Resolves to the new worktree's path, or null when the dialog is cancelled.

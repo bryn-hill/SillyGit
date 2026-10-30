@@ -5,6 +5,7 @@ import { prNumber, type CleanupCandidate, type DeletedBranch, type MergeLanding 
 import { GitError, remoteEnv, runGit } from './gitExec'
 import * as github from './github'
 import { githubAccess } from './hosting'
+import { renameParent, reparentChildren, stackParents } from './stacks'
 
 const execFileAsync = promisify(execFile)
 
@@ -102,7 +103,9 @@ export async function checkoutRemoteBranch(repoPath: string, name: string): Prom
 
 /** Deletes a local branch; `force` deletes it even when it isn't merged. */
 export async function deleteBranch(repoPath: string, name: string, force: boolean): Promise<void> {
+  const parents = await stackParents(repoPath)
   await runGit(repoPath, ['branch', force ? '-D' : '-d', name])
+  await reparentChildren(repoPath, name, parents)
 }
 
 /** Deletes a branch from its remote, e.g. "origin/feature" runs `git push origin --delete feature`. */
@@ -253,7 +256,9 @@ export async function deleteBranches(
       const hash = (await runGit(repoPath, ['rev-parse', `refs/heads/${name}`])).trim()
       const remote = await configValue(repoPath, `branch.${name}.remote`)
       const merge = await configValue(repoPath, `branch.${name}.merge`)
+      const parents = await stackParents(repoPath)
       await runGit(repoPath, ['branch', '-D', name])
+      await reparentChildren(repoPath, name, parents)
       deleted.push({ name, hash, remote, merge })
     } catch (err) {
       failed.push({ name, error: err instanceof Error ? err.message : String(err) })
@@ -273,6 +278,7 @@ export async function restoreBranches(repoPath: string, branches: DeletedBranch[
 
 export async function renameBranch(repoPath: string, from: string, to: string): Promise<void> {
   await runGit(repoPath, ['branch', '-m', from, to])
+  await renameParent(repoPath, from, to)
 }
 
 /**

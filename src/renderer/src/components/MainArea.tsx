@@ -287,6 +287,7 @@ export default function MainArea({
           onOpenCleanup={cleanup.open}
           onSnoozeCleanup={cleanup.snooze}
           hasRemotes={repo.remotes.length > 0}
+          stacks={branches.stacks}
           listActions={{
             ...branches.listActions,
             selectCommit: view.selectBranchCommit,

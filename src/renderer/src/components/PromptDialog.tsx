@@ -1,4 +1,5 @@
 import { useState, type JSX } from 'react'
+import Select from './Select'
 
 export interface PromptRequest {
   title: string
@@ -6,6 +7,8 @@ export interface PromptRequest {
   defaultValue?: string
   placeholder?: string
   submitLabel?: string
+  /** Pick one of these instead of typing. */
+  options?: string[]
 }
 
 interface Props extends PromptRequest {
@@ -20,10 +23,11 @@ export default function PromptDialog({
   defaultValue = '',
   placeholder,
   submitLabel = 'OK',
+  options,
   onSubmit,
   onCancel
 }: Props): JSX.Element {
-  const [value, setValue] = useState(defaultValue)
+  const [value, setValue] = useState(options && !options.includes(defaultValue) ? (options[0] ?? '') : defaultValue)
   const submit = (): void => {
     if (value.trim()) onSubmit(value.trim())
   }
@@ -39,18 +43,22 @@ export default function PromptDialog({
         </div>
         <div className="modal-body">
           <label className="modal-label">{label}</label>
-          <input
-            autoFocus
-            aria-label={label}
-            placeholder={placeholder}
-            value={value}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit()
-              else if (e.key === 'Escape') onCancel()
-            }}
-          />
+          {options ? (
+            <Select value={value} options={options.map((o) => ({ value: o, label: o }))} onChange={setValue} aria-label={label} />
+          ) : (
+            <input
+              autoFocus
+              aria-label={label}
+              placeholder={placeholder}
+              value={value}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submit()
+                else if (e.key === 'Escape') onCancel()
+              }}
+            />
+          )}
         </div>
         <div className="modal-footer">
           <button className="subtle" onClick={onCancel}>

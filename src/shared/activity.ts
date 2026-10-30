@@ -52,7 +52,7 @@ export function isLoggedCommand(args: string[]): boolean {
     case 'worktree':
       return rest[0] !== 'list'
     case 'config':
-      return !rest.some((a) => a === '--get' || a === '--get-all' || a === '-l' || a === '--list')
+      return !rest.some((a) => a === '--get' || a === '--get-all' || a === '--get-regexp' || a === '-l' || a === '--list')
     case 'branch':
       return !rest.some((a) => a === '--points-at' || a === '--list' || a.startsWith('--format') || a === '--show-current')
     case 'tag':

@@ -259,6 +259,18 @@ const api = {
     ipcRenderer.invoke('git:delete-remote-branch', repoPath, name),
   pullBranch: (repoPath: string, name: string): Wrapped<{ updated: boolean }> =>
     ipcRenderer.invoke('git:pull-branch', repoPath, name),
+  /** The repo's stacked branches. */
+  stacks: (repoPath: string): Wrapped<import('../shared/stacks').StackInfo[]> => ipcRenderer.invoke('git:stacks', repoPath),
+  /** Stacks `branch` on `parent`, or takes it out of its stack when `parent` is null. */
+  setStackParent: (repoPath: string, branch: string, parent: string | null): Wrapped<void> =>
+    ipcRenderer.invoke('git:set-stack-parent', repoPath, branch, parent),
+  createStackedBranch: (repoPath: string, parent: string, name: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:create-stacked-branch', repoPath, parent, name),
+  /** Rebases every branch in `branch`'s stack onto its parent. */
+  restack: (repoPath: string, branch: string): Wrapped<import('../shared/stacks').RestackResult> =>
+    ipcRenderer.invoke('git:restack', repoPath, branch),
+  pushStack: (repoPath: string, branch: string): Wrapped<{ remote: string; pushed: string[] }> =>
+    ipcRenderer.invoke('git:push-stack', repoPath, branch),
   renameBranch: (repoPath: string, from: string, to: string): Wrapped<void> =>
     ipcRenderer.invoke('git:rename-branch', repoPath, from, to),
   addWorktree: (repoPath: string, ref: string, kind: 'local' | 'remote' | 'commit'): Wrapped<string | null> =>

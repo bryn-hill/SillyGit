@@ -53,6 +53,7 @@ export function appCommands(app: {
         }))
       : [])
   ]
+  const stack = branch ? branches.stackActions.stackOf(branch) : null
   return paletteCommands({
     repoPath,
     status: repo.status,
@@ -64,6 +65,7 @@ export function appCommands(app: {
     undoLabel: repo.undoLabel,
     redoLabel: repo.redoLabel,
     hasWorkingChanges: app.hasWorkingChanges,
+    currentStack: stack && { id: stack.id, needsRestack: stack.branches.some((b) => b.needsRestack) },
     canRunCommit: !!run.commit,
     trackedFiles: dialogs.trackedFiles,
     tabPinned: !!repoPath && tabs.pinnedTabs.includes(repoPath),
@@ -95,6 +97,10 @@ export function appCommands(app: {
       applyStash: git.stashActions.apply,
       popStash: git.stashActions.pop,
       createBranch: branches.promptCreateBranch,
+      createStackedBranch: branches.stackActions.createStackedBranch,
+      stackCurrentBranch: branches.stackActions.chooseStackParent,
+      restack: branches.stackActions.restack,
+      pushStack: branches.stackActions.pushStack,
       cleanUpBranches: app.cleanup.open,
       checkout: git.checkout,
       checkoutRemote: git.checkoutRemote,

@@ -1,5 +1,6 @@
 import { useEffect, type JSX } from 'react'
 import type { BranchRemoteInfo } from '../../../shared/types'
+import type { StackActions } from '../hooks/useBranchActions'
 import { useCustomCommandMenu } from '../lib/customCommandMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
@@ -25,7 +26,7 @@ export interface RefTarget {
 }
 
 /** Everything the branch/commit right-click menu can do; App supplies these. */
-export interface RefActions {
+export interface RefActions extends StackActions {
   checkout: (refOrHash: string) => void
   checkoutRemote: (name: string) => void
   merge: (branch: string) => void
@@ -211,6 +212,34 @@ export default function RefContextMenu({
       })
     }
     if (prItems.length > 0) sections.push(prItems)
+  }
+
+  if (target && !target.remote) {
+    const stack = actions.stackOf(target.name)
+    const stackItems: ContextMenuItem[] = [
+      {
+        id: 'stack-new',
+        label: `New branch stacked on ${name}…`,
+        onSelect: () => actions.createStackedBranch(target.name)
+      }
+    ]
+    if (stack) {
+      const size = stack.branches.length
+      stackItems.push(
+        {
+          id: 'restack',
+          label: `Restack ${size === 1 ? shortRef(stack.id) : `the ${shortRef(stack.id)} stack (${size} branches)`}`,
+          title: 'Rebase each branch in the stack onto its parent, bottom up',
+          onSelect: () => actions.restack(target.name)
+        },
+        { id: 'stack-push', label: 'Push the stack (force with lease)', onSelect: () => actions.pushStack(target.name) },
+        { id: 'stack-parent', label: `Change what ${name} is stacked on…`, onSelect: () => actions.chooseStackParent(target.name) },
+        { id: 'stack-leave', label: `Take ${name} out of the stack`, onSelect: () => actions.leaveStack(target.name) }
+      )
+    } else {
+      stackItems.push({ id: 'stack-on', label: `Stack ${name} on…`, onSelect: () => actions.chooseStackParent(target.name) })
+    }
+    sections.push(stackItems)
   }
 
   if (target && !target.current) {
