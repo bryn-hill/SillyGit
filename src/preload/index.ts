@@ -56,8 +56,13 @@ const api = {
     ipcRenderer.invoke('git:apply-patch', repoPath),
   /** Asks where to clone `url` and clones it there, returning the new repo's path; null when cancelled. */
   clone: (url: string): Wrapped<string | null> => ipcRenderer.invoke('git:clone', url),
-  searchCommits: (repoPath: string, query: string): Wrapped<import('../shared/types').CommitSearchHit[]> =>
-    ipcRenderer.invoke('git:search-commits', repoPath, query),
+  /** Matches in the graph's order, within `filter` when the graph is filtered; see searchCommits in main. */
+  searchCommits: (
+    repoPath: string,
+    query: string | import('../shared/historySearch').CommitSearch,
+    filter?: import('../shared/historySearch').GraphFilter | null
+  ): Wrapped<import('../shared/types').CommitSearchHit[]> =>
+    ipcRenderer.invoke('git:search-commits', repoPath, query, filter ?? null),
   /** Starts watching `repoPath` for outside changes (null stops); see onRepoChanged. */
   watchRepo: (repoPath: string | null): Promise<void> => ipcRenderer.invoke('repo:watch', repoPath),
   onRepoChanged: (callback: (repoPath: string) => void): (() => void) => {
@@ -108,8 +113,11 @@ const api = {
   ): Wrapped<import('../shared/types').ConflictableResult> => ipcRenderer.invoke('git:pull', repoPath, mode),
   log: (repoPath: string): Wrapped<import('../shared/types').CommitInfo[]> =>
     ipcRenderer.invoke('git:log', repoPath),
-  graphLog: (repoPath: string, limit?: number): Wrapped<import('../shared/types').GraphCommit[]> =>
-    ipcRenderer.invoke('git:graph-log', repoPath, limit),
+  graphLog: (
+    repoPath: string,
+    limit?: number,
+    filter?: import('../shared/historySearch').GraphFilter | null
+  ): Wrapped<import('../shared/types').GraphCommit[]> => ipcRenderer.invoke('git:graph-log', repoPath, limit, filter ?? null),
   commitDetail: (repoPath: string, hash: string): Wrapped<import('../shared/types').CommitDetail> =>
     ipcRenderer.invoke('git:commit-detail', repoPath, hash),
   coAuthorCandidates: (repoPath: string): Wrapped<import('../shared/coAuthors').CoAuthorCandidate[]> =>

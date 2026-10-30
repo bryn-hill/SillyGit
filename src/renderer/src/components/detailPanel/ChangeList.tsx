@@ -20,6 +20,7 @@ export default function ChangeList({
   onStage,
   onUnstage,
   onOpenFileView,
+  onFilterHistory,
   onCopyText
 }: {
   /** Which list this is. */
@@ -32,6 +33,7 @@ export default function ChangeList({
   onStage: (paths: string[]) => void
   onUnstage: (paths: string[]) => void
   onOpenFileView: OpenFileView
+  onFilterHistory?: (path: string) => void
   onCopyText: (text: string) => void
 }): JSX.Element {
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus } | null>(null)
@@ -127,6 +129,7 @@ export default function ChangeList({
             onEdit: () => onEditFile(fileMenu.file.path),
             onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
+            onFilterHistory,
             onCopyPath: () => onCopyText(fileMenu.file.path),
             custom: customMenu('file', { file: fileMenu.file.path })
           })}

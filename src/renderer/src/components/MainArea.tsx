@@ -148,6 +148,7 @@ export default function MainArea({
             }}
             onEditFile={view.openEditor}
             onOpenFileView={view.openFileView}
+            onFilterHistory={(path) => view.filterHistory({ path })}
             onCopyText={git.copyText}
           />
         </div>
@@ -329,6 +330,8 @@ export default function MainArea({
           sprints={settings.sprints}
           mergeAnimation={settings.mergeAnimation}
           onRefColumnWidthChange={layout.setRefColumnWidth}
+          filter={repo.graphFilter}
+          onFilterChange={view.filterHistory}
         />
       </Activity>
       {cover}

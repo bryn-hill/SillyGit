@@ -15,6 +15,16 @@ import { useMergeBurst } from './commitGraph/useMergeBurst'
 import { useGraphSearch } from './commitGraph/useGraphSearch'
 import { useBisectState } from '../lib/bisectMenu'
 import { bisectMarks, markLabel } from '../../../shared/bisect'
+import Select from './Select'
+import {
+  graphFilterLabel,
+  SEARCH_MODES,
+  SEARCH_SYNTAX_HINT,
+  type CommitSearchMode,
+  type GraphFilter
+} from '../../../shared/historySearch'
+
+const MODE_OPTIONS = SEARCH_MODES.map((m) => ({ value: m.mode, label: m.label }))
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
 const MIN_REF_COLUMN_WIDTH = 60
@@ -73,6 +83,9 @@ interface Props {
   sprints: SprintSettings
   /** Animate a merge landing on the checked-out branch (Settings). */
   mergeAnimation: boolean
+  /** The path filter `rows` were read with, shown as a chip that clears it. */
+  filter: GraphFilter | null
+  onFilterChange: (filter: GraphFilter | null) => void
 }
 
 export default function CommitGraph({
@@ -96,7 +109,9 @@ export default function CommitGraph({
   refColumnWidth,
   onRefColumnWidthChange,
   sprints,
-  mergeAnimation
+  mergeAnimation,
+  filter,
+  onFilterChange
 }: Props): JSX.Element {
   // The WIP node sits above the checked-out commit's lane and a dashed line
   // joins them, even when other branch tips come between.
@@ -147,12 +162,23 @@ export default function CommitGraph({
   const today = localDay(now.toISOString())
   const currentSprint = today === null ? null : sprintIndexOfDay(today, sprints)
 
-  const { query, changeQuery, hits, hitIndex, hitSet, stepHit } = useGraphSearch({
+  const { query, changeQuery, mode, changeMode, search, hits, error, searching, hitIndex, hitSet, stepHit } = useGraphSearch({
     repoPath,
+    filter,
     searchRef,
     searchFocusToken,
     onJumpToCommit
   })
+
+  const searchCount = error
+    ? search.mode === 'regex'
+      ? 'Invalid regex'
+      : 'Search failed'
+    : !hits || (searching && hits.length === 0)
+      ? 'Searching…'
+      : hits.length === 0
+        ? 'No matches'
+        : `${hitIndex + 1} of ${hits.length}`
 
   // --- Virtual scrolling ----------------------------------------------------
   useLayoutEffect(() => {
@@ -266,6 +292,7 @@ export default function CommitGraph({
         role="option"
         aria-selected={isSelected}
         data-hash={row.commit.hash}
+        data-search-match={hitSet?.has(row.commit.hash) || undefined}
         {...dropTarget(pills[0]?.local?.label)}
         onPointerDown={(e) => {
           const hashes = dragCommits(row.commit.hash)
@@ -374,11 +401,21 @@ export default function CommitGraph({
         <span className="col-graph">Graph</span>
         <span className="col-message">Commit message</span>
         <div className="graph-search">
+          <Select<CommitSearchMode>
+            className="graph-search-mode"
+            variant="ghost"
+            aria-label="Search in"
+            title="What to search; or type a prefix such as author: or -S"
+            value={search.mode}
+            options={MODE_OPTIONS}
+            onChange={changeMode}
+          />
           <input
             ref={searchRef}
             type="search"
             aria-label="Search commits"
-            placeholder="Search commits"
+            placeholder={SEARCH_MODES.find((m) => m.mode === mode)?.placeholder}
+            title={SEARCH_SYNTAX_HINT}
             value={query}
             onChange={(e) => changeQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -392,9 +429,9 @@ export default function CommitGraph({
               }
             }}
           />
-          {hits && (
-            <span className="graph-search-count" aria-live="polite">
-              {hits.length === 0 ? 'No matches' : `${hitIndex + 1} of ${hits.length}`}
+          {(hits || searching) && (
+            <span className="graph-search-count" aria-live="polite" title={error ?? undefined}>
+              {searchCount}
             </span>
           )}
           {hits && hits.length > 1 && (
@@ -407,8 +444,42 @@ export default function CommitGraph({
               </button>
             </>
           )}
+          {search.mode === 'path' && search.term && (
+            <button
+              className="graph-search-step"
+              title="Show only the commits touching paths that contain this"
+              onClick={() => {
+                onFilterChange({ path: search.term, contains: true })
+                changeQuery('')
+              }}
+            >
+              Filter
+            </button>
+          )}
         </div>
       </div>
+      {filter && (
+        <div className="graph-filter-bar" role="status">
+          <span className="graph-filter-chip" data-testid="graph-filter-chip">
+            <span className="graph-filter-label">{graphFilterLabel(filter)}</span>
+            <button
+              className="graph-filter-clear"
+              aria-label="Clear filter"
+              title="Show every commit again"
+              onClick={() => onFilterChange(null)}
+            >
+              ×
+            </button>
+          </span>
+          {!loadingMore && (
+            <span className="graph-filter-count">
+              {rows.length === 0
+                ? 'No commits touch this path'
+                : `${rows.length}${hasMore ? '+' : ''} commit${rows.length === 1 && !hasMore ? '' : 's'}`}
+            </span>
+          )}
+        </div>
+      )}
       <div
         className="commit-graph-body"
         ref={bodyRef}

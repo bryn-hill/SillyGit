@@ -1,5 +1,6 @@
 import { useRef, useState, type SetStateAction } from 'react'
 import type { CommitSearchHit, FileStatus } from '../../../shared/types'
+import type { GraphFilter } from '../../../shared/historySearch'
 import type { ClickModifiers } from '../components/CommitGraph'
 import type { FileViewMode, FileViewTarget } from '../components/FileHistoryView'
 import type { ActiveFile } from '../components/DetailPanel'
@@ -255,8 +256,16 @@ export function useMainView({
       setSelection({ type: 'commit', hash })
       return
     }
-    const res = await window.api.searchCommits(repoPath, hash)
-    const hit = res.ok ? res.data.find((h) => h.hash === hash) : undefined
+    const find = async (filter: GraphFilter | null): Promise<CommitSearchHit | undefined> => {
+      const res = await window.api.searchCommits(repoPath, hash, filter)
+      return res.ok ? res.data.find((h) => h.hash === hash) : undefined
+    }
+    let hit = await find(repo.graphFilter)
+    // The commit is outside the graph's path filter: show everything to reach it.
+    if (!hit && repo.graphFilter) {
+      await repo.setGraphFilter(null)
+      hit = await find(null)
+    }
     if (hit) await jumpToCommit(hit)
   }
 
@@ -271,6 +280,15 @@ export function useMainView({
     setShowLaunchpad(false)
     setResolvingPath(null)
     setSearchFocusToken((n) => n + 1)
+  }
+
+  /** Narrows the graph to the commits touching a path (null shows everything), and shows the graph. */
+  const filterHistory = (filter: GraphFilter | null): void => {
+    closeFileViews()
+    closeEditor()
+    setShowLaunchpad(false)
+    setResolvingPath(null)
+    void repo.setGraphFilter(filter)
   }
 
   /** Opens the interactive rebase editor for the commits after `base`. */
@@ -355,7 +373,8 @@ export function useMainView({
     jumpToCommit,
     selectBranchCommit,
     showCommitInGraph,
-    focusSearch
+    focusSearch,
+    filterHistory
   }
 }
 

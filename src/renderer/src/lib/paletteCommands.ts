@@ -2,6 +2,7 @@ import type { Command } from '../components/CommandPalette'
 import type { FileViewMode } from '../components/FileHistoryView'
 import type { BranchInfo, OpenPullRequest, OperationState, PullMode, RepoStatus, StashEntry } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
+import { foldersOf, graphFilterLabel, type GraphFilter } from '../../../shared/historySearch'
 import { repoDisplayName } from './repoName'
 import { MOD } from './shortcuts'
 
@@ -28,6 +29,8 @@ export interface PaletteContext {
   canCreatePullRequest?: boolean
   /** Every tracked file, for the Blame and File history pickers. */
   trackedFiles: string[]
+  /** The graph's path filter, when it's narrowed to a file or folder. */
+  graphFilter?: GraphFilter | null
   tabPinned: boolean
   tabCount: number
   recentRepos: string[]
@@ -48,6 +51,7 @@ export interface PaletteContext {
     run: (mode?: RunMode) => void
     editRunCommand: () => void
     openFileView: (path: string, mode: FileViewMode) => void
+    filterHistory: (filter: GraphFilter | null) => void
     applyPatch: () => void
     stash: () => void
     stashWithMessage: () => void
@@ -131,6 +135,12 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       'File history',
       ctx.trackedFiles.map((path) => ({ id: path, label: path, run: () => a.openFileView(path, 'history') }))
     )
+    addList(
+      'folder-history',
+      'Show history of folder',
+      foldersOf(ctx.trackedFiles).map((path) => ({ id: path, label: path, run: () => a.filterHistory({ path }) }))
+    )
+    if (ctx.graphFilter) add('clear-history-filter', `Clear filter: ${graphFilterLabel(ctx.graphFilter)}`, () => a.filterHistory(null))
     add('apply-patch', 'Apply patch…', a.applyPatch)
     if (ctx.hasWorkingChanges && !operation) {
       add('stash', 'Stash changes', a.stash)

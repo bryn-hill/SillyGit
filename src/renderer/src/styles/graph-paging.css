@@ -51,3 +51,55 @@ button.graph-search-step {
   font-size: 11.5px;
   color: var(--text-dim);
 }
+
+/* Narrowing the graph: the search mode dropdown and the path filter chip. */
+.graph-search:has(.graph-search-mode) {
+  flex-basis: 300px;
+}
+
+.graph-search .graph-search-mode {
+  flex: none;
+  font-size: 11px;
+}
+
+.graph-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.graph-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 60%;
+  padding: 1px 4px 1px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+.graph-filter-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.graph-filter-clear {
+  padding: 0 5px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 16px;
+}
+
+button.graph-filter-clear:hover {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--text);
+}
