@@ -25,15 +25,27 @@ export function activityLog(): ActivityEntry[] {
 const REMOTE_ONLY = new Set(['fetch', 'push', 'clone', 'ls-remote'])
 const writeQueues = new Map<string, Promise<unknown>>()
 
-function oneAtATime<T>(repoPath: string, run: () => Promise<T>): Promise<T> {
-  const result = (writeQueues.get(repoPath) ?? Promise.resolve()).then(run)
+// Commands that move remote-tracking refs also run one at a time per repo,
+// in a queue of their own: an auto-fetch landing in the middle of a pull
+// makes one of them fail with "cannot lock ref 'refs/remotes/origin/main'".
+const UPDATES_REMOTE_REFS = new Set(['fetch', 'pull', 'push'])
+const remoteQueues = new Map<string, Promise<unknown>>()
+
+function oneAtATime<T>(queues: Map<string, Promise<unknown>>, repoPath: string, run: () => Promise<T>): Promise<T> {
+  const result = (queues.get(repoPath) ?? Promise.resolve()).then(run)
   const done = result.catch(() => {})
-  writeQueues.set(repoPath, done)
+  queues.set(repoPath, done)
   void done.then(() => {
-    if (writeQueues.get(repoPath) === done) writeQueues.delete(repoPath)
+    if (queues.get(repoPath) === done) queues.delete(repoPath)
   })
   return result
 }
+
+// The queue can't stop git outside the app (an editor's auto-fetch, a
+// terminal) taking the same ref lock, so a fetch or pull that loses that race
+// tries again after a moment. Either fails before changing anything else.
+const REF_LOCK_RACE = /cannot lock ref|unable to update local ref/i
+const REF_LOCK_RETRY_DELAYS_MS = [300, 1000]
 
 export async function runGit(
   repoPath: string,
@@ -41,8 +53,28 @@ export async function runGit(
   env?: Record<string, string>
 ): Promise<string> {
   const logged = isLoggedCommand(args)
-  if (logged && !REMOTE_ONLY.has(args[0])) return oneAtATime(repoPath, () => execGit(repoPath, args, env, logged))
-  return execGit(repoPath, args, env, logged)
+  let run = (): Promise<string> => execGit(repoPath, args, env, logged)
+  if (logged && !REMOTE_ONLY.has(args[0])) {
+    const write = run
+    run = () => oneAtATime(writeQueues, repoPath, write)
+  }
+  if (UPDATES_REMOTE_REFS.has(args[0])) {
+    const once = run
+    run = () => oneAtATime(remoteQueues, repoPath, args[0] === 'push' ? once : () => retryRefLockRace(once))
+  }
+  return run()
+}
+
+async function retryRefLockRace<T>(run: () => Promise<T>): Promise<T> {
+  for (const delay of REF_LOCK_RETRY_DELAYS_MS) {
+    try {
+      return await run()
+    } catch (err) {
+      if (!(err instanceof GitError) || !REF_LOCK_RACE.test(err.message)) throw err
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+  return run()
 }
 
 async function execGit(repoPath: string, args: string[], env: Record<string, string> | undefined, logged: boolean): Promise<string> {

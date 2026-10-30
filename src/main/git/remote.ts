@@ -4,8 +4,18 @@ import { remoteEnv, runGit } from '../gitExec'
 
 // Fetching, pushing and pulling.
 
-export async function fetchAll(repoPath: string): Promise<void> {
-  await runGit(repoPath, ['fetch', '--all', '--prune', '--quiet'], await remoteEnv())
+// A fetch asked for while one is still running (the Fetch button during an
+// auto-fetch, say) shares it rather than queueing a second straight after.
+const fetching = new Map<string, Promise<void>>()
+
+export function fetchAll(repoPath: string): Promise<void> {
+  const running = fetching.get(repoPath)
+  if (running) return running
+  const fetch = (async () => {
+    await runGit(repoPath, ['fetch', '--all', '--prune', '--quiet'], await remoteEnv())
+  })().finally(() => fetching.delete(repoPath))
+  fetching.set(repoPath, fetch)
+  return fetch
 }
 
 /** Pushes the current branch, publishing it with `-u` when it has no upstream yet. */
