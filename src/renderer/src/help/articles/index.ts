@@ -26,6 +26,7 @@ import branchesBranchStatusAndCleanup from './branches/branch-status-and-cleanup
 import branchesStackedBranches from './branches/stacked-branches'
 import branchesGitFlow from './branches/git-flow'
 import branchesTagsWorktreesSubmodules from './branches/tags-worktrees-submodules'
+import branchesRemotes from './branches/remotes'
 import remotesPrsPushPullFetch from './remotes-prs/push-pull-fetch'
 import remotesPrsLaunchpad from './remotes-prs/launchpad'
 import remotesPrsCreatePullRequest from './remotes-prs/create-pull-request'
@@ -83,6 +84,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   branchesStackedBranches,
   branchesGitFlow,
   branchesTagsWorktreesSubmodules,
+  branchesRemotes,
   remotesPrsPushPullFetch,
   remotesPrsLaunchpad,
   remotesPrsCreatePullRequest,

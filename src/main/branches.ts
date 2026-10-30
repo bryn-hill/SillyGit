@@ -7,6 +7,7 @@ import * as github from './github'
 import { azureAccess, githubAccess } from './hosting'
 import { azureOpenPullRequests } from './azure'
 import { parseRemoteUrl } from '../shared/accounts'
+import { parseRemoteList } from '../shared/remotes'
 import { azureWebUrl, parseAzureRemote } from '../shared/azure'
 import { renameParent, reparentChildren, stackParents } from './stacks'
 
@@ -56,12 +57,7 @@ export function remoteWebUrl(url: string): string | null {
 /** The repo's remotes with their web URLs. Plain git, so it's quick enough for every refresh. */
 export async function listRepoRemotes(repoPath: string): Promise<RepoRemote[]> {
   const out = await runGit(repoPath, ['remote', '-v'])
-  const remotes = new Map<string, RepoRemote>()
-  for (const line of out.split('\n')) {
-    const [name, url] = line.split(/\s+/)
-    if (name && url && !remotes.has(name)) remotes.set(name, { name, webUrl: remoteWebUrl(url) })
-  }
-  return [...remotes.values()]
+  return parseRemoteList(out).map(({ name, url, pushUrl }) => ({ name, webUrl: remoteWebUrl(url), url, pushUrl }))
 }
 
 /**

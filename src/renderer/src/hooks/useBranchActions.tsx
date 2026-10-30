@@ -15,11 +15,12 @@ import type { Repo } from './useRepo'
 import { useRepoValue } from './useRepoValue'
 import { useStacks } from './useStacks'
 import { useGitFlow } from './useGitFlow'
+import { useRemoteActions } from './useRemoteActions'
 
 const NO_FAVOURITES: string[] = []
 
 /**
- * Branches, tags and worktrees: creating, renaming, deleting and pulling
+ * Branches, tags, worktrees and remotes: creating, renaming, deleting and pulling
  * them, starring favourites, stacks and git-flow, and everything the branch and commit right-click
  * menu offers (`refActions`).
  */
@@ -81,6 +82,7 @@ export function useBranchActions({
     else setNotice(`Opened pull request #${pr.number}.`)
   }
   const gitFlow = useGitFlow({ repoPath, branches, git, view, askText, setNotice })
+  const remoteActions = useRemoteActions({ remotes, git, askText, showError, setNotice })
 
   const createBranch = (branch: string): void => runGit((path) => window.api.createBranch(path, branch))
 
@@ -247,7 +249,11 @@ export function useBranchActions({
     pushStack
   }
 
-  const listActions: Pick<SidebarListActions, 'pushTag' | 'deleteTag' | 'removeWorktree' | 'pruneWorktrees' | 'updateSubmodules'> = {
+  const listActions: Pick<
+    SidebarListActions,
+    'pushTag' | 'deleteTag' | 'removeWorktree' | 'pruneWorktrees' | 'updateSubmodules' | keyof typeof remoteActions
+  > = {
+    ...remoteActions,
     pushTag,
     deleteTag,
     removeWorktree,

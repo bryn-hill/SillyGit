@@ -126,6 +126,7 @@ export function appCommands(app: {
       applyStash: git.stashActions.apply,
       popStash: git.stashActions.pop,
       createBranch: branches.promptCreateBranch,
+      addRemote: () => void branches.listActions.addRemote(),
       createStackedBranch: branches.stackActions.createStackedBranch,
       stackCurrentBranch: branches.stackActions.chooseStackParent,
       restack: branches.stackActions.restack,

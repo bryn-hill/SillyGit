@@ -42,6 +42,10 @@ export interface BranchInfo {
 export interface RepoRemote {
   name: string
   webUrl: string | null
+  /** The fetch URL. */
+  url?: string
+  /** Set only when pushes go to a different URL. */
+  pushUrl?: string | null
 }
 
 /** An open pull request, as `gh pr list` reports it. */

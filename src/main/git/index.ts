@@ -27,7 +27,7 @@ export {
   listBranches,
   resetTo
 } from './refs'
-export { fetchAll, pull, push } from './remote'
+export { addRemote, fetchAll, fetchRemote, pull, push, removeRemote, renameRemote, setRemoteUrl } from './remote'
 export {
   GRAPH_PAGE_SIZE,
   getBlame,

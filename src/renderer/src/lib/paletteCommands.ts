@@ -68,6 +68,7 @@ export interface PaletteContext {
     applyStash: (stash: StashEntry) => void
     popStash: (stash: StashEntry) => void
     createBranch: () => void
+    addRemote?: () => void
     createStackedBranch: (parent: string) => void
     stackCurrentBranch: (branch: string) => void
     restack: (branch: string) => void
@@ -136,6 +137,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       add('pull-rebase', 'Pull (rebase)', () => a.pull('rebase'))
       add('push', 'Push', a.push)
     }
+    if (a.addRemote) add('add-remote', 'Add remote…', a.addRemote)
     add('search', 'Search commits', a.focusSearch, `${MOD}F`)
     add('commit', 'Go to uncommitted changes', a.goToWorkingChanges)
     add('amend', 'Amend last commit', a.startAmend)

@@ -310,7 +310,7 @@ export default function MainArea({
           cleanupSnoozed={cleanup.snoozed}
           onOpenCleanup={cleanup.open}
           onSnoozeCleanup={cleanup.snooze}
-          hasRemotes={repo.remotes.length > 0}
+          remotes={repo.remotes}
           stacks={branches.stacks}
           listActions={{
             ...branches.listActions,
@@ -318,7 +318,8 @@ export default function MainArea({
             checkout: git.checkout,
             openRepo: (path) => void tabs.openRecentRepo(path),
             reveal: git.revealRepo,
-            copyText: git.copyText
+            copyText: git.copyText,
+            openUrl: git.openUrl
           }}
         />
         <PanelResizer

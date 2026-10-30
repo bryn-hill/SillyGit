@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX } from 'react'
-import type { BranchInfo, StashEntry } from '../../../shared/types'
+import type { BranchInfo, RepoRemote, StashEntry } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import SidebarLists, { type SidebarListActions } from './SidebarLists'
@@ -71,8 +71,8 @@ interface Props {
   cleanupSnoozed: boolean
   onOpenCleanup: () => void
   onSnoozeCleanup: () => void
-  hasRemotes: boolean
-  /** Tags, worktrees and submodules. */
+  remotes: RepoRemote[]
+  /** Remotes, tags, worktrees and submodules. */
   listActions: SidebarListActions
   stacks: StackInfo[]
 }
@@ -261,7 +261,7 @@ export default function Sidebar({
   cleanupSnoozed,
   onOpenCleanup,
   onSnoozeCleanup,
-  hasRemotes,
+  remotes,
   listActions,
   stacks
 }: Props): JSX.Element {
@@ -460,7 +460,7 @@ export default function Sidebar({
         <SidebarLists
           repoPath={repoPath}
           refreshKey={branches}
-          hasRemotes={hasRemotes}
+          remotes={remotes}
           filter={filter}
           collapsed={collapsed}
           onToggle={toggle}

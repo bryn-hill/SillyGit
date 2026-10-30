@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
-import type { SubmoduleInfo, TagInfo, WorktreeInfo } from '../../../shared/types'
+import { shortRemoteUrl } from '../../../shared/remotes'
+import type { RepoRemote, SubmoduleInfo, TagInfo, WorktreeInfo } from '../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { pressable } from '../lib/pressable'
 
@@ -17,6 +18,13 @@ export interface SidebarListActions {
   pruneWorktrees: () => void
   /** Updates one submodule, or every one when `path` is null. */
   updateSubmodules: (path: string | null) => void
+  fetchRemote: (name: string) => void
+  addRemote: () => void
+  renameRemote: (remote: RepoRemote) => void
+  /** Changes the fetch URL (and push URL with it), or only the push URL when `push` is set. */
+  editRemoteUrl: (remote: RepoRemote, push: boolean) => void
+  removeRemote: (remote: RepoRemote) => void
+  openUrl: (url: string) => void
 }
 
 interface Lists {
@@ -30,7 +38,7 @@ interface Props {
   repoPath: string
   /** Changes whenever the repo is refreshed, so the lists reload. */
   refreshKey: unknown
-  hasRemotes: boolean
+  remotes: RepoRemote[]
   /** The side bar's branch filter, which tags follow too. */
   filter: string
   collapsed: Set<string>
@@ -74,10 +82,10 @@ function GroupHeader({
 }
 
 /**
- * The side bar's Tags, Worktrees and Submodules groups. Worktrees show only
+ * The side bar's Remotes, Tags, Worktrees and Submodules groups. Worktrees show only
  * when there's a linked one, and Submodules only when the repo has any.
  */
-export default function SidebarLists({ repoPath, refreshKey, hasRemotes, filter, collapsed, onToggle, actions }: Props): JSX.Element {
+export default function SidebarLists({ repoPath, refreshKey, remotes, filter, collapsed, onToggle, actions }: Props): JSX.Element {
   const [lists, setLists] = useState<Lists | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; sections: ContextMenuItem[][] } | null>(null)
 
@@ -102,6 +110,8 @@ export default function SidebarLists({ repoPath, refreshKey, hasRemotes, filter,
   // Another repo's lists never show while this one's load.
   const shown = lists?.repoPath === repoPath ? lists : null
   const needle = filter.toLowerCase()
+  const hasRemotes = remotes.length > 0
+  const shownRemotes = remotes.filter((r) => r.name.toLowerCase().includes(needle))
   const tags = (shown?.tags ?? []).filter((t) => t.name.toLowerCase().includes(needle))
   const worktrees = shown?.worktrees ?? []
   const submodules = shown?.submodules ?? []
@@ -109,6 +119,23 @@ export default function SidebarLists({ repoPath, refreshKey, hasRemotes, filter,
   const openMenu = (e: React.MouseEvent, sections: ContextMenuItem[][]): void => {
     e.preventDefault()
     setMenu({ x: e.clientX, y: e.clientY, sections })
+  }
+
+  const remoteMenu = (remote: RepoRemote): ContextMenuItem[][] => {
+    const sections: ContextMenuItem[][] = [
+      [{ id: 'fetch', label: `Fetch ${remote.name}`, onSelect: () => actions.fetchRemote(remote.name) }],
+      [
+        { id: 'edit-url', label: 'Edit URL…', onSelect: () => actions.editRemoteUrl(remote, false) },
+        ...(remote.pushUrl ? [{ id: 'edit-push-url', label: 'Edit push URL…', onSelect: () => actions.editRemoteUrl(remote, true) }] : []),
+        { id: 'rename', label: 'Rename…', onSelect: () => actions.renameRemote(remote) }
+      ]
+    ]
+    const copy: ContextMenuItem[] = []
+    if (remote.url) copy.push({ id: 'copy', label: 'Copy URL', onSelect: () => actions.copyText(remote.url!) })
+    if (remote.webUrl) copy.push({ id: 'open', label: 'Open on the web', onSelect: () => actions.openUrl(remote.webUrl!) })
+    if (copy.length) sections.push(copy)
+    sections.push([{ id: 'remove', label: `Remove ${remote.name}…`, danger: true, onSelect: () => actions.removeRemote(remote) }])
+    return sections
   }
 
   const tagMenu = (tag: TagInfo): ContextMenuItem[][] => [
@@ -169,6 +196,34 @@ export default function SidebarLists({ repoPath, refreshKey, hasRemotes, filter,
 
   return (
     <>
+      <GroupHeader id="remotes-root" label="REMOTES" count={remotes.length} collapsed={collapsed} onToggle={onToggle} />
+      {!collapsed.has('remotes-root') && (
+        <ul className="side-list" aria-label="Remotes">
+          {shownRemotes.length === 0 && filter && <li className="stash-empty">No matching remotes</li>}
+          {shownRemotes.map((remote) => (
+            <li
+              key={remote.name}
+              className="tree-row side-list-row"
+              title={`${remote.name}: ${remote.url ?? ''}${remote.pushUrl ? `\nPushes to ${remote.pushUrl}` : ''}\nClick to fetch, right-click for more`}
+              {...pressable(() => actions.fetchRemote(remote.name))}
+              onContextMenu={(e) => openMenu(e, remoteMenu(remote))}
+            >
+              <span className="side-list-icon" aria-hidden="true">
+                ⇅
+              </span>
+              <span className="side-list-name">{remote.name}</span>
+              {remote.url && <span className="side-list-note side-list-url">{shortRemoteUrl(remote.url)}</span>}
+            </li>
+          ))}
+          <li className="tree-row side-list-row side-list-add" {...pressable(actions.addRemote)}>
+            <span className="side-list-icon" aria-hidden="true">
+              +
+            </span>
+            <span className="side-list-name">Add remote…</span>
+          </li>
+        </ul>
+      )}
+
       <GroupHeader id="tag-root" label="TAGS" count={tags.length} collapsed={collapsed} onToggle={onToggle} />
       {!collapsed.has('tag-root') && (
         <ul className="side-list" aria-label="Tags">

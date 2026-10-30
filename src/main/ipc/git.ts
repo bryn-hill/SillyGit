@@ -57,6 +57,17 @@ export function registerGitHandlers(): void {
   )
 
   ipcMain.handle('git:fetch', (_e, repoPath: string) => wrap(() => git.fetchAll(repoPath)))
+  ipcMain.handle('git:fetch-remote', (_e, repoPath: string, name: string) => wrap(() => git.fetchRemote(repoPath, name)))
+  ipcMain.handle('git:add-remote', (_e, repoPath: string, name: string, url: string) =>
+    wrap(() => git.addRemote(repoPath, name, url))
+  )
+  ipcMain.handle('git:rename-remote', (_e, repoPath: string, name: string, newName: string) =>
+    wrap(() => git.renameRemote(repoPath, name, newName))
+  )
+  ipcMain.handle('git:remove-remote', (_e, repoPath: string, name: string) => wrap(() => git.removeRemote(repoPath, name)))
+  ipcMain.handle('git:set-remote-url', (_e, repoPath: string, name: string, url: string, push: boolean) =>
+    wrap(() => git.setRemoteUrl(repoPath, name, url, push))
+  )
 
   ipcMain.handle('git:undo-label', (_e, repoPath: string) => wrap(() => git.undoLabel(repoPath)))
 

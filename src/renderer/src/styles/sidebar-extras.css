@@ -173,3 +173,18 @@ button.link-button.danger {
   background: color-mix(in srgb, var(--red) 18%, transparent);
   color: var(--red);
 }
+
+.side-list-add .side-list-name,
+.side-list-add .side-list-icon {
+  color: var(--text-dim);
+}
+
+.side-list-add:hover .side-list-name {
+  color: var(--text);
+}
+
+/* A remote's URL only takes the room its name leaves. */
+.side-list-url {
+  flex: 1 1 0;
+  text-align: right;
+}

@@ -41,3 +41,29 @@ const PULL_ARGS: Record<PullMode, string[]> = {
 export async function pull(repoPath: string, mode: PullMode = 'ff'): Promise<ConflictableResult> {
   return runMayConflict(repoPath, PULL_ARGS[mode], { ...(await remoteEnv()), GIT_EDITOR: 'true' })
 }
+
+// Managing the remotes themselves, from the side bar's Remotes list.
+
+/** Fetches one remote, pruning its deleted branches. */
+export async function fetchRemote(repoPath: string, name: string): Promise<void> {
+  await runGit(repoPath, ['fetch', '--prune', '--quiet', name], await remoteEnv())
+}
+
+export async function addRemote(repoPath: string, name: string, url: string): Promise<void> {
+  await runGit(repoPath, ['remote', 'add', '--', name.trim(), url.trim()])
+}
+
+/** Renames a remote; git moves its remote branches and fixes up tracking branches too. */
+export async function renameRemote(repoPath: string, name: string, newName: string): Promise<void> {
+  await runGit(repoPath, ['remote', 'rename', '--', name, newName.trim()])
+}
+
+/** Removes a remote and its remote branches. Local branches that tracked it stop tracking anything. */
+export async function removeRemote(repoPath: string, name: string): Promise<void> {
+  await runGit(repoPath, ['remote', 'remove', '--', name])
+}
+
+/** Changes a remote's fetch URL, or its push URL alone when `push` is set. */
+export async function setRemoteUrl(repoPath: string, name: string, url: string, push = false): Promise<void> {
+  await runGit(repoPath, ['remote', 'set-url', ...(push ? ['--push'] : []), '--', name, url.trim()])
+}

@@ -23,6 +23,14 @@ const api = {
     ipcRenderer.invoke('git:commit', repoPath, message, amend),
   lastCommitMessage: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:last-commit-message', repoPath),
   fetch: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:fetch', repoPath),
+  fetchRemote: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('git:fetch-remote', repoPath, name),
+  addRemote: (repoPath: string, name: string, url: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:add-remote', repoPath, name, url),
+  renameRemote: (repoPath: string, name: string, newName: string): Wrapped<void> =>
+    ipcRenderer.invoke('git:rename-remote', repoPath, name, newName),
+  removeRemote: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('git:remove-remote', repoPath, name),
+  setRemoteUrl: (repoPath: string, name: string, url: string, push: boolean): Wrapped<void> =>
+    ipcRenderer.invoke('git:set-remote-url', repoPath, name, url, push),
   undoLabel: (repoPath: string): Wrapped<string | null> => ipcRenderer.invoke('git:undo-label', repoPath),
   undo: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:undo', repoPath),
   redoLabel: (repoPath: string): Wrapped<string | null> => ipcRenderer.invoke('git:redo-label', repoPath),

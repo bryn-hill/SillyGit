@@ -42,4 +42,37 @@ test.describe('tags, worktrees and submodules in the side bar', () => {
     await expect(sillygit.page.getByRole('list', { name: 'Worktrees' })).toHaveCount(0)
     await expect(sillygit.page.getByRole('list', { name: 'Submodules' })).toHaveCount(0)
   })
+
+  test('adds, fetches, renames and removes a remote', async ({ sillygit, repo }) => {
+    repo.addPullRequestRemote(1, 'feature')
+    await sillygit.openRepository(repo.path)
+    const page = sillygit.page
+    const remotes = page.getByRole('list', { name: 'Remotes' })
+    await expect(remotes.getByRole('button', { name: /^origin/ })).toBeVisible()
+
+    await remotes.getByRole('button', { name: 'Add remote…' }).click()
+    const name = page.getByRole('dialog', { name: 'Add remote' })
+    await expect(name.getByRole('textbox')).toHaveValue('upstream')
+    await name.getByRole('button', { name: 'Next' }).click()
+    const url = page.getByRole('dialog', { name: 'Add remote upstream' })
+    await url.getByRole('textbox').fill(`${repo.path}.origin.git`)
+    await url.getByRole('button', { name: 'Add and fetch' }).click()
+    await expect(page.getByText('Added and fetched upstream.')).toBeVisible()
+    await expect(remotes.getByRole('button', { name: /^upstream/ })).toBeVisible()
+    expect(repo.git('rev-parse', '--verify', 'refs/remotes/upstream/feature').trim()).toMatch(/^[0-9a-f]{40}$/)
+
+    await remotes.getByRole('button', { name: /^upstream/ }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Rename…' }).click()
+    const rename = page.getByRole('dialog', { name: 'Rename upstream' })
+    await rename.getByRole('textbox').fill('theirs')
+    await rename.getByRole('button', { name: 'Rename' }).click()
+    await expect(remotes.getByRole('button', { name: /^theirs/ })).toBeVisible()
+    expect(repo.git('remote').trim().split('\n').sort()).toEqual(['origin', 'theirs'])
+
+    page.on('dialog', (dialog) => dialog.accept())
+    await remotes.getByRole('button', { name: /^theirs/ }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Remove theirs…' }).click()
+    await expect(remotes.getByRole('button', { name: /^theirs/ })).toHaveCount(0)
+    expect(repo.git('remote').trim()).toBe('origin')
+  })
 })

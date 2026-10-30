@@ -17,6 +17,7 @@ vi.mock('./accounts', () => ({
 }))
 
 import * as branches from './branches'
+import { addRemote, fetchRemote, removeRemote, renameRemote, setRemoteUrl } from './git/remote'
 import { githubAccess, remoteLocations } from './hosting'
 
 let root: string
@@ -96,11 +97,34 @@ describe('branch commands', () => {
   })
 
   it('lists remotes with their web URLs', async () => {
-    run('remote', 'add', 'upstream', 'git@github.com:owner/repo.git')
+    run('remote', 'add', 'upstream', 'git@git.example.com:owner/repo.git')
+    run('remote', 'set-url', '--push', 'upstream', 'git@git.example.com:me/repo.git')
     expect(await branches.listRepoRemotes(dir)).toEqual([
-      { name: 'origin', webUrl: null },
-      { name: 'upstream', webUrl: 'https://github.com/owner/repo' }
+      { name: 'origin', webUrl: null, url: remote, pushUrl: null },
+      {
+        name: 'upstream',
+        webUrl: 'https://git.example.com/owner/repo',
+        url: 'git@git.example.com:owner/repo.git',
+        pushUrl: 'git@git.example.com:me/repo.git'
+      }
     ])
+  })
+
+  it('adds, fetches, re-points, renames and removes a remote', async () => {
+    await addRemote(dir, ' upstream ', ` ${remote} `)
+    await fetchRemote(dir, 'upstream')
+    expect(run('rev-parse', 'upstream/main')).toBe(run('rev-parse', 'main'))
+
+    await setRemoteUrl(dir, 'upstream', 'https://example.com/elsewhere.git')
+    expect(run('remote', 'get-url', 'upstream')).toBe('https://example.com/elsewhere.git')
+
+    await renameRemote(dir, 'upstream', 'theirs')
+    expect(run('remote').split('\n')).toEqual(['origin', 'theirs'])
+    expect(run('rev-parse', 'theirs/main')).toBe(run('rev-parse', 'main'))
+
+    await removeRemote(dir, 'theirs')
+    expect(run('remote')).toBe('origin')
+    expect(run('branch', '-r')).not.toContain('theirs')
   })
 })
 
