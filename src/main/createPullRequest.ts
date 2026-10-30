@@ -2,6 +2,7 @@ import { remoteEnv, runGit } from './gitExec'
 import * as azure from './azure'
 import { transportFor } from './githubTransport'
 import { azureAccess } from './hosting'
+import { issueForBranch } from './issueWork'
 import { HttpError } from './http'
 import type { CreatedPullRequest, CreatePullRequestInput } from '../shared/createPullRequest'
 
@@ -48,7 +49,11 @@ function explainCreateError(err: unknown, input: CreatePullRequestInput): never 
  */
 export async function createPullRequest(repoPath: string, input: CreatePullRequestInput): Promise<CreatedPullRequest> {
   const az = await azureAccess(repoPath)
-  if (az) return azure.azureCreatePullRequest(az, input)
+  if (az) {
+    // A branch started from a work item gets the pull request linked to it.
+    const workItem = await issueForBranch(repoPath, input.head)
+    return azure.azureCreatePullRequest(az, input, workItem ? [workItem] : [])
+  }
   const t = await transportFor(repoPath)
   const path = `repos/${t.repo.owner}/${t.repo.name}/pulls`
   const pr = await t

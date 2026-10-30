@@ -231,6 +231,12 @@
   white-space: nowrap;
 }
 
+/* Azure Boards work item types and tags have no colour of their own. */
+.launchpad-issue-label.plain {
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
 .start-work-issue {
   font-size: 12.5px;
   margin-bottom: 6px;

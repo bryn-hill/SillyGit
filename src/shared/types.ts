@@ -238,6 +238,8 @@ export interface LaunchpadIssue {
   updatedAt: string
   repoPath: string
   repoName: string
+  /** Where it's tracked: a GitHub issue when left out, or an Azure Boards work item. */
+  provider?: 'github' | 'azure'
 }
 
 /** What Start work can do in a repo, for its dialog. */

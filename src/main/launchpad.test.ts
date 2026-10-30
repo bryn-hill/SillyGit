@@ -43,6 +43,9 @@ vi.mock('./azure', () => ({
   azureLaunchpad: async (_access: unknown, repoPath: string) => [
     { number: 70, title: 'Azure PR', repoPath, repoName: 'web', bucket: 'needsMyReview', provider: 'azure' }
   ],
+  azureAssignedWorkItems: async (_access: unknown, repoPath: string) => [
+    { number: 12, title: 'Work item', repoPath, repoName: 'web', updatedAt: '2026-10-29T00:00:00Z', provider: 'azure' }
+  ],
   azureMergePullRequest: async (_access: unknown, n: number) => void fake.merged.push(`azure#${n}`)
 }))
 
@@ -303,6 +306,7 @@ describe('Azure DevOps repos', () => {
     const gh = vi.spyOn(fake, 'gh')
     const data = await getLaunchpadData(['/repos/web', '/repos/cli'])
     expect(data.pullRequests.map((p) => p.number)).toEqual([70, 6])
+    expect(data.issues?.map((i) => [i.number, i.provider])).toEqual([[12, 'azure']])
     expect(gh.mock.calls.every(([cwd]) => cwd === '/repos/cli')).toBe(true)
   })
 

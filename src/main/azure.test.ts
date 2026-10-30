@@ -5,6 +5,7 @@ import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setFetch } from './http'
 import {
+  azureAssignedWorkItems,
   azureAvatarFor,
   azureBucket,
   azureCreatePullRequest,
@@ -466,3 +467,53 @@ describe('azureAvatarFor', () => {
   })
 })
 
+describe('azureAssignedWorkItems', () => {
+  it('lists open work items assigned to the user in the project, newest change first', async () => {
+    fakeFetch(
+      on('POST', /Web%20Site\/_apis\/wit\/wiql/, { workItems: [{ id: 12 }, { id: 9 }] }),
+      on('GET', /_apis\/wit\/workitems\?ids=12,9/, {
+        value: [
+          { id: 9, fields: { 'System.Title': 'Older', 'System.WorkItemType': 'Bug', 'System.ChangedDate': '2026-10-01T00:00:00Z', 'System.CreatedBy': { displayName: 'Bob' } } },
+          {
+            id: 12,
+            fields: {
+              'System.Title': 'Cache the product list',
+              'System.WorkItemType': 'User Story',
+              'System.Tags': 'perf; web',
+              'System.ChangedDate': '2026-10-29T00:00:00Z',
+              'System.CreatedBy': 'Grace Hopper <grace@contoso.com>'
+            }
+          }
+        ]
+      })
+    )
+    const items = await azureAssignedWorkItems(access(), '/repos/site')
+    expect(items).toEqual([
+      {
+        number: 12,
+        title: 'Cache the product list',
+        url: 'https://dev.azure.com/contoso/Web%20Site/_workitems/edit/12',
+        author: 'Grace Hopper',
+        labels: [
+          { name: 'User Story', color: '' },
+          { name: 'perf', color: '' },
+          { name: 'web', color: '' }
+        ],
+        updatedAt: '2026-10-29T00:00:00Z',
+        repoPath: '/repos/site',
+        repoName: 'site',
+        provider: 'azure'
+      },
+      expect.objectContaining({ number: 9, author: 'Bob', labels: [{ name: 'Bug', color: '' }] })
+    ])
+    const query = (calls[0].body as { query: string }).query
+    expect(query).toContain('[System.AssignedTo] = @me')
+    expect(query).toContain("NOT IN ('Closed', 'Done', 'Removed'")
+  })
+
+  it('asks for nothing more when no work items are assigned', async () => {
+    fakeFetch(on('POST', /wiql/, { workItems: [] }))
+    expect(await azureAssignedWorkItems(access(), '/repos/site')).toEqual([])
+    expect(calls).toHaveLength(1)
+  })
+})

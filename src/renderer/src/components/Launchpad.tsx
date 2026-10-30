@@ -126,8 +126,8 @@ function IssueCard({ issue, onStartWork }: { issue: LaunchpadIssue; onStartWork:
           {issue.labels.slice(0, 3).map((label) => (
             <span
               key={label.name}
-              className="launchpad-issue-label"
-              style={{ borderColor: `#${label.color}`, background: `#${label.color}26` }}
+              className={label.color ? 'launchpad-issue-label' : 'launchpad-issue-label plain'}
+              style={label.color ? { borderColor: `#${label.color}`, background: `#${label.color}26` } : undefined}
             >
               {label.name}
             </span>
@@ -136,7 +136,11 @@ function IssueCard({ issue, onStartWork }: { issue: LaunchpadIssue; onStartWork:
       )}
       <div className="launchpad-card-actions">
         <button onClick={onStartWork}>Start work</button>
-        <button className="subtle" onClick={() => window.api.openExternal(issue.url)} title="Open on GitHub">
+        <button
+          className="subtle"
+          onClick={() => window.api.openExternal(issue.url)}
+          title={issue.provider === 'azure' ? 'Open on Azure DevOps' : 'Open on GitHub'}
+        >
           Open
         </button>
       </div>
@@ -144,7 +148,7 @@ function IssueCard({ issue, onStartWork }: { issue: LaunchpadIssue; onStartWork:
   )
 }
 
-/** Start work on a GitHub issue, in its own repo. */
+/** Start work on a GitHub issue or Azure Boards work item, in its own repo. */
 function githubWorkItem(issue: LaunchpadIssue): WorkItem {
   return {
     issue: issue.number,
@@ -152,7 +156,10 @@ function githubWorkItem(issue: LaunchpadIssue): WorkItem {
     title: issue.title,
     branch: issueBranchName(issue.number, issue.title),
     repoPath: issue.repoPath,
-    outcome: `Its pull request will close #${issue.number}.`
+    outcome:
+      issue.provider === 'azure'
+        ? `Its pull request will be linked to work item #${issue.number}.`
+        : `Its pull request will close #${issue.number}.`
   }
 }
 

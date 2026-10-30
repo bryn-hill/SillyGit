@@ -4,7 +4,9 @@ import { remoteEnv, runGit } from './gitExec'
 import { LAUNCHPAD_BUCKET_ORDER } from '../shared/launchpad'
 import {
   AZURE_HOST,
+  CLOSED_WORK_ITEM_STATES,
   azurePullRequestUrl,
+  azureWorkItemUrl,
   branchFromRef,
   reviewDecisionFromVotes,
   voteLabel,
@@ -24,7 +26,7 @@ import type {
   PullRequestDetail,
   SubmitReviewInput
 } from '../shared/prReview'
-import type { LaunchpadBucketId, LaunchpadPullRequest, OpenPullRequest } from '../shared/types'
+import type { LaunchpadBucketId, LaunchpadIssue, LaunchpadPullRequest, OpenPullRequest } from '../shared/types'
 import type { Credentials, VerifiedAccount } from './providerApi'
 
 // Azure DevOps (Azure Repos and Azure Boards) through its REST API, with a
@@ -776,6 +778,57 @@ export async function azureCreatePullRequest(
     if (failed.length) created.reviewersError = `Couldn't add ${failed.join(', ')} as reviewers.`
   }
   return created
+}
+
+// ---- Azure Boards --------------------------------------------------------
+
+interface AzWorkItem {
+  id: number
+  fields: Record<string, unknown>
+}
+
+function identityName(value: unknown): string {
+  if (value && typeof value === 'object') return (value as { displayName?: string }).displayName ?? 'unknown'
+  return typeof value === 'string' ? value.replace(/\s*<.*>$/, '') : 'unknown'
+}
+
+/** Open work items assigned to the user in the repo's project, most recently changed first. */
+export async function azureAssignedWorkItems(access: AzureAccess, repoPath: string): Promise<LaunchpadIssue[]> {
+  const closed = CLOSED_WORK_ITEM_STATES.map((s) => `'${s}'`).join(', ')
+  const query = {
+    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @me AND [System.State] NOT IN (${closed}) ORDER BY [System.ChangedDate] DESC`
+  }
+  const found = await call<{ workItems: { id: number }[] }>(access, 'POST', `${projectUrl(access.repo)}/_apis/wit/wiql?$top=50`, query)
+  const ids = found.workItems.map((w) => w.id).slice(0, 50)
+  if (ids.length === 0) return []
+  const fields = ['System.Title', 'System.WorkItemType', 'System.Tags', 'System.ChangedDate', 'System.CreatedBy', 'System.State']
+  const items = await call<{ value: AzWorkItem[] }>(
+    access,
+    'GET',
+    `${orgUrl(access.repo.organization)}/_apis/wit/workitems?ids=${ids.join(',')}&fields=${fields.join(',')}`
+  )
+  const order = new Map(ids.map((id, i) => [id, i]))
+  return items.value
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .map((w) => {
+      const tags = String(w.fields['System.Tags'] ?? '')
+        .split(';')
+        .map((t) => t.trim())
+        .filter(Boolean)
+      const type = String(w.fields['System.WorkItemType'] ?? '')
+      return {
+        number: w.id,
+        title: String(w.fields['System.Title'] ?? ''),
+        url: azureWorkItemUrl(access.repo, w.id),
+        author: identityName(w.fields['System.CreatedBy']),
+        // Work item types and tags have no colour of their own here; the label's style gives them one.
+        labels: [type, ...tags].filter(Boolean).map((name) => ({ name, color: '' })),
+        updatedAt: String(w.fields['System.ChangedDate'] ?? ''),
+        repoPath,
+        repoName: basename(repoPath),
+        provider: 'azure' as const
+      }
+    })
 }
 
 // ---- Avatars -------------------------------------------------------------

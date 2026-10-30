@@ -4,7 +4,7 @@ import { promisify } from 'util'
 import { LAUNCHPAD_BUCKET_ORDER } from '../shared/launchpad'
 import * as github from './github'
 import { azureAccess, githubAccess, type GithubAccess } from './hosting'
-import { azureLaunchpad, azureMergePullRequest, type AzureAccess } from './azure'
+import { azureAssignedWorkItems, azureLaunchpad, azureMergePullRequest, type AzureAccess } from './azure'
 import { HttpError } from './http'
 import type {
   LaunchpadBucketId,
@@ -234,7 +234,12 @@ async function getRepoPullRequestsByApi(repoPath: string, access: GithubAccess):
 
 async function getRepoPullRequestsByAzure(repoPath: string, access: AzureAccess): Promise<RepoResult> {
   try {
-    return { pullRequests: await azureLaunchpad(access, repoPath), issues: [] }
+    // Work items are extra, like GitHub issues: a token without Work Items access still shows pull requests.
+    const [pullRequests, issues] = await Promise.all([
+      azureLaunchpad(access, repoPath),
+      azureAssignedWorkItems(access, repoPath).catch(() => [])
+    ])
+    return { pullRequests, issues }
   } catch (err) {
     return { skipped: { repoPath, repoName: basename(repoPath), reason: 'error', message: errorMessage(err) } }
   }
