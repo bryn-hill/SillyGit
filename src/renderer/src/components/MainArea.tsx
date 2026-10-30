@@ -97,6 +97,7 @@ export default function MainArea({
       <EmptyState
         recentRepos={tabs.recentRepos}
         onOpenRepo={tabs.openRepo}
+        onClone={tabs.clone}
         onOpenRecentRepo={(path) => tabs.openRecentRepo(path)}
       />
     )

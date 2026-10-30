@@ -10,6 +10,7 @@ export function useDialogs(repoPath: string | null) {
   const [trackedFiles, setTrackedFiles] = useState<string[]>([])
   const [showActivity, setShowActivity] = useState(false)
   const [showUpdate, setShowUpdate] = useState(false)
+  const [showPublish, setShowPublish] = useState(false)
 
   // The Actions list's Blame and File history pickers list every tracked file.
   useEffect(() => {
@@ -32,7 +33,9 @@ export function useDialogs(repoPath: string | null) {
     showActivity,
     setShowActivity,
     showUpdate,
-    setShowUpdate
+    setShowUpdate,
+    showPublish,
+    setShowPublish
   }
 }
 

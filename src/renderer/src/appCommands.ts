@@ -162,6 +162,7 @@ export function appCommands(app: {
       toggleLaunchpad: () => view.setShowLaunchpad((v) => !v),
       cycleTab: tabs.cycle,
       clone: tabs.clone,
+      publish: () => dialogs.setShowPublish(true),
       toggleTerminal: () => layout.setShowTerminal((v) => !v),
       openRepo: tabs.openRepo,
       openRecentRepo: (path) => tabs.openRecentRepo(path),

@@ -103,6 +103,8 @@ export interface PaletteContext {
     toggleLaunchpad: () => void
     cycleTab: (offset: number) => void
     clone: () => void
+    /** Creates the repository on a signed-in host and pushes to it; offered when there's no remote. */
+    publish?: () => void
     toggleTerminal: () => void
     openRepo: () => void
     openRecentRepo: (path: string) => void
@@ -136,6 +138,8 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       add('pull-ff-only', 'Pull (fast-forward only)', () => a.pull('ff-only'))
       add('pull-rebase', 'Pull (rebase)', () => a.pull('rebase'))
       add('push', 'Push', a.push)
+    } else if (a.publish) {
+      add('publish', 'Publish repository…', a.publish)
     }
     if (a.addRemote) add('add-remote', 'Add remote…', a.addRemote)
     add('search', 'Search commits', a.focusSearch, `${MOD}F`)

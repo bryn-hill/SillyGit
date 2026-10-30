@@ -3,6 +3,7 @@ import { join } from 'path'
 import { promises as fsp } from 'fs'
 import * as accounts from '../accounts'
 import * as github from '../github'
+import * as hostedRepos from '../hostedRepos'
 import { forgetJiraSites } from '../jira'
 import * as settings from '../settings'
 import { AvatarResolver, type AvatarSources } from '../avatars'
@@ -11,6 +12,7 @@ import { azureAvatarFor } from '../azure'
 import { gitlabAvatarUrl } from '../providerApi'
 import { guessProvider, type NewAccountInput } from '../../shared/accounts'
 import type { AvatarRequest } from '../../shared/types'
+import type { PublishInput } from '../../shared/hostedRepos'
 import claudeLogo from '../../../resources/bots/claude.png?asset'
 import renovateLogo from '../../../resources/bots/renovate.png?asset'
 import { restartPrNotifications } from './notifications'
@@ -84,6 +86,14 @@ export function registerAccountHandlers(): void {
       forgetJiraSites()
       return accounts.removeAccount(id)
     })
+  )
+
+  ipcMain.handle('accounts:repos', (_e, accountId?: string) => wrap(() => hostedRepos.listHostedRepos(accountId)))
+
+  ipcMain.handle('accounts:publish-owners', (_e, accountId: string) => wrap(() => hostedRepos.publishOwners(accountId)))
+
+  ipcMain.handle('repo:publish', (_e, repoPath: string, input: PublishInput) =>
+    wrap(() => hostedRepos.publishRepo(repoPath, input))
   )
 
   ipcMain.handle('settings:get-show-avatars', () => settings.getShowAvatars())

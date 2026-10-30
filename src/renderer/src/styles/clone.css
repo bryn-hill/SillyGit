@@ -1,0 +1,144 @@
+/* ---------- clone and publish repository dialogs ---------- */
+
+.modal.clone-modal,
+.modal.publish-modal {
+  width: 600px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 80px);
+}
+
+.clone-modal .modal-body,
+.publish-modal .modal-body {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.clone-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.clone-hint button {
+  flex-shrink: 0;
+}
+
+.clone-search {
+  display: flex;
+  gap: 8px;
+}
+
+.clone-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.clone-search .clone-account {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.clone-list {
+  display: flex;
+  flex-direction: column;
+  height: 260px;
+  overflow-y: auto;
+  margin: 8px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-sunken);
+}
+
+.clone-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.clone-repo:hover {
+  background: var(--bg-hover);
+}
+
+.clone-repo.selected {
+  background: var(--bg-hover);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.clone-repo-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clone-repo-private {
+  font-size: 10px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+}
+
+.clone-repo-detail {
+  color: var(--text-dim);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clone-empty {
+  padding: 12px 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.clone-error,
+.publish-problem {
+  color: var(--red-soft);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.clone-ssh,
+.publish-private {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.publish-intro {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.publish-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.publish-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
