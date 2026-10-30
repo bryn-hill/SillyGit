@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { toggleFavourite } from '../../../shared/branchStatus'
-import { resolveBranchRemote } from '../../../shared/branchRemote'
-import { withPullRequestText } from '../../../shared/quickActions'
+import { resolveBranchRemote, splitRemoteRef } from '../../../shared/branchRemote'
+import type { CreatedPullRequest } from '../../../shared/createPullRequest'
 import { stackOf, type StackInfo } from '../../../shared/stacks'
 import type { OpenPullRequest, WorktreeInfo } from '../../../shared/types'
+import type { CreatePullRequestRequest } from '../components/CreatePullRequestDialog'
 import type { PromptRequest } from '../components/PromptDialog'
 import type { RefActions, RefTarget } from '../components/RefContextMenu'
 import type { SidebarListActions } from '../components/SidebarLists'
@@ -46,6 +48,37 @@ export function useBranchActions({
   // Starred branches, per repo.
   const [favourites, setFavourites] = useRepoValue(repoPath, window.api.getFavouriteBranches, NO_FAVOURITES)
   const stacks = useStacks(repoPath, branches)
+  // The open Create pull request dialog, and the repo it's for.
+  const [creatingPr, setCreatingPr] = useState<{ repoPath: string; request: CreatePullRequestRequest } | null>(null)
+
+  /**
+   * Opens the Create pull request dialog for a branch: into the checked-out
+   * branch (where it is on the remote) when that's another branch, else into
+   * whatever the dialog picks.
+   */
+  const startPullRequest = (target: RefTarget, remote: string): void => {
+    if (!repoPath) return
+    const current = branches.find((b) => !b.remote && b.current)
+    const currentUpstream = current?.upstream ? splitRemoteRef(current.upstream, remotes) : null
+    const base =
+      current && current.name !== target.name
+        ? currentUpstream?.remote.name === remote
+          ? currentUpstream.branch
+          : current.name
+        : null
+    setCreatingPr({ repoPath, request: { head: target.name, base, remote } })
+  }
+
+  /** After the dialog opened a pull request: show it in Launchpad and pick up the push. */
+  const pullRequestCreated = (pr: CreatedPullRequest): void => {
+    if (!creatingPr) return
+    setCreatingPr(null)
+    refresh(creatingPr.repoPath)
+    revalidatePullRequests()
+    view.openPullRequestReview({ repoPath: creatingPr.repoPath, number: pr.number, title: pr.title })
+    if (pr.reviewersError) showError(pr.reviewersError)
+    else setNotice(`Opened pull request #${pr.number}.`)
+  }
 
   const createBranch = (branch: string): void => runGit((path) => window.api.createBranch(path, branch))
 
@@ -247,13 +280,7 @@ export function useBranchActions({
     createPatch: actions.createPatch,
     copyText: actions.copyText,
     openUrl: actions.openUrl,
-    startPullRequest: async (compareUrl, base, head, headBranch) => {
-      if (!repoPath) return
-      // Prefill from the commits by rule; fall back to the bare form if that fails.
-      const res = await window.api.quickPullRequestText(repoPath, base, head, headBranch)
-      const url = res.ok ? withPullRequestText(compareUrl, res.data) : compareUrl
-      window.api.openExternal(url).then((r) => !r.ok && showError(r.error))
-    },
+    startPullRequest,
     remoteInfo: (target) => resolveBranchRemote(target, branches, remotes, pullRequests),
     isFavourite: (name) => favourites.includes(name),
     toggleFavourite: toggleFavouriteBranch,
@@ -262,6 +289,12 @@ export function useBranchActions({
   }
 
   return {
+    /** The Create pull request dialog's request, while it's open for the repo showing. */
+    createPullRequest: creatingPr && creatingPr.repoPath === repoPath ? creatingPr.request : null,
+    closeCreatePullRequest: () => setCreatingPr(null),
+    pullRequestCreated,
+    startPullRequest,
+    pullRequests,
     favourites,
     toggleFavourite: toggleFavouriteBranch,
     createBranch,

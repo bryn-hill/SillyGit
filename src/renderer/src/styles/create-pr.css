@@ -1,0 +1,84 @@
+/* ---------- create pull request dialog ---------- */
+
+.modal.create-pr-modal {
+  width: 600px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 80px);
+}
+
+.create-pr-modal .modal-body {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.create-pr-branches {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.create-pr-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.create-pr-arrow {
+  color: var(--text-dim);
+  padding-bottom: 6px;
+}
+
+.create-pr-push {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+}
+
+.create-pr-push label,
+.create-pr-draft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.create-pr-draft {
+  margin-top: 4px;
+}
+
+.create-pr-body {
+  width: 100%;
+  resize: vertical;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.create-pr-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.create-pr-suggestions button {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.create-pr-web {
+  margin-right: auto;
+}

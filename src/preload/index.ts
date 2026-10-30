@@ -379,6 +379,15 @@ const api = {
     ipcRenderer.invoke('pr:reply-to-thread', repoPath, threadId, body),
   prSetThreadResolved: (repoPath: string, threadId: string, resolved: boolean): Wrapped<void> =>
     ipcRenderer.invoke('pr:set-thread-resolved', repoPath, threadId, resolved),
+  prCreate: (
+    repoPath: string,
+    input: import('../shared/createPullRequest').CreatePullRequestInput
+  ): Wrapped<import('../shared/createPullRequest').CreatedPullRequest> => ipcRenderer.invoke('pr:create', repoPath, input),
+  /** People who can be asked to review a new pull request in the repo. */
+  prSuggestedReviewers: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('pr:suggested-reviewers', repoPath),
+  /** Pushes a local branch, checked out or not, to `remote`; returns its name there. */
+  pushBranch: (repoPath: string, branch: string, remote: string): Wrapped<string> =>
+    ipcRenderer.invoke('git:push-branch', repoPath, branch, remote),
   getSession: (): Promise<import('../shared/types').SavedSession> => ipcRenderer.invoke('session:get'),
   recordOpenedRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:repo-opened', repoPath),
   forgetRecentRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:forget-repo', repoPath),

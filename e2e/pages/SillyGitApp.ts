@@ -3,6 +3,7 @@ import { ClaudePanel } from './ClaudePanel'
 import { CommitGraph } from './CommitGraph'
 import { CommitView } from './CommitView'
 import { ConflictPanel } from './ConflictPanel'
+import { CreatePullRequestDialog } from './CreatePullRequestDialog'
 import { DetailPanel } from './DetailPanel'
 import { FileEditor } from './FileEditor'
 import { InteractiveRebase } from './InteractiveRebase'
@@ -29,6 +30,7 @@ export class SillyGitApp {
   readonly tabs: RepoTabs
   readonly editor: FileEditor
   readonly pullRequest: PullRequestReview
+  readonly createPullRequest: CreatePullRequestDialog
   readonly rebase: InteractiveRebase
   readonly fileHistory: FileHistory
   readonly workingFile: WorkingFileView
@@ -65,6 +67,7 @@ export class SillyGitApp {
     this.tabs = new RepoTabs(page)
     this.editor = new FileEditor(page)
     this.pullRequest = new PullRequestReview(page)
+    this.createPullRequest = new CreatePullRequestDialog(page)
     this.rebase = new InteractiveRebase(page)
     this.fileHistory = new FileHistory(page)
     this.workingFile = new WorkingFileView(page)

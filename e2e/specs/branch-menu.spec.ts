@@ -137,7 +137,7 @@ test.describe('branch right-click menu', () => {
       await sillygit.graph.badge('origin/feature').click({ button: 'right' })
       // No lookup when the menu opens: the item is there straight away.
       await expect(
-        sillygit.page.getByRole('menuitem', { name: 'Start a pull request from origin/feature into main' })
+        sillygit.page.getByRole('menuitem', { name: 'Start a pull request from origin/feature into main…' })
       ).toBeVisible({ timeout: 500 })
     })
 

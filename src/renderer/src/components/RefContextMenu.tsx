@@ -1,4 +1,5 @@
 import { useEffect, type JSX } from 'react'
+import { canOpenPullRequests } from '../../../shared/createPullRequest'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import type { StackActions } from '../hooks/useBranchActions'
 import { useCustomCommandMenu } from '../lib/customCommandMenu'
@@ -53,8 +54,8 @@ export interface RefActions extends StackActions {
   createPatch: (hash: string) => void
   copyText: (text: string) => void
   openUrl: (url: string) => void
-  /** Opens GitHub's new pull request form with the title and body filled in from the commits. */
-  startPullRequest: (compareUrl: string, base: string, head: string, headBranch: string) => void
+  /** Opens the Create pull request dialog for `target`, into the checked-out branch unless it's the target. */
+  startPullRequest: (target: RefTarget, remote: string) => void
   /** Where the branch lives on its remote. Synchronous: the app keeps remotes and open PRs cached. */
   remoteInfo: (target: RefTarget) => BranchRemoteInfo | null
   /** Refreshes that cache in the background; the menu re-renders when it lands. */
@@ -203,12 +204,15 @@ export default function RefContextMenu({
         { id: 'pr-view', label: `View pull request #${pr.number} on GitHub`, onSelect: () => actions.openUrl(pr.url) },
         { id: 'pr-copy', label: `Copy link for pull request #${pr.number}`, onSelect: () => actions.copyText(pr.url) }
       )
-    } else if (info?.webUrl && info.remoteBranch && !target.current && currentBranch) {
-      const compare = `${info.webUrl}/compare/${encodeURI(currentBranch)}...${encodeURI(info.remoteBranch)}?expand=1`
+    } else if (info?.remote && canOpenPullRequests(info.webUrl)) {
+      const remote = info.remote
       prItems.push({
         id: 'pr-start',
-        label: `Start a pull request from ${name} into ${shortRef(currentBranch)}`,
-        onSelect: () => actions.startPullRequest(compare, currentBranch, target.name, info.remoteBranch!)
+        label:
+          !target.current && currentBranch
+            ? `Start a pull request from ${name} into ${shortRef(currentBranch)}…`
+            : `Start a pull request from ${name}…`,
+        onSelect: () => actions.startPullRequest(target, remote)
       })
     }
     if (prItems.length > 0) sections.push(prItems)

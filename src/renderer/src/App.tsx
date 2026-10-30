@@ -13,6 +13,7 @@ import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
+import CreatePullRequestDialog from './components/CreatePullRequestDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
@@ -264,6 +265,17 @@ export default function App(): JSX.Element {
             actions.absorb(head, diff, assignments)
           }}
           onClose={commitBox.closeAbsorb}
+        />
+      )}
+      {branches.createPullRequest && repoPath && (
+        <CreatePullRequestDialog
+          repoPath={repoPath}
+          branches={repo.branches}
+          remotes={repo.remotes}
+          request={branches.createPullRequest}
+          onCreated={branches.pullRequestCreated}
+          onOpenUrl={actions.openUrl}
+          onClose={branches.closeCreatePullRequest}
         />
       )}
       {dialogs.showSettings && (
