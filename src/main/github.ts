@@ -116,6 +116,48 @@ export async function launchpadPullRequests(
   return { authored: prs(data.authored.nodes), reviewRequested: prs(data.requested.nodes) }
 }
 
+/** The same shape `gh issue list --json number,title,url,author,labels,updatedAt` gives. */
+export interface GhStyleIssue {
+  number: number
+  title: string
+  url: string
+  author: { login: string }
+  labels: { name: string; color: string }[]
+  updatedAt: string
+}
+
+const ASSIGNED_ISSUES_QUERY = `
+query($q: String!) {
+  search(query: $q, type: ISSUE, first: 50) {
+    nodes { ... on Issue { number title url author { login } labels(first: 10) { nodes { name color } } updatedAt } }
+  }
+}`
+
+/** Open issues in the repo assigned to the token's user. */
+export async function assignedIssues(creds: Credentials, repo: GithubRepo): Promise<GhStyleIssue[]> {
+  type Node = {
+    number?: number
+    title: string
+    url: string
+    author: { login: string } | null
+    labels: { nodes: { name: string; color: string }[] }
+    updatedAt: string
+  }
+  const data = await graphql<{ search: { nodes: Node[] } }>(creds, ASSIGNED_ISSUES_QUERY, {
+    q: `repo:${repo.owner}/${repo.name} is:issue is:open assignee:@me`
+  })
+  return data.search.nodes
+    .filter((n): n is Node & { number: number } => typeof n.number === 'number')
+    .map((n) => ({
+      number: n.number,
+      title: n.title,
+      url: n.url,
+      author: { login: n.author?.login ?? 'ghost' },
+      labels: n.labels.nodes,
+      updatedAt: n.updatedAt
+    }))
+}
+
 export async function listOpenPullRequests(creds: Credentials, repo: GithubRepo): Promise<OpenPullRequest[]> {
   const pulls = await fetchJson<{ number: number; html_url: string; title: string; head: { ref: string } }[]>(
     `${apiBase('github', repo.host)}/repos/${repo.owner}/${repo.name}/pulls?state=open&per_page=100`,

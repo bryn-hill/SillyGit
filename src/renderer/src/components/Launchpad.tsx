@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
-import type { LaunchpadBucketId, LaunchpadData, LaunchpadPullRequest } from '../../../shared/types'
+import type { LaunchpadBucketId, LaunchpadData, LaunchpadIssue, LaunchpadPullRequest } from '../../../shared/types'
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
 import { timeAgo } from '../lib/timeAgo'
 import PullRequestReview from './PullRequestReview'
+import StartWorkDialog from './StartWorkDialog'
 
 /** A pull request to open in the review screen. */
 export interface PullRequestRef {
@@ -22,6 +23,8 @@ interface Props {
   onOpenTerminal: () => void
   /** Checks the pull request out as a local branch; resolves when that's done or has failed. */
   onCheckout: (repoPath: string, number: number) => Promise<void>
+  /** Start work checked out a branch in `repoPath`; `message` says which. */
+  onStartedWork: (repoPath: string, message: string) => void
 }
 
 const NO_REPOS: string[] = []
@@ -107,13 +110,46 @@ function UnavailableNotice({
   )
 }
 
+function IssueCard({ issue, onStartWork }: { issue: LaunchpadIssue; onStartWork: () => void }): JSX.Element {
+  return (
+    <div className="launchpad-card" data-testid="launchpad-issue">
+      <div className="launchpad-card-main">
+        <div className="launchpad-card-title">{issue.title}</div>
+        <div className="launchpad-card-meta">
+          {issue.repoName} · #{issue.number} · {issue.author} · {timeAgo(issue.updatedAt)}
+        </div>
+      </div>
+      {issue.labels.length > 0 && (
+        <div className="launchpad-issue-labels">
+          {issue.labels.slice(0, 3).map((label) => (
+            <span
+              key={label.name}
+              className="launchpad-issue-label"
+              style={{ borderColor: `#${label.color}`, background: `#${label.color}26` }}
+            >
+              {label.name}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="launchpad-card-actions">
+        <button onClick={onStartWork}>Start work</button>
+        <button className="subtle" onClick={() => window.api.openExternal(issue.url)} title="Open on GitHub">
+          Open
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Launchpad({
   initialReview = null,
   repoPath,
   openRepos = NO_REPOS,
   onClose,
   onOpenTerminal,
-  onCheckout
+  onCheckout,
+  onStartedWork
 }: Props): JSX.Element {
   const [data, setData] = useState<LaunchpadData | null>(null)
   // The request the last answer was for, and its error; loading until it's the current one.
@@ -127,6 +163,7 @@ export default function Launchpad({
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const [addingRepo, setAddingRepo] = useState(false)
   const [reviewing, setReviewing] = useState<PullRequestRef | null>(initialReview)
+  const [startingWork, setStartingWork] = useState<LaunchpadIssue | null>(null)
 
   useEffect(() => {
     window.api.getWorkspaceRepos().then((repos) => {
@@ -202,6 +239,7 @@ export default function Launchpad({
   }
 
   const groups = data?.connected ? groupByBucket(data.pullRequests) : []
+  const issues = data?.connected ? (data.issues ?? []) : []
 
   if (reviewing)
     return (
@@ -264,7 +302,7 @@ export default function Launchpad({
           </div>
         )}
         {!error && data && !data.connected && <UnavailableNotice data={data} onOpenTerminal={onOpenTerminal} />}
-        {!error && data?.connected && groups.length === 0 && (
+        {!error && data?.connected && groups.length === 0 && issues.length === 0 && (
           <div className="launchpad-notice">You're all caught up — no open pull requests need your attention.</div>
         )}
         {!error &&
@@ -322,6 +360,24 @@ export default function Launchpad({
               </div>
             </div>
           ))}
+        {!error && issues.length > 0 && (
+          <section className="launchpad-bucket" aria-label="Assigned issues">
+            <div className="launchpad-bucket-header">
+              <span className="launchpad-bucket-dot" style={{ background: 'var(--accent)' }} />
+              <span className="launchpad-bucket-label">Assigned issues</span>
+              <span className="launchpad-bucket-count">{issues.length}</span>
+            </div>
+            <div className="launchpad-cards">
+              {issues.map((issue) => (
+                <IssueCard
+                  key={`${issue.repoPath}#${issue.number}`}
+                  issue={issue}
+                  onStartWork={() => setStartingWork(issue)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
         {!error && data?.connected && data.skippedRepos && data.skippedRepos.length > 0 && (
           <div
             className="launchpad-skipped"
@@ -331,6 +387,19 @@ export default function Launchpad({
           </div>
         )}
       </div>
+      {startingWork && (
+        <StartWorkDialog
+          key={`${startingWork.repoPath}#${startingWork.number}`}
+          issue={startingWork}
+          onCancel={() => setStartingWork(null)}
+          onStarted={(result) => {
+            const issue = startingWork
+            setStartingWork(null)
+            const how = result.created ? (result.stackedOn ? `stacked on ${result.stackedOn}` : 'created') : 'checked out'
+            onStartedWork(issue.repoPath, `Working on #${issue.number} on ${result.branch} (${how}).`)
+          }}
+        />
+      )}
     </div>
   )
 }

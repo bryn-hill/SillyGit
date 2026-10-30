@@ -76,6 +76,13 @@ export default function MainArea({
       onClose={() => view.setShowLaunchpad(false)}
       onOpenTerminal={onOpenTerminal}
       onCheckout={onCheckoutPullRequest}
+      onStartedWork={(path, message) => {
+        // Switching tabs clears the notice, so it goes up after.
+        void tabs.openRecentRepo(path).then(() => {
+          if (path === repoPath) refresh(path)
+          setNotice(message)
+        })
+      }}
     />
   )
   if (!repoPath) {
