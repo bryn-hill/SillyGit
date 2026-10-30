@@ -14,6 +14,8 @@ import type { Dialogs } from './hooks/useDialogs'
 import { paletteCommands } from './lib/paletteCommands'
 import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 import type { OpenPullRequest } from '../../shared/types'
+import { resolveBranchRemote } from '../../shared/branchRemote'
+import { canOpenPullRequests } from '../../shared/createPullRequest'
 
 /** The Actions list and command palette, wired to the app's features. */
 export function appCommands(app: {
@@ -57,6 +59,11 @@ export function appCommands(app: {
       : [])
   ]
   const stack = branch ? branches.stackActions.stackOf(branch) : null
+  // Where the checked-out branch would open a pull request, if it has no open one there.
+  const branchTarget = branch ? { name: branch, remote: false, current: true } : null
+  const branchRemote = branchTarget && resolveBranchRemote(branchTarget, repo.branches, repo.remotes, branches.pullRequests)
+  const prRemote =
+    branchRemote?.remote && !branchRemote.pullRequest && canOpenPullRequests(branchRemote.webUrl) ? branchRemote.remote : null
   return paletteCommands({
     repoPath,
     status: repo.status,
@@ -71,6 +78,7 @@ export function appCommands(app: {
     hasWorkingChanges: app.hasWorkingChanges,
     currentStack: stack && { id: stack.id, needsRestack: stack.branches.some((b) => b.needsRestack) },
     canRunCommit: !!run.commit,
+    canCreatePullRequest: !!prRemote,
     trackedFiles: dialogs.trackedFiles,
     tabPinned: !!repoPath && tabs.pinnedTabs.includes(repoPath),
     tabCount: tabs.tabs.length,
@@ -106,6 +114,7 @@ export function appCommands(app: {
       restack: branches.stackActions.restack,
       pushStack: branches.stackActions.pushStack,
       cleanUpBranches: app.cleanup.open,
+      createPullRequest: () => branchTarget && prRemote && branches.startPullRequest(branchTarget, prRemote),
       checkout: git.checkout,
       checkoutRemote: git.checkoutRemote,
       checkoutPullRequest: (number) => {

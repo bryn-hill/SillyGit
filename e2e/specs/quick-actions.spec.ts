@@ -45,7 +45,7 @@ test.describe('commit quick actions', () => {
   })
 })
 
-test('starting a pull request fills in its title and body from the commits', async ({ sillygit, repo, electronApp }) => {
+test('a new pull request gets its title and body from the commits, also on GitHub', async ({ sillygit, repo, electronApp }) => {
   repo.git('checkout', '-q', '-b', 'chore/bump-deps')
   repo.commitFile('a.txt', 'a\n', 'chore(deps): bump react')
   repo.commitFile('b.txt', 'b\n', 'chore(deps): bump vite')
@@ -62,6 +62,11 @@ test('starting a pull request fills in its title and body from the commits', asy
 
   await sillygit.graph.badge('origin/chore/bump-deps').click({ button: 'right' })
   await sillygit.page.getByRole('menuitem', { name: /^Start a pull request/ }).click()
+  const dialog = sillygit.createPullRequest
+  await expect(dialog.title).toHaveValue('chore(deps): 2 dependency updates')
+  await expect(dialog.description).toHaveValue(/^## Commits\n\n- chore\(deps\): bump react \(\w{7}\)\n- chore\(deps\): bump vite/)
+  await dialog.openOnGithubButton.click()
+  await expect(dialog.root).toBeHidden()
 
   await expect
     .poll(() => electronApp.evaluate(() => (globalThis as { openedUrl?: string }).openedUrl))

@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type SetStateAction } from 'react'
 import type { CommitSearchHit, FileStatus } from '../../../shared/types'
 import type { ClickModifiers } from '../components/CommitGraph'
 import type { FileViewMode, FileViewTarget } from '../components/FileHistoryView'
 import type { ActiveFile } from '../components/DetailPanel'
+import type { PullRequestRef } from '../components/Launchpad'
 import { clickCommit, fixSelection, type Selection } from '../lib/selection'
 import type { Repo } from './useRepo'
 import { useArrowKeySelection } from './useArrowKeySelection'
@@ -26,6 +27,11 @@ export function useMainView({
   const { repoPath, status, commitByHash, graphRows, graphOrder } = repo
   const [selection, setSelection] = useState<Selection>({ type: 'working' })
   const [showLaunchpad, setShowLaunchpad] = useState(false)
+  // A pull request Launchpad opens straight onto, e.g. one just created; bumped opens remount Launchpad.
+  const [launchpadReview, setLaunchpadReview] = useState<{ pr: PullRequestRef | null; opens: number }>({
+    pr: null,
+    opens: 0
+  })
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   // The interactive rebase being planned, and the repo it's for.
   const [rebaseEditor, setRebaseEditor] = useState<{ repoPath: string; base: string } | null>(null)
@@ -278,11 +284,28 @@ export function useMainView({
     setRebaseEditor({ repoPath, base })
   }
 
+  /** Shows or hides Launchpad on its list of pull requests. */
+  const showLaunchpadList = (next: SetStateAction<boolean>): void => {
+    setLaunchpadReview((r) => ({ pr: null, opens: r.opens + 1 }))
+    setShowLaunchpad(next)
+  }
+
+  /** Opens a pull request's review screen in Launchpad. */
+  const openPullRequestReview = (pr: PullRequestRef): void => {
+    closeFileViews()
+    setResolvingPath(null)
+    setLaunchpadReview((r) => ({ pr, opens: r.opens + 1 }))
+    setShowLaunchpad(true)
+  }
+
   return {
     selection,
     setSelection,
     showLaunchpad,
-    setShowLaunchpad,
+    setShowLaunchpad: showLaunchpadList,
+    launchpadReview: launchpadReview.pr,
+    launchpadKey: launchpadReview.opens,
+    openPullRequestReview,
     resolvingPath,
     setResolvingPath,
     rebaseBase,

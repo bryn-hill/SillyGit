@@ -3,10 +3,12 @@ import * as launchpad from '../launchpad'
 import * as prReview from '../prReview'
 import * as prCheckout from '../prCheckout'
 import type { PullRequestHead } from '../../shared/prCheckout'
+import * as createPr from '../createPullRequest'
+import type { CreatePullRequestInput } from '../../shared/createPullRequest'
 import type { SubmitReviewInput } from '../../shared/prReview'
 import { wrap } from './wrap'
 
-/** Launchpad and in-app pull request review. */
+/** Launchpad, and creating and reviewing pull requests in the app. */
 export function registerGithubHandlers(): void {
   ipcMain.handle('launchpad:get-data', (_e, repoPaths: string[]) =>
     wrap(() => launchpad.getLaunchpadData(repoPaths))
@@ -44,5 +46,15 @@ export function registerGithubHandlers(): void {
 
   ipcMain.handle('pr:set-thread-resolved', (_e, repoPath: string, threadId: string, resolved: boolean) =>
     wrap(() => prReview.setThreadResolved(repoPath, threadId, resolved))
+  )
+
+  ipcMain.handle('pr:create', (_e, repoPath: string, input: CreatePullRequestInput) =>
+    wrap(() => createPr.createPullRequest(repoPath, input))
+  )
+
+  ipcMain.handle('pr:suggested-reviewers', (_e, repoPath: string) => wrap(() => createPr.suggestedReviewers(repoPath)))
+
+  ipcMain.handle('git:push-branch', (_e, repoPath: string, branch: string, remote: string) =>
+    wrap(() => createPr.pushBranch(repoPath, branch, remote))
   )
 }

@@ -69,6 +69,8 @@ export default function MainArea({
 
   const launchpad = view.showLaunchpad && (
     <Launchpad
+      key={view.launchpadKey}
+      initialReview={view.launchpadReview}
       repoPath={repoPath}
       openRepos={tabs.tabs}
       onClose={() => view.setShowLaunchpad(false)}

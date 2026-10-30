@@ -24,6 +24,8 @@ export interface PaletteContext {
   currentStack?: { id: string; needsRestack: boolean } | null
   /** A single commit is selected that Run can act on. */
   canRunCommit: boolean
+  /** The checked-out branch is on a GitHub remote with no open pull request yet. */
+  canCreatePullRequest?: boolean
   /** Every tracked file, for the Blame and File history pickers. */
   trackedFiles: string[]
   tabPinned: boolean
@@ -57,6 +59,7 @@ export interface PaletteContext {
     restack: (branch: string) => void
     pushStack: (branch: string) => void
     cleanUpBranches: () => void
+    createPullRequest: () => void
     checkout: (branch: string) => void
     checkoutRemote: (branch: string) => void
     checkoutPullRequest: (number: number) => void
@@ -190,6 +193,8 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       localOthers.map((b) => ({ id: b.name, label: `Delete ${b.name}`, run: () => a.deleteBranch(b.name) }))
     )
     if (status?.branch) add('rename-branch', `Rename ${status.branch}…`, () => a.renameBranch(status.branch!))
+    if (status?.branch && ctx.canCreatePullRequest)
+      add('create-pr', `Create pull request from ${status.branch}…`, a.createPullRequest)
     if (operation) {
       add('continue', `Continue ${operation.kind}`, a.continueOperation)
       add('abort', `Abort ${operation.kind}`, a.abortOperation)

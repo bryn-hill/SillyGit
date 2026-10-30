@@ -20,6 +20,7 @@
 @import './styles/context-menu.css';
 @import './styles/launchpad.css';
 @import './styles/pr-review.css';
+@import './styles/create-pr.css';
 @import './styles/claude-panel.css';
 @import './styles/merge-conflicts.css';
 @import './styles/graph-paging.css';

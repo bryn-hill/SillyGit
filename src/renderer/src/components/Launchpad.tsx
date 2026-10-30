@@ -4,7 +4,16 @@ import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_O
 import { timeAgo } from '../lib/timeAgo'
 import PullRequestReview from './PullRequestReview'
 
+/** A pull request to open in the review screen. */
+export interface PullRequestRef {
+  repoPath: string
+  number: number
+  title: string
+}
+
 interface Props {
+  /** A pull request to show straight away instead of the list, e.g. one just created. */
+  initialReview?: PullRequestRef | null
   /** The active repo tab, if any. */
   repoPath: string | null
   /** Every repo open in a tab; their pull requests show alongside the workspace's. */
@@ -99,6 +108,7 @@ function UnavailableNotice({
 }
 
 export default function Launchpad({
+  initialReview = null,
   repoPath,
   openRepos = NO_REPOS,
   onClose,
@@ -116,7 +126,7 @@ export default function Launchpad({
   const [workspaceRepos, setWorkspaceRepos] = useState<string[]>([])
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const [addingRepo, setAddingRepo] = useState(false)
-  const [reviewing, setReviewing] = useState<LaunchpadPullRequest | null>(null)
+  const [reviewing, setReviewing] = useState<PullRequestRef | null>(initialReview)
 
   useEffect(() => {
     window.api.getWorkspaceRepos().then((repos) => {
