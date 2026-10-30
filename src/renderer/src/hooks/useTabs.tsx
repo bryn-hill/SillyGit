@@ -162,6 +162,7 @@ export function useTabs({
   }
 
   return {
+    sessionRestored,
     tabs,
     pinnedTabs,
     recentRepos,

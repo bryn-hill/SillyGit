@@ -497,6 +497,8 @@ const api = {
   /** Pushes a local branch, checked out or not, to `remote`; returns its name there. */
   pushBranch: (repoPath: string, branch: string, remote: string): Wrapped<string> =>
     ipcRenderer.invoke('git:push-branch', repoPath, branch, remote),
+  /** Tells the main process the first screen is ready, so it shows the window. */
+  windowReady: (): void => ipcRenderer.send('window:ready'),
   getSession: (): Promise<import('../shared/types').SavedSession> => ipcRenderer.invoke('session:get'),
   recordOpenedRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:repo-opened', repoPath),
   forgetRecentRepo: (repoPath: string): Wrapped<string[]> => ipcRenderer.invoke('session:forget-repo', repoPath),

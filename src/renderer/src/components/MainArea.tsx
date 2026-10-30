@@ -91,6 +91,8 @@ export default function MainArea({
   )
   if (!repoPath) {
     if (launchpad) return launchpad
+    // Nothing yet while the last session's repo may still be on its way.
+    if (!tabs.sessionRestored) return <div className="empty-state" aria-busy="true" />
     return (
       <EmptyState
         recentRepos={tabs.recentRepos}

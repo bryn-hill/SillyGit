@@ -140,6 +140,12 @@ export default function App(): JSX.Element {
     view.resetForRepo(lastSelection)
   }
   const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, askText, showError, setNotice })
+  // The window stays hidden until the last session is back up, repo and all,
+  // so launch never flashes the empty "no repo" screen.
+  const startupReady = tabs.sessionRestored && (!repoPath || status !== null)
+  useEffect(() => {
+    if (startupReady) window.api.windowReady()
+  }, [startupReady])
   const checkoutPullRequest = usePullRequestCheckout({ repo, git, view, tabs, showError, setNotice })
 
   useEscapeToLeaveFocus()

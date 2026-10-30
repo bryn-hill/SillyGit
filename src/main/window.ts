@@ -10,6 +10,9 @@ export const isE2E = process.env['SILLYGIT_E2E'] === '1'
 
 const CONSOLE_LEVELS: Record<string, string> = { info: 'INFO', warning: 'WARN', error: 'ERROR', debug: 'DEBUG' }
 
+// How long after first paint to show the window if the renderer hasn't said it's ready.
+const READY_FALLBACK_MS = 3000
+
 let mainWindow: BrowserWindow | null = null
 
 /** The app's window, or null while there is none (closed on macOS, say). */
@@ -36,9 +39,17 @@ export function createWindow(): void {
   })
   mainWindow = window
 
-  window.on('ready-to-show', () => {
-    if (!isE2E) window.show()
-  })
+  // Shown once the renderer says it has restored the last session (and
+  // loaded the repo it reopens), so launch never flashes the empty "no repo"
+  // screen first. A renderer that never says so is shown anyway, a little later.
+  let shown = false
+  const show = (): void => {
+    if (shown || isE2E || window.isDestroyed()) return
+    shown = true
+    window.show()
+  }
+  window.webContents.ipc.on('window:ready', show)
+  window.on('ready-to-show', () => setTimeout(show, READY_FALLBACK_MS))
 
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null
