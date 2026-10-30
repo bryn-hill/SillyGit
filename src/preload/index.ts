@@ -369,6 +369,15 @@ const api = {
     ipcRenderer.invoke('launchpad:get-data', repoPaths),
   launchpadMergePr: (repoPath: string, number: number): Wrapped<void> =>
     ipcRenderer.invoke('launchpad:merge-pr', repoPath, number),
+  /** Fetches pull request `number` and checks it out as a local branch (see prCheckout.ts). */
+  checkoutPullRequest: async (
+    repoPath: string,
+    number: number
+  ): Wrapped<import('../shared/prCheckout').PullRequestCheckout> => {
+    const head: Awaited<Wrapped<import('../shared/prCheckout').PullRequestHead>> = await ipcRenderer.invoke('pr:head', repoPath, number)
+    if (!head.ok) return head
+    return ipcRenderer.invoke('pr:checkout-head', repoPath, head.data)
+  },
   prGetDetail: (repoPath: string, number: number): Wrapped<import('../shared/prReview').PullRequestDetail> =>
     ipcRenderer.invoke('pr:get-detail', repoPath, number),
   prSubmitReview: (repoPath: string, number: number, input: import('../shared/prReview').SubmitReviewInput): Wrapped<void> =>

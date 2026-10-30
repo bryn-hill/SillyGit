@@ -1,6 +1,6 @@
 import type { Command } from '../components/CommandPalette'
 import type { FileViewMode } from '../components/FileHistoryView'
-import type { BranchInfo, OperationState, PullMode, RepoStatus, StashEntry } from '../../../shared/types'
+import type { BranchInfo, OpenPullRequest, OperationState, PullMode, RepoStatus, StashEntry } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
 import { repoDisplayName } from './repoName'
 import { MOD } from './shortcuts'
@@ -12,6 +12,8 @@ export interface PaletteContext {
   /** The user's custom commands that can run from here, already bound to what they act on. */
   customCommands?: { id: string; label: string; run: () => void }[]
   branches: BranchInfo[]
+  /** The repo's open pull requests, for "Check out pull request…". */
+  pullRequests?: OpenPullRequest[]
   hasRemotes: boolean
   stashes: StashEntry[]
   operation: OperationState | null
@@ -57,6 +59,7 @@ export interface PaletteContext {
     cleanUpBranches: () => void
     checkout: (branch: string) => void
     checkoutRemote: (branch: string) => void
+    checkoutPullRequest: (number: number) => void
     merge: (branch: string) => void
     rebase: (branch: string) => void
     deleteBranch: (branch: string) => void
@@ -162,6 +165,15 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       }
     }
     addList('checkout', 'Checkout', checkouts)
+    addList(
+      'checkout-pr',
+      'Check out pull request…',
+      (ctx.pullRequests ?? []).map((pr) => ({
+        id: String(pr.number),
+        label: pr.title ? `#${pr.number} ${pr.title} (${pr.headRefName})` : `#${pr.number} ${pr.headRefName}`,
+        run: () => a.checkoutPullRequest(pr.number)
+      }))
+    )
     addList(
       'merge',
       `Merge into ${current}`,

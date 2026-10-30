@@ -19,6 +19,8 @@ interface Props {
   number: number
   /** Shown while the pull request loads. */
   title: string
+  /** Checks the pull request out as a local branch; resolves when that's done or has failed. */
+  onCheckout: () => Promise<void>
   onBack: () => void
 }
 
@@ -49,7 +51,7 @@ const REVIEW_STATE_TEXT: Record<string, string> = {
   DISMISSED: 'reviewed (dismissed)'
 }
 
-export default function PullRequestReview({ repoPath, number, title, onBack }: Props): JSX.Element {
+export default function PullRequestReview({ repoPath, number, title, onCheckout, onBack }: Props): JSX.Element {
   const key = `${repoPath}#${number}`
   const saved = draftsByPr.get(key)
   const [detail, setDetail] = useState<PullRequestDetail | null>(null)
@@ -58,6 +60,7 @@ export default function PullRequestReview({ repoPath, number, title, onBack }: P
   const [actionError, setActionError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('conversation')
+  const [checkingOut, setCheckingOut] = useState(false)
   const [filePath, setFilePath] = useState<string | null>(null)
   const [composer, setComposer] = useState<Composer | null>(null)
   const [drafts, setDrafts] = useState<DraftReviewComment[]>(saved?.comments ?? [])
@@ -186,6 +189,18 @@ export default function PullRequestReview({ repoPath, number, title, onBack }: P
             {detail.isDraft ? 'Draft' : detail.state.charAt(0) + detail.state.slice(1).toLowerCase()}
           </span>
         )}
+        <button
+          className="subtle"
+          disabled={checkingOut}
+          onClick={async () => {
+            setCheckingOut(true)
+            await onCheckout()
+            setCheckingOut(false)
+          }}
+          title={detail ? `Check out ${detail.headRefName} as a local branch` : 'Check out as a local branch'}
+        >
+          {checkingOut ? 'Checking out…' : 'Check out'}
+        </button>
         <button className="subtle" onClick={() => detail && window.api.openExternal(detail.url)} disabled={!detail}>
           Open on GitHub
         </button>

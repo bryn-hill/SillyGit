@@ -44,6 +44,7 @@ export interface OpenPullRequest {
   number: number
   url: string
   headRefName: string
+  title?: string
 }
 
 /** Where a branch lives on its hosting site, for the branch right-click menu. */

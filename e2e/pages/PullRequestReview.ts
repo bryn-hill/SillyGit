@@ -15,6 +15,7 @@ export class PullRequestReview {
   readonly submitButton: Locator
   readonly banner: Locator
   readonly backButton: Locator
+  readonly checkoutButton: Locator
 
   constructor(readonly page: Page) {
     this.root = page.getByTestId('pr-review')
@@ -30,6 +31,7 @@ export class PullRequestReview {
     this.submitButton = this.reviewBar.getByRole('button', { name: /^Submit review/ })
     this.banner = this.root.getByRole('status')
     this.backButton = this.root.getByRole('button', { name: 'Back to Launchpad' })
+    this.checkoutButton = this.root.getByRole('button', { name: /^Check(ing)? out/ })
   }
 
   file(path: string): Locator {

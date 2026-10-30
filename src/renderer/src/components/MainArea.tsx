@@ -37,6 +37,7 @@ interface Props {
   tabs: Tabs
   hasWorkingChanges: boolean
   onOpenTerminal: () => void
+  onCheckoutPullRequest: (repoPath: string, number: number) => Promise<void>
   showError: (message: string) => void
   setNotice: (message: string | null) => void
 }
@@ -59,6 +60,7 @@ export default function MainArea({
   tabs,
   hasWorkingChanges,
   onOpenTerminal,
+  onCheckoutPullRequest,
   showError,
   setNotice
 }: Props): JSX.Element {
@@ -71,6 +73,7 @@ export default function MainArea({
       openRepos={tabs.tabs}
       onClose={() => view.setShowLaunchpad(false)}
       onOpenTerminal={onOpenTerminal}
+      onCheckout={onCheckoutPullRequest}
     />
   )
   if (!repoPath) {
