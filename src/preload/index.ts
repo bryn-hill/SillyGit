@@ -112,6 +112,8 @@ const api = {
     ipcRenderer.invoke('git:graph-log', repoPath, limit),
   commitDetail: (repoPath: string, hash: string): Wrapped<import('../shared/types').CommitDetail> =>
     ipcRenderer.invoke('git:commit-detail', repoPath, hash),
+  coAuthorCandidates: (repoPath: string): Wrapped<import('../shared/coAuthors').CoAuthorCandidate[]> =>
+    ipcRenderer.invoke('git:co-author-candidates', repoPath),
   commitFileDiff: (
     repoPath: string,
     hash: string,

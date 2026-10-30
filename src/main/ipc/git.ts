@@ -157,6 +157,8 @@ export function registerGitHandlers(): void {
     wrap(() => git.getCommitDetail(repoPath, hash))
   )
 
+  ipcMain.handle('git:co-author-candidates', (_e, repoPath: string) => wrap(() => git.getCoAuthorCandidates(repoPath)))
+
   ipcMain.handle(
     'git:commit-file-diff',
     (_e, repoPath: string, hash: string, path: string, ignoreWhitespace?: boolean, oldPath?: string) =>

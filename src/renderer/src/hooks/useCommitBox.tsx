@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { OperationState } from '../../../shared/types'
 import type { GitRunner } from './useGitRunner'
+import { addCoAuthor, hasMessage, parseCoAuthors } from '../../../shared/coAuthors'
 
 /** The commit message box on the WIP row, and Amend. */
 export function useCommitBox({
@@ -31,7 +32,7 @@ export function useCommitBox({
   }
 
   const commit = (): void => {
-    if (!repoPath || !message.trim()) return
+    if (!repoPath || !hasMessage(message)) return
     git.withBusy(async () => {
       const res = await window.api.commit(repoPath, message.trim(), amend)
       if (!res.ok) {
@@ -54,7 +55,8 @@ export function useCommitBox({
       const res = await window.api.lastCommitMessage(repoPath)
       if (res.ok && res.data) {
         amendPrefill.current = res.data
-        setMessage((m) => (m.trim() ? m : res.data))
+        // Co-authors already picked are kept on the last commit's message.
+        setMessage((m) => (hasMessage(m) ? m : parseCoAuthors(m).reduce(addCoAuthor, res.data)))
       }
     } else {
       setMessage((m) => (m === amendPrefill.current ? '' : m))

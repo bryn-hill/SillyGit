@@ -1,12 +1,16 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { FileStatus } from '../../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from '../ContextMenu'
+import Avatar from '../Avatar'
+import CoAuthorPicker from './CoAuthorPicker'
+import { addCoAuthor, hasMessage, parseCoAuthors, removeCoAuthor, type Person } from '../../../../shared/coAuthors'
 import { isPrimary, MOD } from '../../lib/shortcuts'
 import { applyPrefix, bumpVersion, COMMIT_PREFIXES, type BumpKind, type QuickMessage } from '../../../../shared/quickActions'
 
 /**
  * The commit message box on the WIP row: rule-based quick actions (suggested
- * messages, version bumps, prefixes), a Claude-generated message, Amend, and
+ * messages, version bumps, prefixes), a Claude-generated message, co-authors
+ * (kept as `Co-authored-by:` trailers in the message itself), Amend, and
  * Commit (Cmd/Ctrl+Enter).
  */
 export default function CommitBox({
@@ -35,9 +39,19 @@ export default function CommitBox({
   const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null)
   const [indexSuggestions, setSuggestions] = useState<QuickMessage[]>([])
   const [packageVersion, setPackageVersion] = useState<string | null>(null)
+  const [coAuthorAnchor, setCoAuthorAnchor] = useState<DOMRect | null>(null)
+  const coAuthors = parseCoAuthors(commitMessage)
 
-  // Amending can just reword the last commit, with nothing staged.
-  const canCommit = !!commitMessage.trim() && (amend || staged.length > 0)
+  // Amending can just reword the last commit, with nothing staged. Trailers alone aren't a message.
+  const canCommit = hasMessage(commitMessage) && (amend || staged.length > 0)
+
+  // A suggested or generated message replaces what's typed, but keeps the co-authors.
+  const replaceMessage = (message: string): void => onCommitMessageChange(coAuthors.reduce(addCoAuthor, message))
+
+  const toggleCoAuthor = (person: Person): void => {
+    const credited = coAuthors.some((p) => p.email.toLowerCase() === person.email.toLowerCase())
+    onCommitMessageChange(credited ? removeCoAuthor(commitMessage, person.email) : addCoAuthor(commitMessage, person))
+  }
 
   // Rule-based suggestions are cheap (no AI), so recompute whenever the index changes.
   const stagedKey = staged.map((f) => `${f.index}${f.path}`).join('\n')
@@ -60,7 +74,7 @@ export default function CommitBox({
       setGenerateError(res.error)
       return
     }
-    onCommitMessageChange(res.data.message)
+    replaceMessage(res.data.message)
     onStage(res.data.files)
   }
 
@@ -72,7 +86,7 @@ export default function CommitBox({
           id: `suggest-${s.id}`,
           label: s.label,
           title: s.message,
-          onSelect: () => onCommitMessageChange(s.message)
+          onSelect: () => replaceMessage(s.message)
         }))
       )
     }
@@ -108,7 +122,7 @@ export default function CommitBox({
     setGenerateError(null)
     const res = await window.api.aiGenerateCommitMessage(repoPath)
     setGenerating(false)
-    if (res.ok) onCommitMessageChange(res.data)
+    if (res.ok) replaceMessage(res.data)
     else setGenerateError(res.error)
   }
 
@@ -136,13 +150,38 @@ export default function CommitBox({
         >
           Absorb…
         </button>
+        <button
+          className="link-button"
+          title="Credit others with Co-authored-by trailers"
+          aria-haspopup="dialog"
+          onClick={(e) => setCoAuthorAnchor(e.currentTarget.getBoundingClientRect())}
+        >
+          Co-authors{coAuthors.length > 0 ? ` (${coAuthors.length})` : ''}…
+        </button>
       </div>
+      {coAuthors.length > 0 && (
+        <ul className="co-author-chips" aria-label="Co-authors">
+          {coAuthors.map((p) => (
+            <li key={p.email.toLowerCase()} className="co-author-chip" title={`${p.name} <${p.email}>`}>
+              <Avatar name={p.name} email={p.email} repoPath={repoPath} size={16} />
+              <span className="co-author-name">{p.name}</span>
+              <button
+                className="co-author-remove"
+                aria-label={`Remove co-author ${p.name}`}
+                onClick={() => onCommitMessageChange(removeCoAuthor(commitMessage, p.email))}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {generateError && <div className="ai-error">{generateError}</div>}
-      {suggestions.length > 0 && !commitMessage.trim() && (
+      {suggestions.length > 0 && !hasMessage(commitMessage) && (
         <button
           className="quick-suggestion"
           title="Use this message (no AI)"
-          onClick={() => onCommitMessageChange(suggestions[0].message)}
+          onClick={() => replaceMessage(suggestions[0].message)}
         >
           <span className="quick-suggestion-label">Use</span> {suggestions[0].message.split('\n')[0]}
         </button>
@@ -166,6 +205,15 @@ export default function CommitBox({
       <button className="commit-button" disabled={!canCommit} onClick={onCommit} title={`${MOD}Enter`}>
         {amend ? 'Amend Commit' : 'Commit'} {staged.length > 0 ? `(${staged.length})` : ''}
       </button>
+      {coAuthorAnchor && (
+        <CoAuthorPicker
+          repoPath={repoPath}
+          anchor={coAuthorAnchor}
+          credited={coAuthors}
+          onToggle={toggleCoAuthor}
+          onClose={() => setCoAuthorAnchor(null)}
+        />
+      )}
       {quickMenu && (
         <ContextMenu x={quickMenu.x} y={quickMenu.y} sections={quickMenuSections()} onClose={() => setQuickMenu(null)} />
       )}

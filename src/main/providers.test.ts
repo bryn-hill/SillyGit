@@ -276,6 +276,21 @@ describe('avatars', () => {
     })
   })
 
+  it("doesn't ask GitHub's commit lookup about a co-author, who has no commit of their own", async () => {
+    fakeFetch((c) => (c.url === gravatarUrl('co@example.com') ? png() : undefined))
+    const asked: string[] = []
+    const githubLookup = async (commits: { email: string; hash: string }[]): Promise<Map<string, string>> => {
+      asked.push(...commits.map((c) => c.email))
+      return new Map()
+    }
+    const result = await new AvatarResolver(dir, () => clock).resolve(
+      [{ email: 'author@example.com', hash: 'a' }, { email: 'co@example.com' }],
+      { accounts: [], githubLookup, gravatar: true }
+    )
+    expect(asked).toEqual(['author@example.com'])
+    expect(result['co@example.com']).toMatch(/^data:image\/png/)
+  })
+
   it('caches hits and misses on disk, and retries misses after a day', async () => {
     fakeFetch((c) => (c.url === gravatarUrl('grav@example.com') ? png() : undefined))
     const sources = { accounts: [], gravatar: true }

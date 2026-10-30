@@ -75,7 +75,7 @@ export interface AvatarSources {
   /** Bundled bot logos as data: URLs; these win over any lookup (GitHub only has identicons for bot users). */
   bots?: Partial<Record<Bot, string>>
   /** Looks up the GitHub users behind commits, when the repo is on GitHub and an account is signed in there. */
-  githubLookup?: (commits: AvatarRequest[]) => Promise<Map<string, string>>
+  githubLookup?: (commits: Required<AvatarRequest>[]) => Promise<Map<string, string>>
   /** GitLab hosts to ask for an email's avatar, from the repo's remotes. */
   gitlabLookup?: (email: string) => Promise<string | null>
   /** Ask Gravatar last. */
@@ -210,7 +210,7 @@ export class AvatarResolver {
       if (noreply) urls.set(req.email, noreply)
     }
     let lookupFailed = false
-    const forGithub = todo.filter((r) => !urls.has(r.email))
+    const forGithub = todo.filter((r): r is Required<AvatarRequest> => !urls.has(r.email) && !!r.hash)
     if (sources.githubLookup && forGithub.length > 0) {
       try {
         for (const [email, url] of await sources.githubLookup(forGithub)) urls.set(email, url)

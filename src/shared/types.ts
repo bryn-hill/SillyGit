@@ -1,3 +1,6 @@
+import type { Person } from './coAuthors'
+import type { CommitSignature } from './signature'
+
 export interface FileStatus {
   path: string
   origPath?: string
@@ -96,7 +99,8 @@ export interface GraphCommit {
 /** A commit email to find an avatar for, and one of its commits (GitHub looks users up by commit). */
 export interface AvatarRequest {
   email: string
-  hash: string
+  /** Absent for co-authors: GitHub's commit lookup only knows the author. */
+  hash?: string
 }
 
 export interface CommitFileChange {
@@ -114,6 +118,9 @@ export interface CommitDetail {
   subject: string
   body: string
   files: CommitFileChange[]
+  /** People credited with `Co-authored-by:` trailers in the body. */
+  coAuthors: Person[]
+  signature: CommitSignature
 }
 
 export interface GitResult {

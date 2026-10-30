@@ -222,3 +222,105 @@ describe('commit --amend', () => {
     expect(run('rev-list', '--count', 'HEAD')).toBe('2')
   })
 })
+
+describe('co-authors and signatures', () => {
+  it('reads co-author trailers into the commit detail', async () => {
+    writeFileSync(join(dir, 'b.txt'), 'b\n')
+    run('add', 'b.txt')
+    run('commit', '-q', '--no-gpg-sign', '-m', 'Add b\n\nPaired on it.\n\nCo-authored-by: Grace Hopper <grace@example.com>')
+    const detail = await git.getCommitDetail(dir, 'HEAD')
+    expect(detail.coAuthors).toEqual([{ name: 'Grace Hopper', email: 'grace@example.com' }])
+    expect(detail.signature).toMatchObject({ status: 'unsigned', code: 'N' })
+  })
+
+  it('suggests everyone else who has committed, busiest first', async () => {
+    const as = (name: string, email: string, file: string): void => {
+      writeFileSync(join(dir, file), name)
+      run('add', file)
+      run('-c', `user.name=${name}`, '-c', `user.email=${email}`, 'commit', '-q', '-m', `By ${name}`)
+    }
+    as('Grace Hopper', 'grace@example.com', 'g1')
+    as('Linus', 'linus@example.com', 'l1')
+    as('Grace Hopper', 'grace@example.com', 'g2')
+    expect(await git.getCoAuthorCandidates(dir)).toEqual([
+      { name: 'Grace Hopper', email: 'grace@example.com', commits: 2 },
+      { name: 'Linus', email: 'linus@example.com', commits: 1 }
+    ])
+  })
+})
+
+const hasGpg = (() => {
+  try {
+    execFileSync('gpg', ['--version'], { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+})()
+
+describe.skipIf(!hasGpg)('signature badges with gpg', () => {
+  let gnupgHome: string
+  const savedHome = process.env.GNUPGHOME
+
+  beforeEach(() => {
+    gnupgHome = mkdtempSync(join(tmpdir(), 'sillygit-gpg-'))
+    process.env.GNUPGHOME = gnupgHome
+    execFileSync('gpg', ['--batch', '--passphrase', '', '--quick-gen-key', 'Ada Lovelace <ada@example.com>', 'ed25519', 'sign', 'never'], {
+      stdio: 'ignore'
+    })
+    // Whatever the machine signs with, these tests sign with gpg.
+    run('config', 'gpg.format', 'openpgp')
+    run('config', 'user.signingkey', 'ada@example.com')
+  })
+
+  afterEach(() => {
+    if (savedHome === undefined) delete process.env.GNUPGHOME
+    else process.env.GNUPGHOME = savedHome
+    try {
+      execFileSync('gpgconf', ['--kill', 'all'], { env: { ...process.env, GNUPGHOME: gnupgHome }, stdio: 'ignore' })
+    } catch {
+      // No agent to stop.
+    }
+    rmSync(gnupgHome, { recursive: true, force: true })
+  })
+
+  it('calls a commit signed with a trusted key verified', async () => {
+    run('commit', '-q', '--allow-empty', '-S', '-m', 'Signed')
+    expect(await git.getCommitSignature(dir, 'HEAD')).toMatchObject({
+      status: 'verified',
+      code: 'G',
+      signer: 'Ada Lovelace <ada@example.com>'
+    })
+  })
+
+  it('calls it unverified when the key is not available', async () => {
+    run('commit', '-q', '--allow-empty', '-S', '-m', 'Signed')
+    process.env.GNUPGHOME = mkdtempSync(join(tmpdir(), 'sillygit-gpg-empty-'))
+    const signature = await git.getCommitSignature(dir, 'HEAD')
+    rmSync(process.env.GNUPGHOME, { recursive: true, force: true })
+    expect(signature).toMatchObject({ status: 'unverified', code: 'E' })
+  })
+})
+
+describe('a signature git has nothing to check against', () => {
+  it('calls an SSH-signed commit unverified, not unsigned', async () => {
+    // A commit object carrying an SSH signature header, made by hand so no ssh-keygen is needed.
+    const tree = run('rev-parse', 'HEAD^{tree}')
+    const sig = ['-----BEGIN SSH SIGNATURE-----', 'U1NIU0lH', '-----END SSH SIGNATURE-----']
+    const body = [
+      `tree ${tree}`,
+      'author Ada Lovelace <ada@example.com> 1700000000 +0000',
+      'committer Ada Lovelace <ada@example.com> 1700000000 +0000',
+      `gpgsig ${sig[0]}`,
+      ...sig.slice(1).map((l) => ` ${l}`),
+      '',
+      'Signed by hand',
+      ''
+    ].join('\n')
+    const hash = execFileSync('git', ['hash-object', '-t', 'commit', '-w', '--stdin'], { cwd: dir, input: body, encoding: 'utf8' }).trim()
+    expect(await git.getCommitSignature(dir, hash)).toMatchObject({
+      status: 'unverified',
+      reason: expect.stringContaining('allowedSignersFile')
+    })
+  })
+})
