@@ -486,6 +486,7 @@ export default function CommitGraph({
         role="listbox"
         aria-label="Commits"
         aria-multiselectable="true"
+        tabIndex={0}
         data-drag-scroll=""
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       >

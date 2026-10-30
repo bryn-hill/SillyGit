@@ -53,6 +53,7 @@ export class SillyGitApp {
   readonly errorBanner: Locator
   readonly claudeButton: Locator
   readonly terminalButton: Locator
+  readonly branchFilter: Locator
   /** The GitKraken-style toolbar: Undo, Redo, Pull, Push, Branch, Stash, Pop, Terminal. */
   readonly toolbar: Locator
   readonly topBar: Locator
@@ -96,6 +97,7 @@ export class SillyGitApp {
     this.errorBanner = page.getByRole('alert')
     this.claudeButton = page.getByTitle('Claude Code (Ctrl+Esc)')
     this.terminalButton = page.getByTitle('Toggle terminal (Ctrl+`)')
+    this.branchFilter = page.getByPlaceholder('Filter branches')
     this.toolbar = page.getByRole('toolbar', { name: 'Git actions' })
     this.topBar = page.getByTestId('top-bar')
     this.moreButton = this.toolbarButton('More actions')
@@ -162,6 +164,15 @@ export class SillyGitApp {
       [width, height]
     )
     await expect.poll(() => this.page.evaluate<number>('window.innerWidth')).toBe(width)
+  }
+
+  /** Presses Tab until `target` has focus, failing after `max` presses. */
+  async tabTo(target: Locator, max = 40): Promise<void> {
+    for (let i = 0; i < max; i++) {
+      await this.page.keyboard.press('Tab')
+      if (await target.evaluate((el) => el.matches(':focus'))) return
+    }
+    throw new Error(`Tab never reached ${target}`)
   }
 
   async toggleClaude(): Promise<void> {

@@ -60,6 +60,14 @@
   overflow-y: auto;
 }
 
+.commit-graph-body:focus {
+  outline: none;
+}
+
+.commit-graph-body:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .graph-row {
   display: flex;
   align-items: center;

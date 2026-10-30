@@ -382,7 +382,15 @@ export default function TerminalPanel({
   }
 
   return (
-    <div className="terminal-panel" role="region" aria-label="Terminal" style={{ height: visible ? height : 0 }}>
+    <div
+      className="terminal-panel"
+      role="region"
+      aria-label="Terminal"
+      style={{ height: visible ? height : 0 }}
+      // The collapsed panel stays mounted to keep its shells alive; inert keeps
+      // Tab from landing on its invisible buttons.
+      inert={!visible}
+    >
       {visible && <div className="terminal-resize-handle" onMouseDown={handleDragStart} />}
       <div className="terminal-panel-header">
         <div className="terminal-tabs">

@@ -39,6 +39,7 @@ import { useBisect } from './hooks/useBisect'
 import { useTabs } from './hooks/useTabs'
 import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
+import { useEscapeToLeaveFocus } from './hooks/useEscapeToLeaveFocus'
 import { useLfs } from './hooks/useLfs'
 import { useEditor } from './hooks/useEditor'
 import { useLanes } from './hooks/useLanes'
@@ -141,6 +142,7 @@ export default function App(): JSX.Element {
   const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, askText, showError, setNotice })
   const checkoutPullRequest = usePullRequestCheckout({ repo, git, view, tabs, showError, setNotice })
 
+  useEscapeToLeaveFocus()
   useAppShortcuts({
     blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity,
     paletteOpen: dialogs.palette !== null,
