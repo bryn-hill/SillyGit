@@ -47,7 +47,8 @@ describe.skipIf(!hasLfs)('Git LFS', () => {
     const info = await git.getLfsInfo(dir)
     expect(info.installed).toBe(true)
     expect(info.version).toMatch(/^\d+\.\d+/)
-    expect(info.patterns).toEqual(['*.dat', '*.png'])
+    // git lfs track writes patterns in its own order, which differs between versions.
+    expect([...info.patterns].sort()).toEqual(['*.dat', '*.png'])
   })
 
   it('badges LFS files in the working changes, not the others', async () => {
