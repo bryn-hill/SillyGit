@@ -29,7 +29,10 @@ export function launchPaths(argv: string[], cwd: string, defaultApp: boolean): s
 /**
  * What to open for a launch path: the top of the repository it's in, so
  * `sillygit src` opens the whole repo. A folder outside any repository is
- * passed on as it is, for the app to offer to initialise.
+ * passed on as it is, for the app to offer to initialise. The top is found by
+ * walking up from the path as given rather than taken from --show-toplevel,
+ * which resolves symlinks (/var to /private/var on macOS) and so wouldn't
+ * match a tab already open on the same repo.
  */
 export async function resolveLaunchPath(path: string): Promise<LaunchRequest> {
   let folder = path
@@ -39,8 +42,8 @@ export async function resolveLaunchPath(path: string): Promise<LaunchRequest> {
     return { path, error: `Couldn't open ${path}: there's no such file or folder.` }
   }
   try {
-    const top = (await runGit(folder, ['rev-parse', '--show-toplevel'])).trim()
-    return { path: top || folder }
+    const up = (await runGit(folder, ['rev-parse', '--show-cdup'])).trim()
+    return { path: resolve(folder, up) }
   } catch {
     return { path: folder }
   }

@@ -40,9 +40,18 @@ describe('resolveLaunchPath', () => {
     mkdirSync(join(repo, 'src'), { recursive: true })
     writeFileSync(join(repo, 'src', 'a.ts'), '')
     execFileSync('git', ['init', '-q', repo])
-    const top = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: repo, encoding: 'utf8' }).trim()
-    expect(await resolveLaunchPath(join(repo, 'src'))).toEqual({ path: top })
-    expect(await resolveLaunchPath(join(repo, 'src', 'a.ts'))).toEqual({ path: top })
+    expect(await resolveLaunchPath(join(repo, 'src'))).toEqual({ path: repo })
+    expect(await resolveLaunchPath(join(repo, 'src', 'a.ts'))).toEqual({ path: repo })
+    expect(await resolveLaunchPath(repo)).toEqual({ path: repo })
+  })
+
+  it('keeps a symlinked path as given, so it matches a tab already open on it', async () => {
+    const repo = join(root, 'linked')
+    mkdirSync(join(repo, 'src'), { recursive: true })
+    execFileSync('git', ['init', '-q', repo])
+    const link = join(root, 'link')
+    symlinkSync(root, link)
+    expect(await resolveLaunchPath(join(link, 'linked', 'src'))).toEqual({ path: join(link, 'linked') })
   })
 
   it('passes on a folder outside any repository', async () => {
