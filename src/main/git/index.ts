@@ -55,6 +55,7 @@ export {
 } from './commits'
 export { redo, redoLabel, undo, undoLabel } from './undo'
 export { getImagePair } from './images'
+export { getLfsDiff, getLfsInfo, lfsCommand, lfsTrack } from './lfs'
 export {
   deleteTag,
   listSubmodules,

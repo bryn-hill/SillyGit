@@ -170,6 +170,19 @@
   font-size: 12px;
 }
 
+.lfs-badge {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 55%, transparent);
+  border-radius: 3px;
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+}
+
 .file-actions {
   display: flex;
   gap: 2px;

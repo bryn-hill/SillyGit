@@ -130,6 +130,14 @@ export class FixtureRepo {
     this.git('reset', '-q', '--hard', 'main')
   }
 
+  /** Sets up Git LFS here and commits a .gitattributes storing `patterns` in it. */
+  trackWithLfs(...patterns: string[]): void {
+    this.git('lfs', 'install', '--local')
+    this.git('lfs', 'track', ...patterns)
+    this.git('add', '.gitattributes')
+    this.git('commit', '-q', '-m', 'Track files with Git LFS')
+  }
+
   readFile(relativePath: string): string {
     return readFileSync(join(this.path, relativePath), 'utf8')
   }

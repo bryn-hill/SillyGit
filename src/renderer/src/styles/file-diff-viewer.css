@@ -141,6 +141,30 @@
   background: var(--bg-hover);
 }
 
+.lfs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--cyan) 6%, transparent);
+}
+
+.lfs-bar .lfs-badge {
+  margin-left: 0;
+}
+
+.lfs-bar-note {
+  flex: 1;
+  color: var(--text-dim);
+}
+
+.lfs-bar-note.error {
+  color: var(--red);
+}
+
 .revert-status {
   padding: 5px 10px;
   font-size: 11.5px;

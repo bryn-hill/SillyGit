@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useContext, useEffect, useState, type JSX } from 'react'
 import type { CommitDetail } from '../../../../shared/types'
 import type { CommitSignature } from '../../../../shared/signature'
 import { stripCoAuthors } from '../../../../shared/coAuthors'
@@ -7,6 +7,8 @@ import Avatar from '../Avatar'
 import AiResults, { idleAiRun, type AiRun } from '../AiResults'
 import SplitCommitPanel from '../SplitCommitPanel'
 import { fileMenuSections } from '../fileMenu'
+import { LfsContext } from '../../lib/lfs'
+import LfsBadge from '../LfsBadge'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import { onFileListKeyDown } from '../../lib/fileListNav'
 import type { OpenFileView } from './types'
@@ -114,8 +116,9 @@ function CommitDetailBody({
   stale: boolean
 }): JSX.Element {
   const { hash } = detail
-  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string } | null>(null)
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string; lfs: boolean } | null>(null)
   const customMenu = useCustomCommandMenu()
+  const lfs = useContext(LfsContext)
   const [commitAi, setCommitAi] = useState<AiRun>(idleAiRun)
   const [fileAiPath, setFileAiPath] = useState<string | null>(null)
   const [fileAi, setFileAi] = useState<AiRun>(idleAiRun)
@@ -191,11 +194,12 @@ function CommitDetailBody({
                 onClick={() => openFile(f.path)}
                 onContextMenu={(e) => {
                   e.preventDefault()
-                  setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0] })
+                  setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0], lfs: !!f.lfs })
                 }}
               >
                 <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
                 <span className="file-path">{f.path}</span>
+                {f.lfs && <LfsBadge />}
                 <span className="file-actions">
                   <button
                     className="icon-button"
@@ -239,6 +243,7 @@ function CommitDetailBody({
             onHistory: () => onOpenFileView(fileMenu.path, hash, 'history'),
             onFilterHistory,
             onCopyPath: () => onCopyText(fileMenu.path),
+            lfs: { installed: lfs.info.installed, tracked: fileMenu.lfs, onTrack: lfs.track },
             custom: customMenu('file', { file: fileMenu.path, sha: hash })
           })}
           onClose={() => setFileMenu(null)}

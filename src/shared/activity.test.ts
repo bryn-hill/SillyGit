@@ -10,7 +10,9 @@ describe('isLoggedCommand', () => {
       ['branch', '-d', 'old'],
       ['tag', 'v1', 'abc'],
       ['pull', '--rebase'],
-      ['apply', '--3way', 'x.patch']
+      ['apply', '--3way', 'x.patch'],
+      ['lfs', 'track', '--', '*.psd'],
+      ['lfs', 'pull']
     ]) {
       expect(isLoggedCommand(args)).toBe(true)
     }
@@ -26,7 +28,10 @@ describe('isLoggedCommand', () => {
       ['branch', '--points-at', 'HEAD'],
       ['config', '--get', 'user.name'],
       ['worktree', 'list'],
-      ['apply', '--check', 'x.patch']
+      ['apply', '--check', 'x.patch'],
+      ['check-attr', '-z', '--stdin', 'filter'],
+      ['lfs', 'version'],
+      ['lfs', 'track']
     ]) {
       expect(isLoggedCommand(args)).toBe(false)
     }

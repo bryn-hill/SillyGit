@@ -11,6 +11,7 @@ import { filterPathspecs, type CommitSearch, type GraphFilter } from '../../shar
 import { runGit } from '../gitExec'
 import { parseCoAuthors, parseShortlog, type CoAuthorCandidate } from '../../shared/coAuthors'
 import { parseSignature, type CommitSignature } from '../../shared/signature'
+import { markLfs } from './lfs'
 
 // Reading history: the log and graph, commit details and diffs, file history, blame and search.
 
@@ -121,6 +122,7 @@ export async function getCommitDetail(repoPath: string, hash: string): Promise<C
     i++
   }
   const files = parseNameStatus(lines.slice(i))
+  await markLfs(repoPath, files, h)
   return {
     hash: h,
     parents: parents ? parents.split(' ').filter(Boolean) : [],

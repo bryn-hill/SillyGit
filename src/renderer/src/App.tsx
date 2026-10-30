@@ -12,6 +12,7 @@ import StatusBanners from './components/StatusBanners'
 import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
 import { BisectContext } from './lib/bisectMenu'
+import { LfsContext } from './lib/lfs'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import CreatePullRequestDialog from './components/CreatePullRequestDialog'
@@ -37,6 +38,7 @@ import { useBisect } from './hooks/useBisect'
 import { useTabs } from './hooks/useTabs'
 import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
+import { useLfs } from './hooks/useLfs'
 
 /**
  * The window: repo tabs, the toolbar, banners, the main area with the
@@ -58,6 +60,7 @@ export default function App(): JSX.Element {
   const layout = usePanelLayout()
   const dialogs = useDialogs(repoPath)
   const git = useGitRunner({ repoPath, refresh: repo.refresh, showError, setNotice })
+  const lfs = useLfs({ repoPath, refreshKey: status, git, setNotice })
   const commitBox = useCommitBox({ repoPath, operation, git, refresh: repo.refresh, showError })
 
   // Amending can reword the last commit with nothing changed, so the WIP row
@@ -232,29 +235,34 @@ export default function App(): JSX.Element {
             onShowCommit: view.showCommitInGraph
           }
         }
+        lfsMissing={lfs.showMissingNote}
+        onInstallLfs={lfs.installLfs}
+        onDismissLfsMissing={lfs.dismissMissingNote}
       />
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
             <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
               <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
-              <MainArea
-                repo={repo}
-                view={view}
-                settings={settings}
-                layout={layout}
-                git={actions}
-                branches={branches}
-                cleanup={cleanup}
-                conflicts={conflicts}
-                commitBox={commitBox}
-                tabs={tabs}
-                hasWorkingChanges={hasWorkingChanges}
-                onOpenTerminal={() => setShowTerminal(true)}
-                onCheckoutPullRequest={checkoutPullRequest}
-                showError={showError}
-                setNotice={setNotice}
-              />
+                <LfsContext value={{ info: lfs.info, track: lfs.track }}>
+                  <MainArea
+                    repo={repo}
+                    view={view}
+                    settings={settings}
+                    layout={layout}
+                    git={actions}
+                    branches={branches}
+                    cleanup={cleanup}
+                    conflicts={conflicts}
+                    commitBox={commitBox}
+                    tabs={tabs}
+                    hasWorkingChanges={hasWorkingChanges}
+                    onOpenTerminal={() => setShowTerminal(true)}
+                    onCheckoutPullRequest={checkoutPullRequest}
+                    showError={showError}
+                    setNotice={setNotice}
+                  />
+                </LfsContext>
               </BisectContext>
             </CustomCommandsContext>
           </div>
@@ -350,6 +358,7 @@ export default function App(): JSX.Element {
             layout,
             dialogs,
             selfUpdate,
+            lfs,
             hasWorkingChanges,
             customCommands: settings.customCommands,
             pullRequests,

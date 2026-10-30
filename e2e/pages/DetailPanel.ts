@@ -46,6 +46,11 @@ export class DetailPanel {
     return this.root.locator('.file-row').filter({ hasText: path })
   }
 
+  /** The "LFS" tag on a file row whose file is stored in Git LFS. */
+  lfsBadge(row: Locator): Locator {
+    return row.getByLabel('Stored in Git LFS')
+  }
+
   /** The row marked as open in the main area. */
   get activeFile(): Locator {
     return this.root.locator('.file-row[aria-current="true"]')

@@ -5,6 +5,7 @@ import { join } from 'path'
 import { buildPartialPatch, isReverse, type PartialAction } from '../../shared/lineStaging'
 import type { FileStatus, RepoStatus } from '../../shared/types'
 import { GitError, runGit } from '../gitExec'
+import { markLfs } from './lfs'
 
 // The working tree and index: status, staging, discarding, diffs and committing.
 
@@ -87,7 +88,9 @@ export async function getStatus(repoPath: string): Promise<RepoStatus> {
     ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'],
     { GIT_OPTIONAL_LOCKS: '0' }
   )
-  return parsePorcelainV2(out)
+  const status = parsePorcelainV2(out)
+  await markLfs(repoPath, [...status.staged, ...status.unstaged, ...status.conflicted])
+  return status
 }
 
 export async function stageFiles(repoPath: string, paths: string[]): Promise<void> {

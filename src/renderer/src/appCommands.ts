@@ -11,6 +11,7 @@ import type { Run } from './hooks/useRun'
 import type { Tabs } from './hooks/useTabs'
 import type { PanelLayout } from './hooks/usePanelLayout'
 import type { Dialogs } from './hooks/useDialogs'
+import type { Lfs } from './hooks/useLfs'
 import { paletteCommands } from './lib/paletteCommands'
 import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 import type { OpenPullRequest } from '../../shared/types'
@@ -31,6 +32,7 @@ export function appCommands(app: {
   layout: PanelLayout
   dialogs: Dialogs
   selfUpdate: SelfUpdateState | null
+  lfs: Lfs
   hasWorkingChanges: boolean
   customCommands: CustomCommand[]
   pullRequests: OpenPullRequest[]
@@ -89,6 +91,7 @@ export function appCommands(app: {
     showTerminal: layout.showTerminal,
     showLaunchpad: view.showLaunchpad,
     canSelfUpdate: !!app.selfUpdate?.status.supported,
+    lfs: { installed: app.lfs.info.installed, used: app.lfs.used },
     actions: {
       undo: git.undo,
       redo: git.redo,
@@ -145,7 +148,9 @@ export function appCommands(app: {
       toggleTerminal: () => layout.setShowTerminal((v) => !v),
       openRepo: tabs.openRepo,
       openRecentRepo: (path) => tabs.openRecentRepo(path),
-      openSettings: () => dialogs.setShowSettings(true)
+      openSettings: () => dialogs.setShowSettings(true),
+      lfs: app.lfs.run,
+      installLfs: app.lfs.installLfs
     }
   })
 }
