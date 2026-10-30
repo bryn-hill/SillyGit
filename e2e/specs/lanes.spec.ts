@@ -1,6 +1,11 @@
 import { expect, test } from '../fixtures'
 import { FixtureRepo } from '../support/fixtureRepo'
 
+// Each test is a chain of lanes steps, run one at a time, each several git
+// processes. On the loaded Mac runner a step takes 3-5s, so a whole test runs
+// past the default 30s even though every step finishes.
+test.slow()
+
 const subjects = (repo: FixtureRepo, ref: string): string[] => repo.git('log', '--format=%s', ref).trim().split('\n')
 const show = (repo: FixtureRepo, ref: string, path: string): string => repo.git('show', `${ref}:${path}`)
 const numbered = (n: number, change: Record<number, string> = {}): string =>
