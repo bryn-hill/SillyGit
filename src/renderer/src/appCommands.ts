@@ -168,5 +168,6 @@ export function appCommands(app: {
       installLfs: app.lfs.installLfs
     }
   })
-  return [...commands, ...helpCommands()]
+  // Alphabetical like the rest, so Help's entries sit among them.
+  return [...commands, ...helpCommands()].sort((x, y) => x.label.localeCompare(y.label))
 }

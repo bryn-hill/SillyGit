@@ -82,14 +82,14 @@
   color: var(--text);
 }
 
-.tour-primary {
+button.tour-primary {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
   font-weight: 600;
 }
 
-.tour-primary:hover {
+button.tour-primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 

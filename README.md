@@ -275,6 +275,21 @@ pinned to commit SHAs and jobs get a read-only token.
   screen width.
 - Update SillyGit button for source checkouts (see above).
 
+### Walkthrough and help
+
+- **First-use walkthrough**: the first time a repository is open, a short tour
+  spotlights the main areas (tabs, graph, branches, committing, pull and push,
+  undo, Launchpad, the command palette, Claude, Settings) one at a time. Skip it
+  with **Skip tour** or Esc, move with the arrow keys, and start it again any
+  time from **Help → Start walkthrough** or **Help: Start walkthrough** in the
+  command palette.
+- **Help centre**: articles with examples on every feature, searchable from the
+  Help button next to Settings. Each walkthrough step's **Learn more** opens the
+  article for that area.
+- Code for both lives in `src/renderer/src/help/`, with the shared types in
+  `src/shared/help/`. When a walkthrough change is worth showing to people who
+  already finished it, bump `TOUR_VERSION` in `src/shared/help/tour.ts`.
+
 ## Project layout
 
 ```
