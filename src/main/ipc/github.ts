@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import * as issueWork from '../issueWork'
 import * as launchpad from '../launchpad'
 import * as prReview from '../prReview'
 import * as prCheckout from '../prCheckout'
@@ -8,7 +9,7 @@ import type { CreatePullRequestInput } from '../../shared/createPullRequest'
 import type { SubmitReviewInput } from '../../shared/prReview'
 import { wrap } from './wrap'
 
-/** Launchpad, and creating and reviewing pull requests in the app. */
+/** Launchpad, starting work on its issues, and creating and reviewing pull requests in the app. */
 export function registerGithubHandlers(): void {
   ipcMain.handle('launchpad:get-data', (_e, repoPaths: string[]) =>
     wrap(() => launchpad.getLaunchpadData(repoPaths))
@@ -26,6 +27,14 @@ export function registerGithubHandlers(): void {
 
   ipcMain.handle('pr:checkout-head', (_e, repoPath: string, head: PullRequestHead) =>
     wrap(() => prCheckout.checkoutPullRequestHead(repoPath, head))
+  )
+
+  ipcMain.handle('issues:work-options', (_e, repoPath: string, branch: string) =>
+    wrap(() => issueWork.issueWorkOptions(repoPath, branch))
+  )
+
+  ipcMain.handle('issues:start-work', (_e, repoPath: string, number: number, branch: string, stack: boolean) =>
+    wrap(() => issueWork.startIssueWork(repoPath, number, branch, stack))
   )
 
   ipcMain.handle('pr:get-detail', (_e, repoPath: string, number: number) =>

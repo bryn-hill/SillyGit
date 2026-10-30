@@ -8,8 +8,10 @@ import {
   type QuickMessage,
   type VersionBump
 } from '../shared/quickActions'
+import { withClosingIssue } from '../shared/issues'
 import { runGit } from './gitExec'
 import { getStagedDiff } from './git'
+import { issueForBranch } from './issueWork'
 
 async function readIfExists(path: string): Promise<string | null> {
   return fsp.readFile(path, 'utf8').catch(() => null)
@@ -79,7 +81,10 @@ export async function suggestForStaged(repoPath: string): Promise<QuickMessage[]
   return suggestCommitMessages(await getStagedDiff(repoPath))
 }
 
-/** Pull request title and body from the commits on `head` that aren't on `base`. */
+/**
+ * Pull request title and body from the commits on `head` that aren't on
+ * `base`, closing the issue the branch was started from, if any.
+ */
 export async function pullRequestText(
   repoPath: string,
   base: string,
@@ -95,5 +100,7 @@ export async function pullRequestText(
       const [hash, subject, body] = r.split('\x00')
       return { hash, subject, body: body ?? '' }
     })
-  return buildPullRequestText(commits, headBranch)
+  const text = buildPullRequestText(commits, headBranch)
+  const issue = await issueForBranch(repoPath, headBranch)
+  return issue ? { ...text, body: withClosingIssue(text.body, issue) } : text
 }
