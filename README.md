@@ -283,9 +283,17 @@ pinned to commit SHAs and jobs get a read-only token.
   with **Skip tour** or Esc, move with the arrow keys, and start it again any
   time from **Help → Start walkthrough** or **Help: Start walkthrough** in the
   command palette.
-- **Help centre**: articles with examples on every feature, searchable from the
-  Help button next to Settings. Each walkthrough step's **Learn more** opens the
-  article for that area.
+- **Help centre**: over 50 articles, each with a worked example, covering every
+  feature from the graph to lanes, conflicts, integrations and Claude. Open it
+  with **F1**, **?**, the **Help** button next to Settings, or **Help: Open help
+  centre** in the palette; every article is also in the palette by title. Search
+  matches titles, summaries, keywords and article text, with results grouped by
+  topic. **Help → Keyboard shortcuts** lists every shortcut, and each walkthrough
+  step's **Learn more** opens the article for that area.
+- Articles live one per file in `src/renderer/src/help/articles/<category>/`
+  and are registered in `articles/index.ts`; link between them in Markdown with
+  `[text](help:<category>/<slug>)`. When you add or change a feature, update its
+  article too.
 - Code for both lives in `src/renderer/src/help/`, with the shared types in
   `src/shared/help/`. When a walkthrough change is worth showing to people who
   already finished it, bump `TOUR_VERSION` in `src/shared/help/tour.ts`.
