@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { issueForBranch, issueWorkOptions, startIssueWork } from './issueWork'
+import { issueForBranch, issueWorkOptions, jiraIssueForBranch, startIssueWork } from './issueWork'
 
 let dir: string
 
@@ -31,6 +31,18 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('startIssueWork', () => {
+  it('remembers a Jira key apart from GitHub issue numbers', async () => {
+    expect(await startIssueWork(dir, 'PROJ-7', 'PROJ-7-login', false)).toEqual({
+      branch: 'PROJ-7-login',
+      created: true,
+      stackedOn: null
+    })
+    expect(head()).toBe('PROJ-7-login')
+    expect(await jiraIssueForBranch(dir, 'PROJ-7-login')).toBe('PROJ-7')
+    expect(await issueForBranch(dir, 'PROJ-7-login')).toBeNull()
+    expect(await jiraIssueForBranch(dir, 'main')).toBeNull()
+  })
+
   it('branches off main, not the branch checked out, and remembers the issue', async () => {
     const mainTip = run('rev-parse', 'main')
     run('checkout', '-q', '-b', 'other')

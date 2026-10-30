@@ -6,6 +6,8 @@ import type { GitFlowActions } from '../hooks/useGitFlow'
 import { classifyGitFlowBranch, GIT_FLOW_KINDS, gitFlowBase } from '../../../shared/gitflow'
 import { useCustomCommandMenu } from '../lib/customCommandMenu'
 import { useBisectMenu } from '../lib/bisectMenu'
+import { useJiraSites } from '../lib/jira'
+import { jiraKeyInBranch } from '../../../shared/jira'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 const MAX_REF_LENGTH = 36
@@ -98,6 +100,8 @@ export default function RefContextMenu({
   const info = target ? actions.remoteInfo(target) : null
   const customMenu = useCustomCommandMenu()
   const bisectMenu = useBisectMenu()
+  const jiraSites = useJiraSites()
+  const jiraIssue = target ? jiraKeyInBranch(target.name, jiraSites) : null
   const { revalidate } = actions
   useEffect(() => {
     if (target) revalidate()
@@ -221,6 +225,12 @@ export default function RefContextMenu({
             : `Start a pull request from ${name}…`,
         onSelect: () => actions.startPullRequest(target, remote)
       })
+    }
+    if (jiraIssue) {
+      prItems.push(
+        { id: 'jira-view', label: `Open ${jiraIssue.key} in Jira`, onSelect: () => actions.openUrl(jiraIssue.url) },
+        { id: 'jira-copy', label: `Copy link for ${jiraIssue.key}`, onSelect: () => actions.copyText(jiraIssue.url) }
+      )
     }
     if (prItems.length > 0) sections.push(prItems)
   }

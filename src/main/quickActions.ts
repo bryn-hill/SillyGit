@@ -9,9 +9,11 @@ import {
   type VersionBump
 } from '../shared/quickActions'
 import { withClosingIssue } from '../shared/issues'
+import { jiraIssueUrl, jiraKeyInBranch, withJiraKeyInTitle, withJiraLink } from '../shared/jira'
 import { runGit } from './gitExec'
 import { getStagedDiff } from './git'
-import { issueForBranch } from './issueWork'
+import { issueForBranch, jiraIssueForBranch } from './issueWork'
+import { jiraSites } from './jira'
 
 async function readIfExists(path: string): Promise<string | null> {
   return fsp.readFile(path, 'utf8').catch(() => null)
@@ -83,7 +85,8 @@ export async function suggestForStaged(repoPath: string): Promise<QuickMessage[]
 
 /**
  * Pull request title and body from the commits on `head` that aren't on
- * `base`, closing the issue the branch was started from, if any.
+ * `base`, closing the issue the branch was started from, if any, and naming
+ * its Jira issue.
  */
 export async function pullRequestText(
   repoPath: string,
@@ -102,5 +105,20 @@ export async function pullRequestText(
     })
   const text = buildPullRequestText(commits, headBranch)
   const issue = await issueForBranch(repoPath, headBranch)
-  return issue ? { ...text, body: withClosingIssue(text.body, issue) } : text
+  const withIssue = issue ? { ...text, body: withClosingIssue(text.body, issue) } : text
+  const jira = await jiraIssueFor(repoPath, headBranch)
+  if (!jira) return withIssue
+  return { title: withJiraKeyInTitle(withIssue.title, jira.key), body: withJiraLink(withIssue.body, jira.key, jira.url) }
+}
+
+/** The Jira issue a branch is for: the one Start work recorded, else a known key in its name. */
+async function jiraIssueFor(repoPath: string, branch: string): Promise<{ key: string; url: string } | null> {
+  const recorded = await jiraIssueForBranch(repoPath, branch)
+  const sites = await jiraSites().catch(() => [])
+  if (recorded) {
+    const project = recorded.replace(/-\d+$/, '')
+    const host = (sites.find((s) => s.projectKeys.includes(project)) ?? sites[0])?.host
+    return host ? { key: recorded, url: jiraIssueUrl(host, recorded) } : null
+  }
+  return jiraKeyInBranch(branch, sites)
 }

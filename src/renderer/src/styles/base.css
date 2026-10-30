@@ -144,3 +144,14 @@ input {
   padding: 5px 8px;
   font-size: 12px;
 }
+
+/* A Jira issue key in a commit message, linked to the issue. */
+a.jira-key {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.jira-key:hover {
+  text-decoration: underline;
+}

@@ -82,7 +82,7 @@ export async function addAccount(input: NewAccountInput): Promise<ProviderAccoun
   const info = PROVIDERS[provider]
   if (!info) throw new Error(`Unknown service "${provider}".`)
   const host = info.hostEditable ? normalizeHost(input.host || info.defaultHost) : info.defaultHost
-  if (!host) throw new Error('Enter the server\'s address, e.g. git.example.com.')
+  if (!host) throw new Error(`Enter the server's address, e.g. ${info.hostPlaceholder ?? 'git.example.com'}.`)
   const token = input.token.trim()
   if (!token) throw new Error('Paste a token first.')
   const enteredUsername = input.username?.trim() || undefined
@@ -174,7 +174,7 @@ export async function gitAuthEnv(): Promise<Record<string, string>> {
   const entries: { key: string; value: string }[] = []
   const seen = new Set<string>()
   for (const account of await readAccounts()) {
-    if (seen.has(account.host)) continue
+    if (seen.has(account.host) || PROVIDERS[account.provider]?.issueTracker) continue
     const token = decrypt(account)
     if (!token) continue
     seen.add(account.host)

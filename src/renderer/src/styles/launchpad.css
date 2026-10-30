@@ -238,3 +238,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* A Jira issue's status, coloured by its category: to do, in progress, done. */
+.jira-status {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--text-dim) 18%, transparent);
+}
+
+.jira-status-progress {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.jira-status-done {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 16%, transparent);
+}

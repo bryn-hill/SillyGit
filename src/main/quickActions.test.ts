@@ -2,7 +2,12 @@ import { execFileSync } from 'child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { JiraSite } from '../shared/jira'
+
+const jira = vi.hoisted(() => ({ sites: [] as JiraSite[] }))
+vi.mock('./jira', () => ({ jiraSites: async () => jira.sites }))
+
 import { bumpPackageVersion, getPackageVersion, pullRequestText, suggestForStaged } from './quickActions'
 
 let dir: string
@@ -13,6 +18,7 @@ const write = (name: string, text: string): void => writeFileSync(join(dir, name
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'sillygit-quick-'))
+  jira.sites = []
 })
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
@@ -142,6 +148,29 @@ describe('with a repo', () => {
     })
     run('commit', '-q', '--allow-empty', '--amend', '-m', 'fix: export on safari', '-m', 'Fixes #42')
     expect((await pullRequestText(dir, 'main', 'HEAD', '42-fix-export')).body).toBe('Fixes #42')
+  })
+
+  it('names the Jira issue the branch was started from in the title and links it', async () => {
+    jira.sites = [{ host: 'acme.atlassian.net', projectKeys: ['PROJ'] }]
+    run('checkout', '-q', '-b', 'PROJ-7-login')
+    run('config', 'branch.PROJ-7-login.sillygit-jira-issue', 'PROJ-7')
+    run('commit', '-q', '--allow-empty', '-m', 'feat: log in')
+    expect(await pullRequestText(dir, 'main', 'HEAD', 'PROJ-7-login')).toEqual({
+      title: 'PROJ-7: feat: log in',
+      body: 'Jira: [PROJ-7](https://acme.atlassian.net/browse/PROJ-7)'
+    })
+  })
+
+  it('finds a known Jira key in a branch name, but not an unknown one', async () => {
+    jira.sites = [{ host: 'jira.example.com', projectKeys: ['WEB'] }]
+    run('checkout', '-q', '-b', 'feature/web-31-header')
+    run('commit', '-q', '--allow-empty', '-m', 'fix: WEB-31 header overlap')
+    expect(await pullRequestText(dir, 'main', 'HEAD', 'feature/web-31-header')).toEqual({
+      title: 'fix: WEB-31 header overlap',
+      body: 'Jira: [WEB-31](https://jira.example.com/browse/WEB-31)'
+    })
+    run('checkout', '-q', '-b', 'utf-8-fix')
+    expect((await pullRequestText(dir, 'main', 'HEAD', 'utf-8-fix')).body).not.toContain('Jira')
   })
 
   it("doesn't take a number at the start of a branch name for an issue", async () => {

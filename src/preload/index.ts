@@ -440,13 +440,17 @@ const api = {
   },
   issueWorkOptions: (repoPath: string, branch: string): Wrapped<import('../shared/types').IssueWorkOptions> =>
     ipcRenderer.invoke('issues:work-options', repoPath, branch),
+  /** `issue` is a GitHub issue number or a Jira key ("PROJ-12"). */
   startIssueWork: (
     repoPath: string,
-    number: number,
+    issue: number | string,
     branch: string,
     stack: boolean
   ): Wrapped<import('../shared/types').StartIssueWorkResult> =>
-    ipcRenderer.invoke('issues:start-work', repoPath, number, branch, stack),
+    ipcRenderer.invoke('issues:start-work', repoPath, issue, branch, stack),
+  jiraAssignedIssues: (): Wrapped<import('../shared/jira').JiraIssues> => ipcRenderer.invoke('jira:assigned-issues'),
+  /** Signed-in Jira sites and their project keys, for linking issue keys. */
+  jiraSites: (): Wrapped<import('../shared/jira').JiraSite[]> => ipcRenderer.invoke('jira:sites'),
   prGetDetail: (repoPath: string, number: number): Wrapped<import('../shared/prReview').PullRequestDetail> =>
     ipcRenderer.invoke('pr:get-detail', repoPath, number),
   prSubmitReview: (repoPath: string, number: number, input: import('../shared/prReview').SubmitReviewInput): Wrapped<void> =>
