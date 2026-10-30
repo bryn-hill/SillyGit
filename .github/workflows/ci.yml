@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   commits:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
           node scripts/commit-msg.mjs --range "$RANGE"
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -50,9 +50,8 @@ jobs:
 
       - run: npm test
 
-      # Electron needs an X server even with its window hidden.
       - name: End-to-end tests
-        run: xvfb-run -a npm run test:e2e
+        run: npm run test:e2e
 
       - uses: actions/upload-artifact@v4
         if: failure()
