@@ -293,6 +293,7 @@ export function useBranchActions({
     isFavourite: (name) => favourites.includes(name),
     toggleFavourite: toggleFavouriteBranch,
     revalidate: revalidatePullRequests,
+    compareWithCurrent: (ref) => view.openCompare({ from: status?.branch ?? 'HEAD', to: ref }),
     ...stackActions,
     ...gitFlow.actions
   }

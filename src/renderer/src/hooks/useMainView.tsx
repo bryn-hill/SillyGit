@@ -1,6 +1,7 @@
 import { useRef, useState, type SetStateAction } from 'react'
 import type { CommitSearchHit, FileStatus } from '../../../shared/types'
 import type { GraphFilter } from '../../../shared/historySearch'
+import type { CompareTarget } from '../../../shared/compare'
 import type { ClickModifiers } from '../components/CommitGraph'
 import type { FileViewMode, FileViewTarget } from '../components/FileHistoryView'
 import type { ActiveFile } from '../components/DetailPanel'
@@ -12,8 +13,9 @@ import { useArrowKeySelection } from './useArrowKeySelection'
 /**
  * What the main area shows and how you move around it: the selection in the
  * graph, and what can take the graph's place (Launchpad, the merge resolver,
- * the interactive rebase editor, a file's history or blame, the file editor,
- * a working file's diff, or a commit full window).
+ * the interactive rebase editor, a comparison of two commits or branches, a
+ * file's history or blame, the file editor, a working file's diff, or a commit
+ * full window).
  */
 export function useMainView({
   repo,
@@ -54,6 +56,9 @@ export function useMainView({
   // History or Blame as last picked in the open file view, kept when another file is picked beside it.
   const fileViewMode = useRef<FileViewMode>('history')
   const [searchFocusToken, setSearchFocusToken] = useState(0)
+  // Two commits or branches being compared, and the repo they're in.
+  const [comparing, setComparing] = useState<{ repoPath: string; target: CompareTarget } | null>(null)
+  const compare = comparing && comparing.repoPath === repoPath ? comparing.target : null
 
   // Keep the selection on something that exists, fixed up while rendering so a
   // stale selection never paints.
@@ -76,16 +81,17 @@ export function useMainView({
   }
 
   useArrowKeySelection(
-    !(fullScreenHash || workingDiff || showLaunchpad || keysBlocked || resolvingPath || rebaseBase),
+    !(fullScreenHash || workingDiff || showLaunchpad || keysBlocked || resolvingPath || rebaseBase || compare),
     selection,
     graphOrder,
     hasWorkingChanges,
     setSelection
   )
 
-  /** Back to the graph from a full-window commit, file history or working diff. */
+  /** Back to the graph from a full-window commit, file history, working diff or comparison. */
   const closeFileViews = (): void => {
     setFullScreenHash(null)
+    setComparing(null)
     setFileView(null)
     setWorkingDiff(null)
   }
@@ -302,6 +308,17 @@ export function useMainView({
     setRebaseEditor({ repoPath, base })
   }
 
+  /** Compares two commits or branches in place of the graph: the change from `from` to `to`. */
+  const openCompare = (target: CompareTarget): void => {
+    if (!repoPath) return
+    closeFileViews()
+    closeEditor()
+    setShowLaunchpad(false)
+    setResolvingPath(null)
+    setRebaseEditor(null)
+    setComparing({ repoPath, target })
+  }
+
   /** Shows or hides Launchpad on its list of pull requests. */
   const showLaunchpadList = (next: SetStateAction<boolean>): void => {
     setLaunchpadReview((r) => ({ pr: null, opens: r.opens + 1 }))
@@ -327,6 +344,9 @@ export function useMainView({
     resolvingPath,
     setResolvingPath,
     rebaseBase,
+    compare,
+    openCompare,
+    closeCompare: () => setComparing(null),
     closeRebase: () => setRebaseEditor(null),
     planRebase,
     editingPath,

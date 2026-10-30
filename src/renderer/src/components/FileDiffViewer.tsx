@@ -19,6 +19,8 @@ interface Props {
   repoPath: string
   /** The commit whose change is shown, or null for an uncommitted change (see `staged`). */
   hash: string | null
+  /** Shows the change from this commit to `hash` instead of `hash`'s own change, for a comparison. */
+  base?: string
   /** For an uncommitted change: whether it's the staged (index) side rather than the working tree's. */
   staged?: boolean
   untracked?: boolean
@@ -404,6 +406,7 @@ function SplitDiff({
 export default function FileDiffViewer({
   repoPath,
   hash,
+  base,
   staged = false,
   untracked = false,
   path,
@@ -449,7 +452,7 @@ export default function FileDiffViewer({
   const lfsPointers = !showImage && isLfsPointerDiff(diffText)
   const [lfsShowPointer, setLfsShowPointer] = useState(false)
   const lfsWantContents = lfsPointers && mode === 'diff' && lfs.info.installed && !lfsShowPointer
-  const lfsRequest = `${fileRequest}\0${untracked}\0${oldPath}\0${diffText}`
+  const lfsRequest = `${fileRequest}\0${base}\0${untracked}\0${oldPath}\0${diffText}`
   const [lfsDiff, setLfsDiff] = useState<{ request: string; result: LfsDiff | { error: string } } | null>(null)
   const lfsResult = lfsWantContents && lfsDiff?.request === lfsRequest ? lfsDiff.result : null
   const lfsText = lfsResult && 'kind' in lfsResult && lfsResult.kind === 'text' ? lfsResult.diff : null
@@ -486,7 +489,9 @@ export default function FileDiffViewer({
     const request =
       hash == null
         ? window.api.diff(repoPath, path, staged, untracked, true)
-        : window.api.commitFileDiff(repoPath, hash, path, true, oldPath)
+        : base != null
+          ? window.api.compareFileDiff(repoPath, base, hash, path, true, oldPath)
+          : window.api.commitFileDiff(repoPath, hash, path, true, oldPath)
     request.then((res) => {
       if (cancelled) return
       if (res.ok) setWsDiff({ source: diffText, text: res.data })
@@ -494,7 +499,7 @@ export default function FileDiffViewer({
     return () => {
       cancelled = true
     }
-  }, [ignoreWhitespace, repoPath, hash, staged, untracked, path, oldPath, diffText])
+  }, [ignoreWhitespace, repoPath, hash, base, staged, untracked, path, oldPath, diffText])
 
   useEffect(() => {
     if (mode !== 'file') return
@@ -518,13 +523,13 @@ export default function FileDiffViewer({
   useEffect(() => {
     if (!lfsWantContents) return
     let cancelled = false
-    window.api.lfsDiff(repoPath, { hash, staged, untracked, path, oldPath }).then((res) => {
+    window.api.lfsDiff(repoPath, { hash, base, staged, untracked, path, oldPath }).then((res) => {
       if (!cancelled) setLfsDiff({ request: lfsRequest, result: res.ok ? res.data : { error: res.error } })
     })
     return () => {
       cancelled = true
     }
-  }, [lfsWantContents, lfsRequest, repoPath, hash, staged, untracked, path, oldPath])
+  }, [lfsWantContents, lfsRequest, repoPath, hash, base, staged, untracked, path, oldPath])
 
   useEffect(() => {
     if (!revertStatus) return
@@ -622,8 +627,8 @@ export default function FileDiffViewer({
   // A commit's hunk is undone in the working tree. An uncommitted change can be staged or
   // unstaged a hunk or a few lines at a time, and an unstaged one discarded. A diff that
   // ignores whitespace isn't the file's real change, so it can't be applied, and nor can
-  // the diff of what LFS pointers stand for, since git stores the pointers.
-  const actions: HunkAction[] = lfsWantContents
+  // the diff of what LFS pointers stand for, since git stores the pointers. A comparison only reads.
+  const actions: HunkAction[] = lfsWantContents || base != null
     ? []
     : hash != null
       ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory')]
@@ -804,6 +809,7 @@ export default function FileDiffViewer({
           <ImageDiff
             repoPath={repoPath}
             hash={hash}
+            base={base}
             staged={staged}
             untracked={untracked}
             path={path}

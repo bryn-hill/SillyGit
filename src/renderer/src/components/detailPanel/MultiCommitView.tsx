@@ -20,6 +20,14 @@ export default function MultiCommitView({
         <span>{hashes.length} commits selected</span>
       </div>
       <div className="multi-commit-actions">
+        {hashes.length === 2 && (
+          <button
+            title="Show what changed from the older commit to the newer one"
+            onClick={() => actions.compare(oldestFirst[0], oldestFirst[1])}
+          >
+            Compare
+          </button>
+        )}
         <button onClick={() => actions.cherryPick(oldestFirst)}>Cherry-pick {hashes.length} commits</button>
         <button onClick={() => actions.revert(hashes)}>Revert {hashes.length} commits</button>
         <button onClick={() => actions.copyText(hashes.join('\n'))}>Copy SHAs</button>

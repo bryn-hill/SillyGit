@@ -50,7 +50,9 @@ export {
   applyCommitSplit,
   applyPatch,
   cherryPick,
+  compareRefs,
   createPatchFromCommit,
+  getCompareFileDiff,
   getDiffForSplit,
   revertCommit,
   revertHunk

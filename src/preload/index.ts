@@ -95,14 +95,14 @@ const api = {
   /** Both versions of an image file a change compares, for the image diff. */
   imagePair: (
     repoPath: string,
-    change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
+    change: { hash: string | null; base?: string; staged: boolean; untracked: boolean; path: string; oldPath?: string }
   ): Wrapped<import('../shared/imageDiff').ImagePair> => ipcRenderer.invoke('git:image-pair', repoPath, change),
   /** Whether git-lfs is installed and which patterns the repo stores in LFS. */
   lfsInfo: (repoPath: string): Wrapped<import('../shared/lfs').LfsInfo> => ipcRenderer.invoke('lfs:info', repoPath),
   /** The diff of the real files behind an LFS file's pointers. */
   lfsDiff: (
     repoPath: string,
-    change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
+    change: { hash: string | null; base?: string; staged: boolean; untracked: boolean; path: string; oldPath?: string }
   ): Wrapped<import('../shared/lfs').LfsDiff> => ipcRenderer.invoke('lfs:diff', repoPath, change),
   /** `git lfs track <pattern>`, setting up LFS in the repo first if needed. */
   lfsTrack: (repoPath: string, pattern: string): Wrapped<void> => ipcRenderer.invoke('lfs:track', repoPath, pattern),
@@ -153,6 +153,18 @@ const api = {
     oldPath?: string
   ): Wrapped<string> =>
     ipcRenderer.invoke('git:commit-file-diff', repoPath, hash, path, ignoreWhitespace, oldPath),
+  /** What changed from one commit or branch to another, and the commits only one side has. */
+  compare: (repoPath: string, from: string, to: string): Wrapped<import('../shared/compare').Comparison> =>
+    ipcRenderer.invoke('git:compare', repoPath, from, to),
+  compareFileDiff: (
+    repoPath: string,
+    fromHash: string,
+    toHash: string,
+    path: string,
+    ignoreWhitespace?: boolean,
+    oldPath?: string
+  ): Wrapped<string> =>
+    ipcRenderer.invoke('git:compare-file-diff', repoPath, fromHash, toHash, path, ignoreWhitespace, oldPath),
   stash: (repoPath: string, message?: string): Wrapped<void> => ipcRenderer.invoke('git:stash', repoPath, message),
   stashPop: (repoPath: string, ref?: string): Wrapped<void> => ipcRenderer.invoke('git:stash-pop', repoPath, ref),
   stashApply: (repoPath: string, ref: string): Wrapped<void> => ipcRenderer.invoke('git:stash-apply', repoPath, ref),

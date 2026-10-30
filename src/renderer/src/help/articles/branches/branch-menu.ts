@@ -17,6 +17,7 @@ const article: HelpArticle = {
 - **Checkout <name>**.
 - **Merge <name> into <current>** and **Rebase <current> onto <name>**, where current is the branch you have checked out.
 - **Merge <name> into <current> with…**, to choose how it merges (see below).
+- **Compare <current> with <name>** shows the files and commits that differ between them; see [Compare two commits or branches](help:graph/compare).
 - **Pull <name> (fast-forward)**: brings a branch you're *not* on up to date with its remote, without checking it out. It only fast-forwards; if the branch has diverged it tells you. On the current branch this is plain **Pull**.
 - **Start a pull request from <name>…** (or **View pull request #N** when one is open). See [Create a pull request](help:remotes-prs/create-pull-request).
 - **Rename <name>…** and **Delete <name>** (or **Delete <name> from remote**). Deleting asks first.

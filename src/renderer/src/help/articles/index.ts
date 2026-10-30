@@ -8,6 +8,7 @@ import graphCommitGraph from './graph/commit-graph'
 import graphSearchAndFilter from './graph/search-and-filter'
 import graphCommitDetails from './graph/commit-details'
 import graphDiffs from './graph/diffs'
+import graphCompare from './graph/compare'
 import graphBlameAndFileHistory from './graph/blame-and-file-history'
 import graphDragAndDrop from './graph/drag-and-drop'
 import graphSprintMarkers from './graph/sprint-markers'
@@ -67,6 +68,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   graphSearchAndFilter,
   graphCommitDetails,
   graphDiffs,
+  graphCompare,
   graphBlameAndFileHistory,
   graphDragAndDrop,
   graphSprintMarkers,

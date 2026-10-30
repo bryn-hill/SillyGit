@@ -69,6 +69,8 @@ export interface RefActions extends StackActions, GitFlowActions {
   /** Whether a branch is starred, which pins it to the top of the branch list. */
   isFavourite: (name: string) => boolean
   toggleFavourite: (name: string) => void
+  /** Compares the checked-out branch (or HEAD) with a branch or commit. */
+  compareWithCurrent: (refOrHash: string) => void
 }
 
 interface Props {
@@ -140,6 +142,16 @@ export default function RefContextMenu({
         }))
       },
       { id: 'rebase', label: `Rebase ${shortInto} onto ${name}`, onSelect: () => actions.rebase(target.name) }
+    ])
+  }
+
+  if (target && !target.current) {
+    sections.push([
+      { id: 'compare', label: `Compare ${shortInto} with ${name}`, onSelect: () => actions.compareWithCurrent(target.name) }
+    ])
+  } else if (!target && !isHeadCommit) {
+    sections.push([
+      { id: 'compare', label: `Compare ${shortInto} with this commit`, onSelect: () => actions.compareWithCurrent(hash) }
     ])
   }
 

@@ -12,6 +12,8 @@ const MODES: { id: Mode; label: string; title: string }[] = [
 interface Props {
   repoPath: string
   hash: string | null
+  /** The commit compared against instead of `hash`'s parent. */
+  base?: string
   staged: boolean
   untracked: boolean
   path: string
@@ -41,8 +43,8 @@ function Caption({ label, side, size }: { label: string; side: ImageSide | null;
 }
 
 /** Before and after of a changed image: side by side, a swipe between them, or one faded over the other. */
-export default function ImageDiff({ repoPath, hash, staged, untracked, path, oldPath, diffText, onShowText }: Props): JSX.Element {
-  const request = `${repoPath}\0${hash}\0${staged}\0${untracked}\0${path}\0${oldPath}\0${diffText}`
+export default function ImageDiff({ repoPath, hash, base, staged, untracked, path, oldPath, diffText, onShowText }: Props): JSX.Element {
+  const request = `${repoPath}\0${hash}\0${base}\0${staged}\0${untracked}\0${path}\0${oldPath}\0${diffText}`
   const [loaded, setLoaded] = useState<{ request: string; pair: ImagePair } | { request: string; error: string } | null>(null)
   const [mode, setMode] = useState<Mode>('side')
   const [position, setPosition] = useState(50)
@@ -50,14 +52,14 @@ export default function ImageDiff({ repoPath, hash, staged, untracked, path, old
 
   useEffect(() => {
     let cancelled = false
-    window.api.imagePair(repoPath, { hash, staged, untracked, path, oldPath }).then((res) => {
+    window.api.imagePair(repoPath, { hash, base, staged, untracked, path, oldPath }).then((res) => {
       if (cancelled) return
       setLoaded(res.ok ? { request, pair: res.data } : { request, error: res.error })
     })
     return () => {
       cancelled = true
     }
-  }, [request, repoPath, hash, staged, untracked, path, oldPath])
+  }, [request, repoPath, hash, base, staged, untracked, path, oldPath])
 
   const current = loaded?.request === request ? loaded : null
   if (!current) return <div className="diff-empty">Loading image…</div>

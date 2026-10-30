@@ -11,7 +11,7 @@ function toSide(bytes: Buffer | null, mime: string): ImageSide | null {
 /** Both versions of an image a change compares, see `imageSources`; LFS pointers are swapped for the images. */
 export async function getImagePair(
   repoPath: string,
-  change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
+  change: { hash: string | null; base?: string; staged: boolean; untracked: boolean; path: string; oldPath?: string }
 ): Promise<ImagePair> {
   const mime = imageMime(change.path)
   if (!mime) throw new GitError(`${change.path} isn't an image.`)

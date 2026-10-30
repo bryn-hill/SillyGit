@@ -150,7 +150,7 @@ const isBinary = (bytes: Buffer): boolean => bytes.subarray(0, 8000).includes(0)
 /** The diff of what an LFS file's pointers stand for, the way FileDiffViewer is asked for a change. */
 export async function getLfsDiff(
   repoPath: string,
-  change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
+  change: { hash: string | null; base?: string; staged: boolean; untracked: boolean; path: string; oldPath?: string }
 ): Promise<LfsDiff> {
   const sources = imageSources(change)
   const [before, after] = await Promise.all([readChangeSide(repoPath, sources.before), readChangeSide(repoPath, sources.after)])

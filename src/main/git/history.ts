@@ -91,7 +91,7 @@ export async function getGraphLog(
     })
 }
 
-function parseNameStatus(lines: string[]): CommitFileChange[] {
+export function parseNameStatus(lines: string[]): CommitFileChange[] {
   const files: CommitFileChange[] = []
   for (const line of lines) {
     if (!line.trim()) continue

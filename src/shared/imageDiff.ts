@@ -36,15 +36,17 @@ export type ImageSource = { kind: 'object'; spec: string } | { kind: 'file'; pat
 /** Which two versions of `path` a change compares, following how FileDiffViewer is asked for it. */
 export function imageSources(change: {
   hash: string | null
+  /** Compares against this commit instead of `hash`'s parent. */
+  base?: string
   staged: boolean
   untracked: boolean
   path: string
   oldPath?: string
 }): { before: ImageSource; after: ImageSource } {
-  const { hash, staged, untracked, path, oldPath } = change
+  const { hash, base, staged, untracked, path, oldPath } = change
   if (hash) {
     return {
-      before: { kind: 'object', spec: `${hash}^:${oldPath ?? path}` },
+      before: { kind: 'object', spec: `${base ?? `${hash}^`}:${oldPath ?? path}` },
       after: { kind: 'object', spec: `${hash}:${path}` }
     }
   }

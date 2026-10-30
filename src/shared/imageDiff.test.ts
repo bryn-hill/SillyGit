@@ -17,6 +17,13 @@ describe('imageSources', () => {
       after: { kind: 'object', spec: 'abc:new.png' }
     })
   })
+
+  it('reads the before side from the base when comparing two commits', () => {
+    expect(imageSources({ hash: 'abc', base: 'def', staged: false, untracked: false, path: 'logo.png' })).toEqual({
+      before: { kind: 'object', spec: 'def:logo.png' },
+      after: { kind: 'object', spec: 'abc:logo.png' }
+    })
+  })
 })
 
 describe('formatBytes', () => {

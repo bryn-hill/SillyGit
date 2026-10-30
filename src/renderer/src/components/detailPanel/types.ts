@@ -24,6 +24,8 @@ export interface MultiCommitActions {
   revert: (hashes: string[]) => void
   copyText: (text: string) => void
   select: (hash: string) => void
+  /** Shows the change from one commit to another, with the commits only one side has. */
+  compare: (from: string, to: string) => void
 }
 
 export type OpenFileView = (path: string, ref: string | null, mode: 'history' | 'blame') => void

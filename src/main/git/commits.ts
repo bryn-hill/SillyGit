@@ -3,13 +3,16 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
 import type { ConflictableResult } from '../../shared/types'
+import { COMPARE_COMMIT_LIMIT, LEFT_RIGHT_FORMAT, parseLeftRightLog, type Comparison } from '../../shared/compare'
 import * as diffSplit from '../../shared/diffSplit'
 import { hasUnmergedPaths, runMayConflict } from '../conflicts'
 import { GitError, runGit } from '../gitExec'
-import { getHeadHash, getTreeHash } from './history'
+import { getHeadHash, getTreeHash, parseNameStatus } from './history'
+import { markLfs } from './lfs'
 import { isWorkingTreeClean } from './workingTree'
 
 // Applying commits elsewhere: cherry-pick, revert, patches, and splitting a commit or reverting one hunk.
+// Also comparing two commits or branches.
 
 /**
  * Applies a patch file (from `git format-patch` or `git diff`) to the working
@@ -128,4 +131,59 @@ export async function revertCommit(repoPath: string, hash: string | string[]): P
 
 export async function createPatchFromCommit(repoPath: string, hash: string): Promise<string> {
   return runGit(repoPath, ['format-patch', '-1', hash, '--stdout'])
+}
+
+/** The commit a branch, tag or SHA points at; names starting with "-" can't pass for options. */
+async function resolveCommit(repoPath: string, ref: string): Promise<string> {
+  try {
+    return (await runGit(repoPath, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`])).trim()
+  } catch {
+    throw new GitError(`Can't find ${ref} to compare.`)
+  }
+}
+
+/**
+ * What changed from `from` to `to` (`git diff from to`), and the commits
+ * each has that the other doesn't (`git log --left-right from...to`).
+ */
+export async function compareRefs(repoPath: string, from: string, to: string): Promise<Comparison> {
+  const [fromHash, toHash] = await Promise.all([resolveCommit(repoPath, from), resolveCommit(repoPath, to)])
+  const [names, log, mergeBase] = await Promise.all([
+    runGit(repoPath, ['diff', '--no-color', '--name-status', '-M', fromHash, toHash]),
+    runGit(repoPath, [
+      'log',
+      '--left-right',
+      `--max-count=${COMPARE_COMMIT_LIMIT + 1}`,
+      `--format=${LEFT_RIGHT_FORMAT}`,
+      '--date=iso-strict',
+      `${fromHash}...${toHash}`
+    ]),
+    // Exits 1 when the histories share nothing.
+    runGit(repoPath, ['merge-base', fromHash, toHash]).then(
+      (out) => out.trim() || null,
+      () => null
+    )
+  ])
+  const files = parseNameStatus(names.split('\n'))
+  await markLfs(repoPath, files, toHash)
+  const { onlyFrom, onlyTo } = parseLeftRightLog(log)
+  const truncated = onlyFrom.length + onlyTo.length > COMPARE_COMMIT_LIMIT
+  if (truncated) (onlyTo.length > onlyFrom.length ? onlyTo : onlyFrom).pop()
+  return { fromHash, toHash, mergeBase, files, onlyFrom, onlyTo, truncated }
+}
+
+/** One file's diff between two commits, following a rename when `oldPath` names it. */
+export async function getCompareFileDiff(
+  repoPath: string,
+  fromHash: string,
+  toHash: string,
+  path: string,
+  ignoreWhitespace = false,
+  oldPath?: string
+): Promise<string> {
+  const args = ['diff', '--no-color', '-M']
+  if (ignoreWhitespace) args.push('-w')
+  args.push(fromHash, toHash, '--', path)
+  if (oldPath && oldPath !== path) args.push(oldPath)
+  return runGit(repoPath, args)
 }

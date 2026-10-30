@@ -7,6 +7,7 @@ import WorkingFileView from './WorkingFileView'
 import FileHistoryView from './FileHistoryView'
 import MergeResolver from './MergeResolver'
 import InteractiveRebase from './InteractiveRebase'
+import CompareView from './CompareView'
 import PanelResizer from './PanelResizer'
 import Launchpad from './Launchpad'
 import EmptyState from './EmptyState'
@@ -69,7 +70,7 @@ export default function MainArea({
   setNotice
 }: Props): JSX.Element {
   const { repoPath, status, operation, refresh, headHash } = repo
-  const { selection, fileView, workingDiff, editingPath, fullScreenHash, resolvingPath, rebaseBase } = view
+  const { selection, fileView, workingDiff, editingPath, fullScreenHash, resolvingPath, rebaseBase, compare } = view
 
   const launchpad = view.showLaunchpad && (
     <Launchpad
@@ -128,7 +129,8 @@ export default function MainArea({
               cherryPick: (hashes: string[]) => git.cherryPick(hashes),
               revert: (hashes: string[]) => git.revert(hashes),
               copyText: git.copyText,
-              select: (hash: string) => view.setSelection({ type: 'commit', hash })
+              select: (hash: string) => view.setSelection({ type: 'commit', hash }),
+              compare: (from: string, to: string) => view.openCompare({ from, to })
             }}
             amend={commitBox.amend}
             onAmendChange={commitBox.changeAmend}
@@ -216,6 +218,18 @@ export default function MainArea({
         base={rebaseBase}
         onClose={view.closeRebase}
         onStart={git.startRebase}
+      />
+    )
+  } else if (compare) {
+    panelBeside = false
+    cover = (
+      <CompareView
+        key={`${repoPath}\0${compare.from}\0${compare.to}`}
+        repoPath={repoPath}
+        target={compare}
+        onClose={view.closeCompare}
+        onSwap={() => view.openCompare({ from: compare.to, to: compare.from })}
+        onShowCommit={view.showCommitInGraph}
       />
     )
   } else if (fileView) {

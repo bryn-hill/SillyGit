@@ -137,7 +137,7 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle(
     'lfs:diff',
-    (_e, repoPath: string, change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>
+    (_e, repoPath: string, change: { hash: string | null; base?: string; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>
       wrap(() => git.getLfsDiff(repoPath, change))
   )
 
@@ -149,7 +149,7 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle(
     'git:image-pair',
-    (_e, repoPath: string, change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>
+    (_e, repoPath: string, change: { hash: string | null; base?: string; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>
       wrap(() => git.getImagePair(repoPath, change))
   )
   ipcMain.handle('git:tags', (_e, repoPath: string) => wrap(() => git.listTags(repoPath)))
@@ -197,6 +197,16 @@ export function registerGitHandlers(): void {
     'git:commit-file-diff',
     (_e, repoPath: string, hash: string, path: string, ignoreWhitespace?: boolean, oldPath?: string) =>
       wrap(() => git.getCommitFileDiff(repoPath, hash, path, ignoreWhitespace, oldPath))
+  )
+
+  ipcMain.handle('git:compare', (_e, repoPath: string, from: string, to: string) =>
+    wrap(() => git.compareRefs(repoPath, from, to))
+  )
+
+  ipcMain.handle(
+    'git:compare-file-diff',
+    (_e, repoPath: string, fromHash: string, toHash: string, path: string, ignoreWhitespace?: boolean, oldPath?: string) =>
+      wrap(() => git.getCompareFileDiff(repoPath, fromHash, toHash, path, ignoreWhitespace, oldPath))
   )
 
   ipcMain.handle('git:stash', (_e, repoPath: string, message?: string) => wrap(() => git.stash(repoPath, message)))
