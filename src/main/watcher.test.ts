@@ -39,6 +39,12 @@ function fakeContents(): FakeContents {
 
 const settle = (ms = 500): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+// macOS can report the test's own setup (making the folders) late, after the watcher starts, so wait it out and forget it.
+async function settleSetup(contents: FakeContents): Promise<void> {
+  await settle()
+  contents.sent.length = 0
+}
+
 let dir: string
 let window: FakeContents
 
@@ -67,7 +73,7 @@ describe('watchRepo', () => {
 
   it('ignores busy git internals, lock files and dependency folders', async () => {
     watchRepo(window.contents, dir)
-    await settle(100)
+    await settleSetup(window)
     writeFileSync(join(dir, '.git', 'objects', 'ab', 'cdef'), 'x')
     writeFileSync(join(dir, '.git', 'index.lock'), 'x')
     writeFileSync(join(dir, '.git', 'FETCH_HEAD'), 'x')
@@ -112,7 +118,7 @@ describe('watchRepo', () => {
       watchRepo(window.contents, dir)
       watchRepo(window.contents, dir)
       watchRepo(window.contents, second)
-      await settle(100)
+      await settleSetup(window)
       writeFileSync(join(dir, 'old.txt'), 'x')
       await settle()
       expect(window.sent).toEqual([])
