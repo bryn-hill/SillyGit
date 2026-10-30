@@ -10,7 +10,7 @@ vi.mock('./hosting', () => ({
 }))
 
 import { setFetch } from './http'
-import { addComment, getPullRequestDetail, replyToThread, setThreadResolved, submitReview, toCheck } from './prReview'
+import { addComment, getPullRequestDetail, getPullRequestHead, replyToThread, setThreadResolved, submitReview, toCheck } from './prReview'
 
 interface Call {
   url: string
@@ -271,5 +271,29 @@ describe('toCheck', () => {
     ['EXPECTED', 'pending']
   ])('maps commit status %s to %s', (s, state) => {
     expect(toCheck({ __typename: 'StatusContext', context: 'ci', state: s, targetUrl: null, description: null }).state).toBe(state)
+  })
+})
+
+describe('getPullRequestHead', () => {
+  it('reads the head branch and repositories from the REST pull request', async () => {
+    respond = () => ({
+      json: {
+        head: { ref: 'main', repo: { name: 'app-fork', owner: { login: 'junior' } } },
+        base: { repo: { name: 'app', owner: { login: 'bryn' } } }
+      }
+    })
+    expect(await getPullRequestHead('/repo', 9)).toEqual({
+      number: 9,
+      host: 'github.com',
+      baseRepo: { owner: 'bryn', name: 'app' },
+      headRepo: { owner: 'junior', name: 'app-fork' },
+      headRefName: 'main'
+    })
+    expect(calls[0].url).toBe('https://api.github.com/repos/bryn/app/pulls/9')
+  })
+
+  it('has no head repository once the fork is deleted', async () => {
+    respond = () => ({ json: { head: { ref: 'fix', repo: null }, base: { repo: { name: 'app', owner: { login: 'bryn' } } } } })
+    expect((await getPullRequestHead('/repo', 3)).headRepo).toBeNull()
   })
 })

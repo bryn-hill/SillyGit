@@ -11,6 +11,8 @@ interface Props {
   openRepos?: string[]
   onClose: () => void
   onOpenTerminal: () => void
+  /** Checks the pull request out as a local branch; resolves when that's done or has failed. */
+  onCheckout: (repoPath: string, number: number) => Promise<void>
 }
 
 const NO_REPOS: string[] = []
@@ -96,13 +98,21 @@ function UnavailableNotice({
   )
 }
 
-export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onOpenTerminal }: Props): JSX.Element {
+export default function Launchpad({
+  repoPath,
+  openRepos = NO_REPOS,
+  onClose,
+  onOpenTerminal,
+  onCheckout
+}: Props): JSX.Element {
   const [data, setData] = useState<LaunchpadData | null>(null)
   // The request the last answer was for, and its error; loading until it's the current one.
   const [answered, setAnswered] = useState<{ request: string; error: string | null } | null>(null)
   const [reloads, setReloads] = useState(0)
   const [actionError, setError] = useState<string | null>(null)
   const [mergingNumber, setMergingNumber] = useState<number | null>(null)
+  // The card whose Check out is running (repoPath#number).
+  const [checkingOut, setCheckingOut] = useState<string | null>(null)
   const [workspaceRepos, setWorkspaceRepos] = useState<string[]>([])
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const [addingRepo, setAddingRepo] = useState(false)
@@ -156,6 +166,12 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
     })
   }
 
+  const handleCheckout = async (pr: LaunchpadPullRequest): Promise<void> => {
+    setCheckingOut(`${pr.repoPath}#${pr.number}`)
+    await onCheckout(pr.repoPath, pr.number)
+    setCheckingOut(null)
+  }
+
   const handleAddRepo = async (): Promise<void> => {
     const picked = await window.api.openRepoDialog()
     if (!picked) return
@@ -184,6 +200,7 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
         repoPath={reviewing.repoPath}
         number={reviewing.number}
         title={reviewing.title}
+        onCheckout={() => onCheckout(reviewing.repoPath, reviewing.number)}
         onBack={() => {
           setReviewing(null)
           load()
@@ -192,7 +209,7 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
     )
 
   return (
-    <div className="launchpad">
+    <div className="launchpad" data-testid="launchpad">
       <div className="launchpad-header">
         <button className="icon-button" onClick={onClose} title="Back">
           <BackIcon />
@@ -254,7 +271,7 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
               </div>
               <div className="launchpad-cards">
                 {items.map((pr) => (
-                  <div key={`${pr.repoPath}#${pr.number}`} className="launchpad-card">
+                  <div key={`${pr.repoPath}#${pr.number}`} className="launchpad-card" data-testid="launchpad-card">
                     <div
                       className="launchpad-card-main launchpad-card-clickable"
                       onClick={() => setReviewing(pr)}
@@ -277,6 +294,15 @@ export default function Launchpad({ repoPath, openRepos = NO_REPOS, onClose, onO
                         </button>
                       )}
                       <button onClick={() => setReviewing(pr)}>{pr.isMine ? 'View' : 'Review'}</button>
+                      <button
+                        className="subtle"
+                        disabled={checkingOut !== null}
+                        onClick={() => void handleCheckout(pr)}
+                        title={`Check out ${pr.headRefName} as a local branch`}
+                        aria-label={`Check out #${pr.number}`}
+                      >
+                        {checkingOut === `${pr.repoPath}#${pr.number}` ? 'Checking out…' : 'Check out'}
+                      </button>
                       <button className="subtle" onClick={() => window.api.openExternal(pr.url)} title="Open on GitHub">
                         Open
                       </button>

@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron'
 import * as launchpad from '../launchpad'
 import * as prReview from '../prReview'
+import * as prCheckout from '../prCheckout'
+import type { PullRequestHead } from '../../shared/prCheckout'
 import type { SubmitReviewInput } from '../../shared/prReview'
 import { wrap } from './wrap'
 
@@ -12,6 +14,16 @@ export function registerGithubHandlers(): void {
 
   ipcMain.handle('launchpad:merge-pr', (_e, repoPath: string, number: number) =>
     wrap(() => launchpad.mergePullRequest(repoPath, number))
+  )
+
+  // Checking out a pull request is two calls (the preload's checkoutPullRequest
+  // makes both): asking GitHub where its head is, then the local git work.
+  ipcMain.handle('pr:head', (_e, repoPath: string, number: number) =>
+    wrap(() => prReview.getPullRequestHead(repoPath, number))
+  )
+
+  ipcMain.handle('pr:checkout-head', (_e, repoPath: string, head: PullRequestHead) =>
+    wrap(() => prCheckout.checkoutPullRequestHead(repoPath, head))
   )
 
   ipcMain.handle('pr:get-detail', (_e, repoPath: string, number: number) =>

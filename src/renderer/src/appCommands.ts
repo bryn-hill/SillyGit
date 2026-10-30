@@ -13,6 +13,7 @@ import type { PanelLayout } from './hooks/usePanelLayout'
 import type { Dialogs } from './hooks/useDialogs'
 import { paletteCommands } from './lib/paletteCommands'
 import { commandsFor, type CustomCommand } from '../../shared/customCommands'
+import type { OpenPullRequest } from '../../shared/types'
 
 /** The Actions list and command palette, wired to the app's features. */
 export function appCommands(app: {
@@ -30,6 +31,8 @@ export function appCommands(app: {
   selfUpdate: SelfUpdateState | null
   hasWorkingChanges: boolean
   customCommands: CustomCommand[]
+  pullRequests: OpenPullRequest[]
+  checkoutPullRequest: (repoPath: string, number: number) => Promise<void>
 }): Command[] {
   const { repo, view, git, branches, conflicts, run, tabs, layout, dialogs } = app
   const { repoPath } = repo
@@ -59,6 +62,7 @@ export function appCommands(app: {
     status: repo.status,
     customCommands,
     branches: repo.branches,
+    pullRequests: app.pullRequests,
     hasRemotes: repo.remotes.length > 0,
     stashes: repo.stashes,
     operation: repo.operation,
@@ -104,6 +108,9 @@ export function appCommands(app: {
       cleanUpBranches: app.cleanup.open,
       checkout: git.checkout,
       checkoutRemote: git.checkoutRemote,
+      checkoutPullRequest: (number) => {
+        if (repoPath) void app.checkoutPullRequest(repoPath, number)
+      },
       merge: git.merge,
       rebase: git.rebase,
       deleteBranch: (name) => branches.deleteBranch({ name, remote: false, current: false }),

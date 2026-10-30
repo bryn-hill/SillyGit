@@ -6,6 +6,7 @@ import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
 import { FileEditor } from './FileEditor'
 import { InteractiveRebase } from './InteractiveRebase'
+import { Launchpad } from './Launchpad'
 import { FileHistory } from './FileHistory'
 import { WorkingFileView } from './WorkingFileView'
 import { MergeTool } from './MergeTool'
@@ -28,6 +29,7 @@ export class SillyGitApp {
   readonly settings: SettingsDialog
   readonly tabs: RepoTabs
   readonly editor: FileEditor
+  readonly launchpad: Launchpad
   readonly pullRequest: PullRequestReview
   readonly rebase: InteractiveRebase
   readonly fileHistory: FileHistory
@@ -38,6 +40,7 @@ export class SillyGitApp {
   readonly repositoryCrumb: Locator
   readonly branchCrumb: Locator
   readonly notice: Locator
+  readonly errorBanner: Locator
   readonly claudeButton: Locator
   readonly terminalButton: Locator
   /** The GitKraken-style toolbar: Undo, Redo, Pull, Push, Branch, Stash, Pop, Terminal. */
@@ -64,6 +67,7 @@ export class SillyGitApp {
     this.settings = new SettingsDialog(page)
     this.tabs = new RepoTabs(page)
     this.editor = new FileEditor(page)
+    this.launchpad = new Launchpad(page)
     this.pullRequest = new PullRequestReview(page)
     this.rebase = new InteractiveRebase(page)
     this.fileHistory = new FileHistory(page)
@@ -74,6 +78,7 @@ export class SillyGitApp {
     this.repositoryCrumb = page.getByRole('button', { name: /^Repository/ })
     this.branchCrumb = page.getByRole('button', { name: /^Branch/ })
     this.notice = page.locator('.notice-banner')
+    this.errorBanner = page.getByRole('alert')
     this.claudeButton = page.getByTitle('Claude Code (Ctrl+Esc)')
     this.terminalButton = page.getByTitle('Toggle terminal (Ctrl+`)')
     this.toolbar = page.getByRole('toolbar', { name: 'Git actions' })

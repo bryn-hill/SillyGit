@@ -94,6 +94,25 @@ export class FixtureRepo {
     }
   }
 
+  /**
+   * Gives the repo a real `origin` (a bare repository beside it) with an open
+   * pull request `number` from `branch`: the branch with one commit adding
+   * `pr.txt`, published as the branch and as refs/pull/<number>/head the way
+   * GitHub does. The branch isn't kept locally.
+   */
+  addPullRequestRemote(number: number, branch: string): void {
+    const remote = `${this.path}.origin.git`
+    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', remote])
+    this.git('remote', 'add', 'origin', remote)
+    this.git('push', '-q', '-u', 'origin', 'main')
+    this.git('checkout', '-q', '-b', branch)
+    this.commitFile('pr.txt', 'from the pull request\n', `Add pr.txt on ${branch}`)
+    this.git('push', '-q', 'origin', `HEAD:refs/heads/${branch}`, `HEAD:refs/pull/${number}/head`)
+    this.git('checkout', '-q', 'main')
+    this.git('branch', '-q', '-D', branch)
+    this.git('update-ref', '-d', `refs/remotes/origin/${branch}`)
+  }
+
   /** Adds `count` empty commits on top of main, "Bulk commit 1" (oldest) to "Bulk commit <count>", in one fast-import. */
   addManyCommits(count: number): void {
     const head = this.git('rev-parse', 'HEAD').trim()
@@ -134,5 +153,6 @@ export class FixtureRepo {
   remove(): void {
     // Retried: a git command the app started may still be writing to it.
     rmSync(this.path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    rmSync(`${this.path}.origin.git`, { recursive: true, force: true })
   }
 }

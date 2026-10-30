@@ -14,6 +14,7 @@ import type {
   PullRequestDetail,
   SubmitReviewInput
 } from '../shared/prReview'
+import type { PullRequestHead } from '../shared/prCheckout'
 
 /**
  * How requests reach GitHub: the API with a signed-in account's token, or
@@ -311,4 +312,26 @@ export async function setThreadResolved(repoPath: string, threadId: string, reso
   const t = await transportFor(repoPath)
   const mutation = resolved ? 'resolveReviewThread' : 'unresolveReviewThread'
   await t.graphql(`mutation($id: ID!) { ${mutation}(input: { threadId: $id }) { thread { id } } }`, { id: threadId })
+}
+
+interface RestPullRepo {
+  name: string
+  owner: { login: string }
+}
+
+/** Where the pull request's commits live, for checking it out (see prCheckout.ts). */
+export async function getPullRequestHead(repoPath: string, number: number): Promise<PullRequestHead> {
+  const t = await transportFor(repoPath)
+  const pr = await t.rest<{ head: { ref: string; repo: RestPullRepo | null }; base: { repo: RestPullRepo } }>(
+    'GET',
+    `repos/${t.repo.owner}/${t.repo.name}/pulls/${number}`
+  )
+  const repo = (r: RestPullRepo): { owner: string; name: string } => ({ owner: r.owner.login, name: r.name })
+  return {
+    number,
+    host: t.repo.host,
+    baseRepo: repo(pr.base.repo),
+    headRepo: pr.head.repo ? repo(pr.head.repo) : null,
+    headRefName: pr.head.ref
+  }
 }

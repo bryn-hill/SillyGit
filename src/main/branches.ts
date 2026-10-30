@@ -75,7 +75,7 @@ export async function listOpenPullRequests(repoPath: string): Promise<OpenPullRe
   try {
     const { stdout } = await execFileAsync(
       'gh',
-      ['pr', 'list', '--state', 'open', '--limit', '200', '--json', 'number,url,headRefName'],
+      ['pr', 'list', '--state', 'open', '--limit', '200', '--json', 'number,url,headRefName,title'],
       { cwd: repoPath, timeout: 15000 }
     )
     return JSON.parse(stdout) as OpenPullRequest[]

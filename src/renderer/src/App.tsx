@@ -31,6 +31,7 @@ import { useBranchCleanup } from './hooks/useBranchCleanup'
 import { useConflicts } from './hooks/useConflicts'
 import { useRun } from './hooks/useRun'
 import { useTabs } from './hooks/useTabs'
+import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
 
 /**
@@ -113,6 +114,7 @@ export default function App(): JSX.Element {
     view.resetForRepo(lastSelection)
   }
   const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, askText, showError, setNotice })
+  const checkoutPullRequest = usePullRequestCheckout({ repo, git, view, tabs, showError, setNotice })
 
   useAppShortcuts({
     blocked: !!promptDialog || dialogs.showSettings || dialogs.showActivity,
@@ -219,6 +221,7 @@ export default function App(): JSX.Element {
                 tabs={tabs}
                 hasWorkingChanges={hasWorkingChanges}
                 onOpenTerminal={() => setShowTerminal(true)}
+                onCheckoutPullRequest={checkoutPullRequest}
                 showError={showError}
                 setNotice={setNotice}
               />
@@ -299,7 +302,9 @@ export default function App(): JSX.Element {
             dialogs,
             selfUpdate,
             hasWorkingChanges,
-            customCommands: settings.customCommands
+            customCommands: settings.customCommands,
+            pullRequests,
+            checkoutPullRequest
           })}
           variant={dialogs.palette}
           onClose={() => dialogs.setPalette(null)}

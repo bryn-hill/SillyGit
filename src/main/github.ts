@@ -117,11 +117,11 @@ export async function launchpadPullRequests(
 }
 
 export async function listOpenPullRequests(creds: Credentials, repo: GithubRepo): Promise<OpenPullRequest[]> {
-  const pulls = await fetchJson<{ number: number; html_url: string; head: { ref: string } }[]>(
+  const pulls = await fetchJson<{ number: number; html_url: string; title: string; head: { ref: string } }[]>(
     `${apiBase('github', repo.host)}/repos/${repo.owner}/${repo.name}/pulls?state=open&per_page=100`,
     { headers: authHeaders(creds) }
   )
-  return pulls.map((p) => ({ number: p.number, url: p.html_url, headRefName: p.head.ref }))
+  return pulls.map((p) => ({ number: p.number, url: p.html_url, headRefName: p.head.ref, title: p.title }))
 }
 
 export async function mergePullRequest(creds: Credentials, repo: GithubRepo, number: number): Promise<void> {
