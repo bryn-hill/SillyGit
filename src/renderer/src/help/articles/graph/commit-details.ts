@@ -6,13 +6,20 @@ const article: HelpArticle = {
   category: 'graph',
   summary: 'The commit view: message, author, co-authors, signature badge, files and where a merged branch landed.',
   keywords: ['commit', 'details', 'signature', 'verified', 'gpg', 'ssh', 'co-author', 'files', 'patch', 'copy sha'],
-  related: ['graph/commit-graph', 'graph/diffs', 'graph/compare', 'graph/browse-files-at-commit', 'commits/amend-and-co-authors'],
+  related: [
+    'graph/commit-graph',
+    'graph/diffs',
+    'graph/compare',
+    'graph/browse-files-at-commit',
+    'commits/amend-and-co-authors',
+    'settings/signing-and-ssh-keys'
+  ],
   body: `Select a commit in the graph and the detail panel shows:
 
 - the subject and body, with Jira keys turned into links when you've added a Jira account;
 - the author, committer and dates, with avatars;
 - **co-authors** from \`Co-authored-by:\` trailers;
-- a **signature** badge: **Verified**, **Unverified** (signed, but Git can't check the key) or **Unsigned**;
+- a **signature** badge: **Verified**, **Unverified** (signed, but Git can't check the key) or **Unsigned**. Settings > Commit signing turns signing on;
 - the files changed, each with its status. Click one for its diff, or right-click for blame, history, open in your editor and more.
 - a **Files** tab with every file in the repository at that commit. See [Browse files at any commit](help:graph/browse-files-at-commit).
 

@@ -12,11 +12,14 @@ import EditorSection from './settings/EditorSection'
 import type { EditorSettings, InstalledEditor } from '../../../shared/editors'
 import NotificationsSection from './settings/NotificationsSection'
 import SprintsSection from './settings/SprintsSection'
+import SigningSection from './settings/SigningSection'
 import type { CustomCommand } from '../../../shared/customCommands'
 import type { ThemePreference } from '../../../shared/theme'
 
 interface Props {
   onClose: () => void
+  /** The open repository, for its own signing settings. */
+  repoPath: string | null
   themePreference: ThemePreference
   onThemePreferenceChange: (next: ThemePreference) => void
   autoFetchMinutes: number
@@ -47,6 +50,7 @@ const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
 
 export default function SettingsModal({
   onClose,
+  repoPath,
   themePreference,
   onThemePreferenceChange,
   autoFetchMinutes,
@@ -114,6 +118,8 @@ export default function SettingsModal({
           </section>
 
           <AccountsSection />
+
+          <SigningSection repoPath={repoPath} />
 
           <NotificationsSection />
 

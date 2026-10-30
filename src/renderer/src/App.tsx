@@ -405,6 +405,7 @@ export default function App(): JSX.Element {
         {dialogs.showSettings && (
           <SettingsModal
             onClose={() => dialogs.setShowSettings(false)}
+            repoPath={repoPath}
             themePreference={settings.themePreference}
             onThemePreferenceChange={settings.setThemePreference}
             autoFetchMinutes={settings.autoFetchMinutes ?? 0}

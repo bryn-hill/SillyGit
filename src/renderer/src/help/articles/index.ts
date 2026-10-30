@@ -59,6 +59,7 @@ import settingsSettingsOverview from './settings/settings-overview'
 import settingsAppearanceAndLayout from './settings/appearance-and-layout'
 import settingsRunButton from './settings/run-button'
 import settingsCustomCommands from './settings/custom-commands'
+import settingsSigningAndSshKeys from './settings/signing-and-ssh-keys'
 import settingsUpdateSillygit from './settings/update-sillygit'
 
 /** Every help article, in the order the help centre lists them within each category. */
@@ -123,6 +124,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   settingsAppearanceAndLayout,
   settingsRunButton,
   settingsCustomCommands,
+  settingsSigningAndSshKeys,
   settingsUpdateSillygit
 ]
 

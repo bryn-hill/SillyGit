@@ -1,0 +1,25 @@
+/* ---------- settings: commit signing and SSH keys ---------- */
+
+.signing-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.signing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.signing-key-type {
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+
+.signing-key-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

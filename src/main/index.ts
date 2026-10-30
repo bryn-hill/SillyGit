@@ -15,6 +15,7 @@ import { registerSystemHandlers } from './ipc/system'
 import { registerGithubHandlers } from './ipc/github'
 import { registerSettingsHandlers } from './ipc/settings'
 import { registerAccountHandlers } from './ipc/accounts'
+import { registerSigningHandlers } from './ipc/signing'
 import { registerNotificationHandlers, startPrNotifications } from './ipc/notifications'
 import { registerAiHandlers } from './ipc/ai'
 import { registerSelfUpdateHandlers, startUpdateChecks } from './ipc/selfUpdate'
@@ -34,6 +35,7 @@ function registerIpcHandlers(): void {
   registerGithubHandlers()
   registerSettingsHandlers()
   registerAccountHandlers()
+  registerSigningHandlers()
   registerNotificationHandlers()
   registerAiHandlers()
   registerTerminalHandlers(getMainWindow)

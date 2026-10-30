@@ -1,7 +1,8 @@
-import { fetchJson } from './http'
+import { HttpError, fetchJson } from './http'
 import { apiBase, authHeaders, graphqlUrl, type Credentials } from './providerApi'
 import type { OpenPullRequest } from '../shared/types'
 import { githubMergeMethods, type PrMergeMethod, type PrMergeMethods } from '../shared/mergeOptions'
+import type { SshKeyUsage } from '../shared/signing'
 
 /** A repository on a GitHub host, e.g. github.com and bryn-hill/sillygit. */
 export interface GithubRepo {
@@ -221,4 +222,32 @@ export async function commitAuthorAvatars(
     })
   }
   return found
+}
+
+/**
+ * Adds an SSH public key to the token's GitHub account, as a key for pushing
+ * and pulling or for signing commits. Classic tokens need the write:public_key
+ * or write:ssh_signing_key scope.
+ */
+export async function addSshKey(creds: Credentials, title: string, key: string, usage: SshKeyUsage): Promise<void> {
+  const path = usage === 'signing' ? 'user/ssh_signing_keys' : 'user/keys'
+  try {
+    await fetchJson(`${apiBase('github', creds.host)}/${path}`, {
+      method: 'POST',
+      headers: { ...authHeaders(creds), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, key })
+    })
+  } catch (err) {
+    if (err instanceof HttpError && (err.status === 403 || err.status === 404)) {
+      const scope = usage === 'signing' ? 'write:ssh_signing_key' : 'write:public_key'
+      const permission = usage === 'signing' ? 'SSH signing keys' : 'Git SSH keys'
+      throw new Error(
+        `The token can't add keys (${err.message}). Give a classic token the ${scope} scope, or a fine-grained token the "${permission}" account permission (read and write), then add the account again.`
+      )
+    }
+    if (err instanceof HttpError && err.status === 422) {
+      throw new Error(`GitHub didn't take the key (${err.message}). It may already be on this or another account.`)
+    }
+    throw err
+  }
 }

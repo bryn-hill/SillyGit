@@ -415,6 +415,30 @@ const api = {
     repoPath: string,
     input: import('../shared/hostedRepos').PublishInput
   ): Wrapped<import('../shared/hostedRepos').PublishResult> => ipcRenderer.invoke('repo:publish', repoPath, input),
+  getSigning: (repoPath: string | null): Wrapped<import('../shared/signing').SigningState> =>
+    ipcRenderer.invoke('signing:get', repoPath),
+  /** Sets (or, for null, removes) signing settings in ~/.gitconfig or the repo's config. */
+  setSigning: (
+    scope: import('../shared/signing').ConfigScope,
+    repoPath: string | null,
+    values: Partial<import('../shared/signing').SigningValues>
+  ): Wrapped<import('../shared/signing').SigningState> => ipcRenderer.invoke('signing:set', scope, repoPath, values),
+  clearLocalSigning: (repoPath: string): Wrapped<import('../shared/signing').SigningState> =>
+    ipcRenderer.invoke('signing:clear-local', repoPath),
+  listSigningKeys: (): Wrapped<import('../shared/signing').SigningKeys> => ipcRenderer.invoke('signing:list-keys'),
+  generateSshKey: (name: string, comment: string, passphrase: string): Wrapped<import('../shared/signing').SshKey> =>
+    ipcRenderer.invoke('signing:generate-ssh-key', name, comment, passphrase),
+  /** Adds the key to the allowed signers file so git can check your SSH-signed commits; returns the file. */
+  trustSshKey: (repoPath: string | null, publicKeyPath: string): Wrapped<string> =>
+    ipcRenderer.invoke('signing:trust-ssh-key', repoPath, publicKeyPath),
+  testSigning: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('signing:test', repoPath),
+  exportGpgPublicKey: (id: string): Wrapped<string> => ipcRenderer.invoke('signing:export-gpg-key', id),
+  uploadSshKey: (
+    accountId: string,
+    publicKeyPath: string,
+    title: string,
+    usage: import('../shared/signing').SshKeyUsage
+  ): Wrapped<void> => ipcRenderer.invoke('signing:upload-ssh-key', accountId, publicKeyPath, title, usage),
   getMergeToolSettings: (): Promise<import('../shared/mergeTools').MergeToolSettings> =>
     ipcRenderer.invoke('settings:get-merge-tool'),
   setMergeToolSettings: (
