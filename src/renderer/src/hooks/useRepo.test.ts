@@ -75,6 +75,7 @@ describe('useRepo graph filter', () => {
       branches: () => ok([]),
       graphLog,
       operationState: () => ok(null),
+      bisectState: () => ok(null),
       remotes: () => ok([]),
       stashes: () => ok([]),
       undoLabel: () => ok(null),
