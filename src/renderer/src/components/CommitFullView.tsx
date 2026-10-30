@@ -1,74 +1,54 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useEffect, useEffectEvent, useState, type JSX } from 'react'
 import type { CommitDetail } from '../../../shared/types'
 import FileDiffViewer from './FileDiffViewer'
-import AiResults, { idleAiRun, type AiRun } from './AiResults'
-import SplitCommitPanel from './SplitCommitPanel'
-import Avatar from './Avatar'
-import ContextMenu from './ContextMenu'
-import { fileMenuSections } from './fileMenu'
 
 interface Props {
   repoPath: string
   hash: string
-  initialPath?: string | null
-  isHead: boolean
+  /** The file to show; null picks the commit's first file. The file list is the detail panel beside this view. */
+  path: string | null
+  /** A line to scroll to, from an AI review finding. */
+  highlightLine?: number
+  /** Called with the file picked when this opened without one. */
+  onPathChange: (path: string) => void
   onClose: () => void
   onNavigateToCommit: (hash: string) => void
   onWorkingTreeChanged?: () => void
   onEditFile?: (path: string) => void
   onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
-  onCopyText?: (text: string) => void
 }
 
-function SparkleIcon(): JSX.Element {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 2.5 9.2 6.8 13.5 8 9.2 9.2 8 13.5 6.8 9.2 2.5 8 6.8 6.8 8 2.5Z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
+/** One file of a commit, full window, in place of the graph. */
 export default function CommitFullView({
   repoPath,
   hash,
-  initialPath,
-  isHead,
+  path,
+  highlightLine,
+  onPathChange,
   onClose,
   onNavigateToCommit,
   onWorkingTreeChanged,
   onEditFile,
-  onOpenFileView,
-  onCopyText
+  onOpenFileView
 }: Props): JSX.Element {
-  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string } | null>(null)
   const [detail, setDetail] = useState<CommitDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  // The loaded diff and the file it's for; it's still loading while that's not the selected file.
+  // The last loaded diff and the file it's for. It stays up while another file's loads, rather than blinking
+  // to "Loading diff…" and back.
   const [diff, setDiff] = useState<{ path: string; text: string } | null>(null)
-  const [highlightTarget, setHighlightTarget] = useState<{ file: string; line?: number } | null>(
-    null
-  )
 
-  const [commitAi, setCommitAi] = useState<AiRun>(idleAiRun)
-  const [fileAiPath, setFileAiPath] = useState<string | null>(null)
-  const [fileAi, setFileAi] = useState<AiRun>(idleAiRun)
-  // The parent keys this view by commit, so a different commit starts from fresh state.
-  const [firstPath] = useState(initialPath)
+  const pickFirstFile = useEffectEvent((files: CommitDetail['files']) => {
+    if (!path && files[0]) onPathChange(files[0].path)
+  })
 
+  // The parent keys this view by commit, so this only ever loads one.
   useEffect(() => {
     let cancelled = false
     window.api.commitDetail(repoPath, hash).then((res) => {
       if (cancelled) return
       if (res.ok) {
         setDetail(res.data)
-        const initial = res.data.files.find((f) => f.path === firstPath) ?? res.data.files[0]
-        if (initial) setSelectedPath(initial.path)
+        pickFirstFile(res.data.files)
       } else {
         setError(res.error)
       }
@@ -76,19 +56,19 @@ export default function CommitFullView({
     return () => {
       cancelled = true
     }
-  }, [repoPath, hash, firstPath])
+  }, [repoPath, hash])
 
   useEffect(() => {
-    if (!selectedPath) return
+    if (!path) return
     let cancelled = false
-    window.api.commitFileDiff(repoPath, hash, selectedPath).then((res) => {
+    window.api.commitFileDiff(repoPath, hash, path).then((res) => {
       if (cancelled) return
-      setDiff({ path: selectedPath, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
+      setDiff({ path, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
     })
     return () => {
       cancelled = true
     }
-  }, [repoPath, hash, selectedPath])
+  }, [repoPath, hash, path])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -98,45 +78,13 @@ export default function CommitFullView({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const runCommitAi = async (): Promise<void> => {
-    setCommitAi({ state: 'loading', result: null, error: null })
-    const res = await window.api.aiReviewCommit(repoPath, hash)
-    setCommitAi(
-      res.ok
-        ? { state: 'done', result: res.data, error: null }
-        : { state: 'error', result: null, error: res.error }
-    )
-  }
-
-  const runFileAi = async (path: string): Promise<void> => {
-    setFileAiPath(path)
-    setFileAi({ state: 'loading', result: null, error: null })
-    const res = await window.api.aiReviewFile(repoPath, hash, path)
-    setFileAi(
-      res.ok
-        ? { state: 'done', result: res.data, error: null }
-        : { state: 'error', result: null, error: res.error }
-    )
-  }
-
-  const handleSelectFinding = (file: string, line?: number): void => {
-    setSelectedPath(file)
-    setHighlightTarget({ file, line })
-  }
-
-  const modified = detail?.files.filter((f) => f.status === 'M').length ?? 0
-  const added = detail?.files.filter((f) => f.status === 'A').length ?? 0
-  const deleted = detail?.files.filter((f) => f.status === 'D').length ?? 0
-
   return (
     <div className="commit-fullview" role="region" aria-label="Commit diff">
       <div className="commit-fullview-header">
         <button className="icon-button" onClick={onClose} title="Back to repository view">
           ←
         </button>
-        <span className="commit-fullview-title">
-          {selectedPath ?? (detail ? detail.subject : 'Loading…')}
-        </span>
+        <span className="commit-fullview-title">{path ?? (detail ? detail.subject : 'Loading…')}</span>
         <span className="commit-fullview-hash">{hash.slice(0, 7)}</span>
         <button className="icon-button" onClick={onClose} title="Close">
           ✕
@@ -148,17 +96,17 @@ export default function CommitFullView({
       ) : (
         <div className="commit-fullview-body">
           <div className="commit-fullview-diff" data-testid="diff">
-            {!selectedPath ? (
+            {detail && detail.files.length === 0 ? (
               <div className="commit-fullview-empty">No file changes in this commit.</div>
-            ) : diff?.path !== selectedPath ? (
+            ) : !diff ? (
               <div className="commit-fullview-empty">Loading diff…</div>
             ) : (
               <FileDiffViewer
                 repoPath={repoPath}
                 hash={hash}
-                path={selectedPath}
+                path={diff.path}
                 diffText={diff.text}
-                highlightLine={highlightTarget?.file === selectedPath ? highlightTarget.line : undefined}
+                highlightLine={diff.path === path ? highlightLine : undefined}
                 onNavigateToCommit={onNavigateToCommit}
                 onWorkingTreeChanged={onWorkingTreeChanged}
                 onEditFile={onEditFile}
@@ -166,108 +114,7 @@ export default function CommitFullView({
               />
             )}
           </div>
-
-          <div className="commit-fullview-sidebar">
-            {!detail ? (
-              <div className="detail-panel-content">Loading…</div>
-            ) : (
-              <>
-                <div className="ai-section">
-                  <button
-                    className="ai-ask-button"
-                    disabled={commitAi.state === 'loading'}
-                    onClick={runCommitAi}
-                  >
-                    {commitAi.state === 'loading' ? 'Reviewing commit…' : 'Ask AI to review commit'}
-                  </button>
-                  <AiResults run={commitAi} onSelectFinding={handleSelectFinding} />
-                </div>
-
-                {isHead && (
-                  <SplitCommitPanel repoPath={repoPath} hash={hash} onApplied={onClose} />
-                )}
-
-                <div className="commit-subject-large">{detail.subject}</div>
-                {detail.body && <div className="commit-body">{detail.body}</div>}
-                <div className="commit-author-row">
-                  <Avatar name={detail.author} email={detail.authorEmail} hash={detail.hash} repoPath={repoPath} size={28} />
-                  <div>
-                    <div>{detail.author}</div>
-                    <div className="commit-meta-dim">
-                      {new Date(detail.date).toLocaleString()}
-                      {detail.parents[0] && ` · parent: ${detail.parents[0].slice(0, 7)}`}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="detail-section">
-                  <div className="detail-section-header">
-                    <span>
-                      {modified > 0 && `${modified} modified`}
-                      {added > 0 && `${modified > 0 ? ', ' : ''}${added} added`}
-                      {deleted > 0 && `${modified + added > 0 ? ', ' : ''}${deleted} deleted`}
-                      {detail.files.length === 0 && 'No file changes'}
-                    </span>
-                  </div>
-                  <ul className="file-list">
-                    {detail.files.map((f) => (
-                      <li key={f.path}>
-                        <div
-                          className={`file-row ${selectedPath === f.path ? 'active' : ''}`}
-                          aria-current={selectedPath === f.path}
-                          // Clicking the open file again closes the diff.
-                          onClick={() =>
-                            selectedPath === f.path ? onClose() : setSelectedPath(f.path)
-                          }
-                          onContextMenu={(e) => {
-                            e.preventDefault()
-                            setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0] })
-                          }}
-                        >
-                          <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
-                          <span className="file-path">{f.path}</span>
-                          <span className="file-actions">
-                            <button
-                              className="icon-button"
-                              title="Ask AI about this file"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                runFileAi(f.path)
-                              }}
-                            >
-                              <SparkleIcon />
-                            </button>
-                          </span>
-                        </div>
-                        {fileAiPath === f.path && (
-                          <div className="ai-inline">
-                            <AiResults run={fileAi} onSelectFinding={handleSelectFinding} />
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-          </div>
         </div>
-      )}
-      {fileMenu && (
-        <ContextMenu
-          x={fileMenu.x}
-          y={fileMenu.y}
-          sections={fileMenuSections({
-            path: fileMenu.path,
-            deleted: fileMenu.status === 'D',
-            onOpenDiff: () => setSelectedPath(fileMenu.path),
-            onBlame: onOpenFileView && (() => onOpenFileView(fileMenu.path, hash, 'blame')),
-            onHistory: onOpenFileView && (() => onOpenFileView(fileMenu.path, hash, 'history')),
-            onEdit: onEditFile && (() => onEditFile(fileMenu.path)),
-            onCopyPath: onCopyText && (() => onCopyText(fileMenu.path))
-          })}
-          onClose={() => setFileMenu(null)}
-        />
       )}
     </div>
   )

@@ -69,8 +69,15 @@ export default function FileHistoryView({
   const [entries, setEntries] = useState<FileHistoryEntry[] | null>(null)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [selectedHash, setSelectedHash] = useState<string | null>(target.ref)
-  // The selected version's diff, for the version it belongs to.
-  const [diff, setDiff] = useState<{ version: string; text: string } | null>(null)
+  // The last loaded version's diff. It stays up while the next selected version's loads, rather than
+  // blinking to "Loading diff…" and back.
+  const [diff, setDiff] = useState<{
+    version: string
+    hash: string
+    path: string
+    oldPath: string | undefined
+    text: string
+  } | null>(null)
 
   // Blame: which version of the file is blamed, which can step back past a change.
   const [blameAt, setBlameAt] = useState<{ ref: string | null; path: string }>({ ref: target.ref, path: target.path })
@@ -106,13 +113,14 @@ export default function FileHistoryView({
   const selectedPath = selected?.path
   const selectedOldPath = selected?.oldPath
   const version = selected ? `${repoPath}\0${selected.hash}\0${selected.path}\0${selected.oldPath ?? ''}` : null
-  const diffText = diff && diff.version === version ? diff.text : null
 
   useEffect(() => {
     if (mode !== 'history' || !version || !selectedHashShown || !selectedPath) return
     let cancelled = false
     window.api.commitFileDiff(repoPath, selectedHashShown, selectedPath, false, selectedOldPath).then((res) => {
-      if (!cancelled) setDiff({ version, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
+      if (cancelled) return
+      const text = res.ok ? res.data : `Unable to load diff: ${res.error}`
+      setDiff({ version, hash: selectedHashShown, path: selectedPath, oldPath: selectedOldPath, text })
     })
     return () => {
       cancelled = true
@@ -274,15 +282,15 @@ export default function FileHistoryView({
                 <button onClick={() => onShowInGraph(selected.hash)}>Show in graph</button>
               </div>
             )}
-            {!selected ? null : diffText == null ? (
+            {!selected ? null : !diff ? (
               <div className="commit-fullview-empty">Loading diff…</div>
             ) : (
               <FileDiffViewer
                 repoPath={repoPath}
-                hash={selected.hash}
-                path={selected.path}
-                oldPath={selected.oldPath}
-                diffText={diffText}
+                hash={diff.hash}
+                path={diff.path}
+                oldPath={diff.oldPath}
+                diffText={diff.text}
                 onNavigateToCommit={showInHistory}
                 onWorkingTreeChanged={onWorkingTreeChanged}
                 onEditFile={onEditFile}

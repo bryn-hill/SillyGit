@@ -36,6 +36,8 @@ export function useMainView({
   const editorDrafts = useRef(new Map<string, string>())
   const [fullScreenHash, setFullScreenHash] = useState<string | null>(null)
   const [fullScreenPath, setFullScreenPath] = useState<string | null>(null)
+  // A line to scroll to in the commit full window's file, from an AI review finding.
+  const [fullScreenLine, setFullScreenLine] = useState<number | undefined>()
   /** A file's history or blame, shown in place of the graph. */
   const [fileView, setFileView] = useState<FileViewTarget | null>(null)
   // Bumped on every open, so the view starts fresh even for the same file.
@@ -153,14 +155,20 @@ export function useMainView({
     setWorkingDiff({ path: file.path, staged })
   }
 
-  const openCommitFile = (hash: string, path: string): void => {
+  /** Opens a commit's file diff full window, at `line` when given; clicking the open file again closes it. */
+  const openCommitFile = (hash: string, path: string, line?: number): void => {
     if (fileView) {
       showFileView({ path, ref: hash, mode: fileViewMode.current })
+      return
+    }
+    if (line === undefined && fullScreenHash === hash && fullScreenPath === path && !editingPath) {
+      setFullScreenHash(null)
       return
     }
     closeEditor()
     setFullScreenHash(hash)
     setFullScreenPath(path)
+    setFullScreenLine(line)
   }
 
   /** From history or blame: a commit's diff full window, at that file. */
@@ -170,6 +178,7 @@ export function useMainView({
     closeEditor()
     setFullScreenHash(hash)
     setFullScreenPath(path)
+    setFullScreenLine(undefined)
     setSelection({ type: 'commit', hash })
   }
 
@@ -184,6 +193,7 @@ export function useMainView({
   const navigateToCommit = (hash: string): void => {
     setFullScreenHash(hash)
     setFullScreenPath(null)
+    setFullScreenLine(undefined)
     setSelection({ type: 'commit', hash })
   }
 
@@ -197,6 +207,7 @@ export function useMainView({
         setFileView(null)
         setFullScreenHash(hash)
         setFullScreenPath(path)
+        setFullScreenLine(undefined)
       }
     }
     if (selection.type === 'working' && fileView.ref == null && status) {
@@ -210,13 +221,13 @@ export function useMainView({
     return undefined
   }
 
-  /** The file the detail panel's lists highlight: the one in history or blame, or the working diff. */
+  /** The file the detail panel's lists highlight: the one in history or blame, the working diff or the commit's file. */
   const activeFile: ActiveFile | null = fileView
     ? {
         path: fileView.path,
         staged: workingDiff?.path === fileView.path ? workingDiff.staged : !status?.unstaged.some((f) => f.path === fileView.path)
       }
-    : workingDiff
+    : (workingDiff ?? (fullScreenHash && fullScreenPath ? { path: fullScreenPath } : null))
 
   const handleClickCommit = (hash: string, modifiers: ClickModifiers): void =>
     setSelection((current) => clickCommit(current, hash, modifiers, graphOrder))
@@ -290,6 +301,9 @@ export function useMainView({
     closeEditorsFor,
     fullScreenHash,
     fullScreenPath,
+    fullScreenLine,
+    /** The commit full window picked its first file, having opened without one. */
+    setFullScreenPath,
     closeFullScreen: () => setFullScreenHash(null),
     fileView,
     fileViewOpens,
