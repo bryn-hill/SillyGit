@@ -60,7 +60,8 @@ function renderLineHtml(text: string, lang: string | null, showWhitespace: boole
   return highlightLine(main, lang, words) + markers
 }
 
-function FileViewPane({
+/** A file's lines, numbered and highlighted. */
+export function FileViewPane({
   content,
   lang,
   loading,

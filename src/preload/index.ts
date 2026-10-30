@@ -173,6 +173,14 @@ const api = {
     ipcRenderer.invoke('git:stashes', repoPath),
   fileAtRef: (repoPath: string, ref: string, path: string): Wrapped<string> =>
     ipcRenderer.invoke('git:file-at-ref', repoPath, ref, path),
+  /** Every file in a commit's tree. */
+  tree: (repoPath: string, ref: string): Wrapped<import('../shared/tree').TreeEntry[]> =>
+    ipcRenderer.invoke('git:tree', repoPath, ref),
+  treeFile: (repoPath: string, ref: string, path: string): Wrapped<import('../shared/tree').TreeFile> =>
+    ipcRenderer.invoke('git:tree-file', repoPath, ref, path),
+  /** Asks where to save the file as it was at `ref`; the saved path, or null if cancelled. */
+  saveTreeFile: (repoPath: string, ref: string, path: string): Wrapped<string | null> =>
+    ipcRenderer.invoke('git:save-tree-file', repoPath, ref, path),
   workingFile: (repoPath: string, path: string): Wrapped<string> =>
     ipcRenderer.invoke('git:working-file', repoPath, path),
   readEditableFile: (repoPath: string, path: string): Wrapped<import('../shared/types').EditableFile> =>

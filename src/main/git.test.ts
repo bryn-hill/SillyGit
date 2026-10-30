@@ -584,6 +584,55 @@ describe('refs and patches', () => {
   })
 })
 
+describe('commit tree', () => {
+  it('lists every file at a commit, not just the ones it changed', async () => {
+    mkdirSync(join(dir, 'src'))
+    commitFile('src/b.ts', 'export {}\n', 'Add b')
+    const hash = commitFile('a.txt', 'two\n', 'Edit a')
+    commitFile('later.txt', 'later\n', 'Later')
+    expect(await git.listTreeAtRef(dir, hash)).toEqual([
+      { path: 'a.txt', kind: 'file', size: 4 },
+      { path: 'src/b.ts', kind: 'file', size: 10 }
+    ])
+  })
+
+  it('reads a file at a commit as text, binary or an image', async () => {
+    const hash = commitFile('a.txt', 'two\n', 'Second')
+    write('a.txt', 'working\n')
+    expect(await git.readTreeFile(dir, 'HEAD~1', 'a.txt')).toEqual({ kind: 'text', text: 'one\n', bytes: 4 })
+    writeFileSync(join(dir, 'blob.bin'), Buffer.from([0, 1, 2, 3]))
+    const png = Buffer.from('89504e470d0a1a0a0000', 'hex')
+    writeFileSync(join(dir, 'pic.png'), png)
+    run('add', 'blob.bin', 'pic.png')
+    run('commit', '-q', '-m', 'Binaries')
+    expect(await git.readTreeFile(dir, 'HEAD', 'blob.bin')).toEqual({ kind: 'binary', bytes: 4 })
+    expect(await git.readTreeFile(dir, 'HEAD', 'pic.png')).toEqual({
+      kind: 'image',
+      dataUrl: `data:image/png;base64,${png.toString('base64')}`,
+      bytes: png.length
+    })
+    await expect(git.readTreeFile(dir, hash, 'missing.txt')).rejects.toThrow()
+  })
+
+  it('saves a file as it was at a commit, byte for byte', async () => {
+    commitFile('a.txt', 'two\n', 'Second')
+    const bytes = Buffer.from([0, 255, 10, 13, 10])
+    writeFileSync(join(dir, 'blob.bin'), bytes)
+    run('add', 'blob.bin')
+    run('commit', '-q', '-m', 'Binary')
+    const out = mkdtempSync(join(tmpdir(), 'sillygit-save-'))
+    try {
+      await git.saveTreeFile(dir, 'HEAD~2', 'a.txt', join(out, 'a.txt'))
+      expect(readFileSync(join(out, 'a.txt'), 'utf8')).toBe('one\n')
+      await git.saveTreeFile(dir, 'HEAD', 'blob.bin', join(out, 'blob.bin'))
+      expect(readFileSync(join(out, 'blob.bin'))).toEqual(bytes)
+      await expect(git.saveTreeFile(dir, 'HEAD', 'nope.txt', join(out, 'nope.txt'))).rejects.toThrow()
+    } finally {
+      rmSync(out, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('clone', () => {
   it('clones into a folder named after the URL, and refuses one that exists', async () => {
     const parent = mkdtempSync(join(tmpdir(), 'sillygit-clone-'))

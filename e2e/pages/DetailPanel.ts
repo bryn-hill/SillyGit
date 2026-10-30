@@ -51,6 +51,24 @@ export class DetailPanel {
     return this.root.locator('.file-row').filter({ hasText: path })
   }
 
+  /** Switches the selected commit between the files it changed and every file at that commit. */
+  async showTab(name: 'Changes' | 'Files'): Promise<void> {
+    await this.root.getByRole('tab', { name, exact: true }).click()
+  }
+
+  /** The Files tab's tree of every file at the commit. */
+  get tree(): Locator {
+    return this.root.getByRole('list', { name: 'Files at this commit' })
+  }
+
+  treeFolder(name: string): Locator {
+    return this.tree.getByRole('button', { name: new RegExp(`^${name}\\b`) })
+  }
+
+  get treeFilter(): Locator {
+    return this.root.getByRole('searchbox', { name: 'Filter files' })
+  }
+
   /** The "LFS" tag on a file row whose file is stored in Git LFS. */
   lfsBadge(row: Locator): Locator {
     return row.getByLabel('Stored in Git LFS')

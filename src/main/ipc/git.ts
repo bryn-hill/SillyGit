@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron'
+import { app, ipcMain, dialog } from 'electron'
 import { basename, join } from 'path'
 import { promises as fsp } from 'fs'
 import * as git from '../git'
@@ -221,6 +221,22 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:file-at-ref', (_e, repoPath: string, ref: string, path: string) =>
     wrap(() => git.getFileAtRef(repoPath, ref, path))
+  )
+
+  ipcMain.handle('git:tree', (_e, repoPath: string, ref: string) => wrap(() => git.listTreeAtRef(repoPath, ref)))
+
+  ipcMain.handle('git:tree-file', (_e, repoPath: string, ref: string, path: string) =>
+    wrap(() => git.readTreeFile(repoPath, ref, path))
+  )
+
+  // Resolves with the saved path, or null when the dialog was cancelled.
+  ipcMain.handle('git:save-tree-file', (_e, repoPath: string, ref: string, path: string) =>
+    wrap(async () => {
+      const result = await dialog.showSaveDialog({ defaultPath: join(app.getPath('downloads'), basename(path)) })
+      if (result.canceled || !result.filePath) return null
+      await git.saveTreeFile(repoPath, ref, path, result.filePath)
+      return result.filePath
+    })
   )
 
   ipcMain.handle('git:working-file', (_e, repoPath: string, path: string) =>

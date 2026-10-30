@@ -10,6 +10,8 @@ export class CommitView {
   readonly scroller: Locator
   readonly openFile: Locator
   readonly backButton: Locator
+  /** A file the commit didn't change, shown as it was at the commit. */
+  readonly treeFile: Locator
 
   constructor(page: Page) {
     this.root = page.getByRole('region', { name: 'Commit diff' })
@@ -18,6 +20,7 @@ export class CommitView {
     this.files = page.getByRole('complementary', { name: 'Details' })
     this.openFile = this.files.locator('.file-row[aria-current="true"]')
     this.backButton = this.root.getByTitle('Back to repository view')
+    this.treeFile = this.root.getByRole('region', { name: 'File at commit' })
   }
 
   /** The words highlighted as changed within paired removed/added lines. */

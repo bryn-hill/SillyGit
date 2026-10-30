@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState, type JSX } from 'react'
 import type { CommitDetail } from '../../../shared/types'
 import FileDiffViewer from './FileDiffViewer'
+import TreeFileView from './TreeFileView'
 
 interface Props {
   repoPath: string
@@ -18,7 +19,7 @@ interface Props {
   onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
 }
 
-/** One file of a commit, full window, in place of the graph. */
+/** One file of a commit, full window, in place of the graph: its diff, or the file as it was if the commit didn't change it. */
 export default function CommitFullView({
   repoPath,
   hash,
@@ -58,6 +59,9 @@ export default function CommitFullView({
     }
   }, [repoPath, hash])
 
+  // A file from the commit's Files tab that the commit didn't change has no diff, so it shows as it was.
+  const unchanged = !!(detail && path && !detail.files.some((f) => f.path === path))
+
   useEffect(() => {
     if (!path) return
     let cancelled = false
@@ -96,7 +100,9 @@ export default function CommitFullView({
       ) : (
         <div className="commit-fullview-body">
           <div className="commit-fullview-diff" data-testid="diff">
-            {detail && detail.files.length === 0 ? (
+            {unchanged && path ? (
+              <TreeFileView repoPath={repoPath} hash={hash} path={path} onOpenFileView={onOpenFileView} />
+            ) : detail && detail.files.length === 0 ? (
               <div className="commit-fullview-empty">No file changes in this commit.</div>
             ) : !diff ? (
               <div className="commit-fullview-empty">Loading diff…</div>

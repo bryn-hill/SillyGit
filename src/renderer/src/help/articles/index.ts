@@ -10,6 +10,7 @@ import graphCommitDetails from './graph/commit-details'
 import graphDiffs from './graph/diffs'
 import graphCompare from './graph/compare'
 import graphBlameAndFileHistory from './graph/blame-and-file-history'
+import graphBrowseFilesAtCommit from './graph/browse-files-at-commit'
 import graphDragAndDrop from './graph/drag-and-drop'
 import graphSprintMarkers from './graph/sprint-markers'
 import graphCiStatus from './graph/ci-status'
@@ -72,6 +73,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   graphDiffs,
   graphCompare,
   graphBlameAndFileHistory,
+  graphBrowseFilesAtCommit,
   graphDragAndDrop,
   graphSprintMarkers,
   graphCiStatus,

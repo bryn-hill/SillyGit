@@ -13,6 +13,7 @@ import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import { EditorContext } from '../../lib/editorMenu'
 import { onFileListKeyDown } from '../../lib/fileListNav'
 import JiraText from '../JiraText'
+import CommitFilesTab from './CommitFilesTab'
 import type { OpenFileView } from './types'
 
 function SparkleIcon(): JSX.Element {
@@ -74,6 +75,16 @@ export default function CommitDetailView({ repoPath, hash, ...rest }: Props): JS
     detail: CommitDetail | null
     error: string | null
   } | null>(null)
+  // Changes or the whole tree, and the tree's open folders: kept here, outside the per-commit body, so
+  // stepping through the graph stays on the same tab with the same folders open.
+  const [tab, setTab] = useState<CommitTab>('changes')
+  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(new Set())
+  const toggleFolder = (path: string): void =>
+    setOpenFolders((open) => {
+      const next = new Set(open)
+      if (!next.delete(path)) next.add(path)
+      return next
+    })
 
   useEffect(() => {
     let cancelled = false
@@ -96,15 +107,25 @@ export default function CommitDetailView({ repoPath, hash, ...rest }: Props): JS
       repoPath={repoPath}
       detail={shown.detail}
       stale={shown.hash !== hash}
+      tab={tab}
+      onTabChange={setTab}
+      openFolders={openFolders}
+      onToggleFolder={toggleFolder}
       {...rest}
     />
   )
 }
 
+type CommitTab = 'changes' | 'files'
+
 function CommitDetailBody({
   repoPath,
   detail,
   stale,
+  tab,
+  onTabChange,
+  openFolders,
+  onToggleFolder,
   headHash,
   activePath,
   onOpenFileDiff,
@@ -116,6 +137,10 @@ function CommitDetailBody({
   detail: CommitDetail
   /** Another commit is selected and still loading; this one stays up meanwhile but can't be used. */
   stale: boolean
+  tab: CommitTab
+  onTabChange: (tab: CommitTab) => void
+  openFolders: ReadonlySet<string>
+  onToggleFolder: (path: string) => void
 }): JSX.Element {
   const { hash } = detail
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string; lfs: boolean } | null>(null)
@@ -140,6 +165,7 @@ function CommitDetailBody({
     setFileAi(res.ok ? { state: 'done', result: res.data, error: null } : { state: 'error', result: null, error: res.error })
   }
 
+  const changed = new Map(detail.files.map((f) => [f.path, f.status]))
   const modified = detail.files.filter((f) => f.status === 'M').length
   const added = detail.files.filter((f) => f.status === 'A').length
   const deleted = detail.files.filter((f) => f.status === 'D').length
@@ -182,54 +208,88 @@ function CommitDetailBody({
         </ul>
       )}
 
-      <div className="detail-section">
-        <div className="detail-section-header">
-          <span>
-            {modified > 0 && `${modified} modified`}
-            {added > 0 && `${modified > 0 ? ', ' : ''}${added} added`}
-            {deleted > 0 && `${modified + added > 0 ? ', ' : ''}${deleted} deleted`}
-            {detail.files.length === 0 && 'No file changes'}
-          </span>
-        </div>
-        <ul className="file-list commit-file-list" onKeyDown={onFileListKeyDown}>
-          {detail.files.map((f) => (
-            <li key={f.path}>
-              <div
-                className={`file-row ${activePath === f.path ? 'active' : ''}`}
-                aria-current={activePath === f.path}
-                tabIndex={-1}
-                onClick={() => openFile(f.path)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0], lfs: !!f.lfs })
-                }}
-              >
-                <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
-                <span className="file-path">{f.path}</span>
-                {f.lfs && <LfsBadge />}
-                <span className="file-actions">
-                  <button
-                    className="icon-button"
-                    title="Ask AI about this file"
-                    aria-label={`Ask AI about ${f.path}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      void runFileAi(f.path)
-                    }}
-                  >
-                    <SparkleIcon />
-                  </button>
-                </span>
-              </div>
-              {fileAiPath === f.path && (
-                <div className="ai-inline">
-                  <AiResults run={fileAi} onSelectFinding={openFile} />
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+      <div className="commit-tabs" role="tablist" aria-label="Commit files">
+        <button
+          role="tab"
+          aria-selected={tab === 'changes'}
+          className={tab === 'changes' ? 'active' : ''}
+          onClick={() => onTabChange('changes')}
+        >
+          Changes
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'files'}
+          className={tab === 'files' ? 'active' : ''}
+          onClick={() => onTabChange('files')}
+        >
+          Files
+        </button>
       </div>
+
+      {tab === 'files' ? (
+        <CommitFilesTab
+          repoPath={repoPath}
+          hash={hash}
+          changed={changed}
+          activePath={activePath}
+          openFolders={openFolders}
+          onToggleFolder={onToggleFolder}
+          onOpenFile={openFile}
+          onOpenFileView={onOpenFileView}
+          onFilterHistory={onFilterHistory}
+          onCopyText={onCopyText}
+        />
+      ) : (
+        <div className="detail-section">
+          <div className="detail-section-header">
+            <span>
+              {modified > 0 && `${modified} modified`}
+              {added > 0 && `${modified > 0 ? ', ' : ''}${added} added`}
+              {deleted > 0 && `${modified + added > 0 ? ', ' : ''}${deleted} deleted`}
+              {detail.files.length === 0 && 'No file changes'}
+            </span>
+          </div>
+          <ul className="file-list commit-file-list" onKeyDown={onFileListKeyDown}>
+            {detail.files.map((f) => (
+              <li key={f.path}>
+                <div
+                  className={`file-row ${activePath === f.path ? 'active' : ''}`}
+                  aria-current={activePath === f.path}
+                  tabIndex={-1}
+                  onClick={() => openFile(f.path)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0], lfs: !!f.lfs })
+                  }}
+                >
+                  <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
+                  <span className="file-path">{f.path}</span>
+                  {f.lfs && <LfsBadge />}
+                  <span className="file-actions">
+                    <button
+                      className="icon-button"
+                      title="Ask AI about this file"
+                      aria-label={`Ask AI about ${f.path}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void runFileAi(f.path)
+                      }}
+                    >
+                      <SparkleIcon />
+                    </button>
+                  </span>
+                </div>
+                {fileAiPath === f.path && (
+                  <div className="ai-inline">
+                    <AiResults run={fileAi} onSelectFinding={openFile} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="ai-section">
         <button className="ai-ask-button" disabled={commitAi.state === 'loading'} onClick={() => void runCommitAi()}>
