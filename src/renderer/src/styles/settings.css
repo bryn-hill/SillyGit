@@ -100,3 +100,23 @@
 .custom-command-add {
   align-self: flex-start;
 }
+
+/* ---------- git-flow setup ---------- */
+
+.gitflow-modal {
+  width: 440px;
+}
+
+.gitflow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin-top: 4px;
+}
+
+.gitflow-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}

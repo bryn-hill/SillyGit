@@ -13,6 +13,7 @@ import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
+import GitFlowSetupDialog from './components/GitFlowSetupDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
@@ -115,7 +116,7 @@ export default function App(): JSX.Element {
   const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, askText, showError, setNotice })
 
   useAppShortcuts({
-    blocked: !!promptDialog || dialogs.showSettings || dialogs.showActivity,
+    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity,
     paletteOpen: dialogs.palette !== null,
     repoOpen: !!repoPath,
     busy: git.busy,
@@ -264,6 +265,13 @@ export default function App(): JSX.Element {
             actions.absorb(head, diff, assignments)
           }}
           onClose={commitBox.closeAbsorb}
+        />
+      )}
+      {branches.gitFlow.setup && (
+        <GitFlowSetupDialog
+          initial={branches.gitFlow.setup}
+          onSave={branches.gitFlow.saveSetup}
+          onCancel={branches.gitFlow.closeSetup}
         />
       )}
       {dialogs.showSettings && (

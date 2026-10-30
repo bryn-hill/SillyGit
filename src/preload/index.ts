@@ -271,6 +271,20 @@ const api = {
     ipcRenderer.invoke('git:restack', repoPath, branch),
   pushStack: (repoPath: string, branch: string): Wrapped<{ remote: string; pushed: string[] }> =>
     ipcRenderer.invoke('git:push-stack', repoPath, branch),
+  /** The repo's git-flow settings, or null when git-flow isn't set up. */
+  gitFlowConfig: (repoPath: string): Wrapped<import('../shared/gitflow').GitFlowConfig | null> =>
+    ipcRenderer.invoke('gitflow:config', repoPath),
+  initGitFlow: (repoPath: string, config: import('../shared/gitflow').GitFlowConfig): Wrapped<{ createdDevelop: boolean }> =>
+    ipcRenderer.invoke('gitflow:init', repoPath, config),
+  /** Creates and checks out a feature, release or hotfix branch; resolves to its full name. */
+  startGitFlowBranch: (repoPath: string, kind: import('../shared/gitflow').GitFlowKind, name: string): Wrapped<string> =>
+    ipcRenderer.invoke('gitflow:start', repoPath, kind, name),
+  finishGitFlowBranch: (
+    repoPath: string,
+    branch: string,
+    tagMessage?: string
+  ): Wrapped<import('../shared/gitflow').GitFlowFinishResult> =>
+    ipcRenderer.invoke('gitflow:finish', repoPath, branch, tagMessage),
   renameBranch: (repoPath: string, from: string, to: string): Wrapped<void> =>
     ipcRenderer.invoke('git:rename-branch', repoPath, from, to),
   addWorktree: (repoPath: string, ref: string, kind: 'local' | 'remote' | 'commit'): Wrapped<string | null> =>
