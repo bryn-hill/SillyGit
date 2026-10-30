@@ -259,11 +259,11 @@ export function useMainView({
   }
 
   /** From the side bar: select the commit a branch points at, searching for it if it isn't loaded. */
-  const selectBranchCommit = async (hash: string): Promise<void> => {
-    if (!repoPath) return
+  const selectBranchCommit = async (hash: string): Promise<boolean> => {
+    if (!repoPath) return false
     if (commitByHash.has(hash)) {
       setSelection({ type: 'commit', hash })
-      return
+      return true
     }
     const find = async (filter: GraphFilter | null): Promise<CommitSearchHit | undefined> => {
       const res = await window.api.searchCommits(repoPath, hash, filter)
@@ -275,13 +275,16 @@ export function useMainView({
       await repo.setGraphFilter(null)
       hit = await find(null)
     }
-    if (hit) await jumpToCommit(hit)
+    if (!hit) return false
+    await jumpToCommit(hit)
+    return true
   }
 
-  const showCommitInGraph = (hash: string): void => {
+  /** Resolves false when the commit isn't in the graph at all (nothing reaches it). */
+  const showCommitInGraph = (hash: string): Promise<boolean> => {
     closeFileViews()
     closeEditor()
-    void selectBranchCommit(hash)
+    return selectBranchCommit(hash)
   }
 
   const focusSearch = (): void => {

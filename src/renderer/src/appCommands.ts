@@ -159,6 +159,7 @@ export function appCommands(app: {
       openInEditor: (file) => app.editor.open(file),
       copyText: git.copyText,
       showActivity: () => dialogs.setShowActivity(true),
+      showReflog: () => dialogs.setActivityTab('reflog'),
       showUpdate: () => dialogs.setShowUpdate(true),
       toggleLaunchpad: () => view.setShowLaunchpad((v) => !v),
       toggleOverview: () => view.setShowOverview((v) => !v),

@@ -100,6 +100,7 @@ export interface PaletteContext {
     openInEditor?: (file?: string) => void
     copyText: (text: string) => void
     showActivity: () => void
+    showReflog: () => void
     showUpdate: () => void
     toggleLaunchpad: () => void
     toggleOverview: () => void
@@ -286,6 +287,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
     add('copy-path', 'Copy repository path', () => a.copyText(repoPath))
   }
   add('activity', 'Activity log', a.showActivity)
+  if (repoPath) add('reflog', 'Reflog', a.showReflog)
   if (ctx.canSelfUpdate) add('update-sillygit', 'Update SillyGit…', a.showUpdate)
   add('launchpad', ctx.showLaunchpad ? 'Close Launchpad' : 'Open Launchpad', a.toggleLaunchpad)
   add('repo-overview', ctx.showOverview ? 'Close repository overview' : 'Open repository overview', a.toggleOverview)

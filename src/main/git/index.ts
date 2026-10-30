@@ -59,6 +59,7 @@ export {
   revertHunk
 } from './commits'
 export { redo, redoLabel, undo, undoLabel } from './undo'
+export { getReflog } from './reflog'
 export { getImagePair } from './images'
 export { listTreeAtRef, readTreeFile, saveTreeFile } from './tree'
 export { getLfsDiff, getLfsInfo, lfsCommand, lfsTrack } from './lfs'

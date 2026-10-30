@@ -91,3 +91,112 @@
   padding: 12px;
   color: var(--text-dim);
 }
+
+/* --- Reflog tab --- */
+
+.activity-tabs {
+  padding: 0 10px;
+}
+
+.reflog-ref {
+  flex-shrink: 0;
+  max-width: 260px;
+}
+
+.reflog-entry {
+  align-items: center;
+}
+
+.reflog-entry:hover {
+  background: var(--bg-hover);
+}
+
+.reflog-selector {
+  flex-shrink: 0;
+  width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.reflog-action-cell {
+  flex-shrink: 0;
+  width: 120px;
+}
+
+.reflog-action {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--text-dim) 18%, transparent);
+}
+
+.reflog-action.commit {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+
+.reflog-action.amend,
+.reflog-action.pick {
+  color: var(--cyan);
+  background: color-mix(in srgb, var(--cyan) 14%, transparent);
+}
+
+.reflog-action.merge,
+.reflog-action.pull {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.reflog-action.rebase,
+.reflog-action.reset {
+  color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 14%, transparent);
+}
+
+.reflog-action.checkout,
+.reflog-action.branch {
+  color: var(--pink);
+  background: color-mix(in srgb, var(--pink) 14%, transparent);
+}
+
+.reflog-detail,
+.reflog-commit {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reflog-commit {
+  color: var(--text-dim);
+}
+
+.reflog-commit code {
+  color: var(--text-soft);
+}
+
+.reflog-note {
+  margin-top: 2px;
+  color: var(--orange);
+  white-space: normal;
+}
+
+.reflog-more {
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.reflog-entry:hover .reflog-more,
+.reflog-more:focus-visible {
+  opacity: 1;
+}

@@ -460,7 +460,21 @@ export default function App(): JSX.Element {
             onClose={() => dialogs.setShowUpdate(false)}
           />
         )}
-        {dialogs.showActivity && <ActivityLog repoPath={repoPath} onClose={() => dialogs.setShowActivity(false)} />}
+        {dialogs.activityTab && (
+          <ActivityLog
+            repoPath={repoPath}
+            tab={dialogs.activityTab}
+            onTab={dialogs.setActivityTab}
+            branches={repo.branches}
+            refreshKey={status}
+            reflogActions={{
+              showInGraph: view.showCommitInGraph,
+              createBranchAt: branches.refActions.createBranchAt,
+              resetTo: actions.resetTo
+            }}
+            onClose={() => dialogs.setShowActivity(false)}
+          />
+        )}
         {promptDialog}
         <RefDropMenu repoPath={repoPath} onError={showError} onPick={actions.runDropAction} />
       </div>

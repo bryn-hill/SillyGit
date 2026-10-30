@@ -79,6 +79,8 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:redo', (_e, repoPath: string) => wrap(() => git.redo(repoPath)))
 
+  ipcMain.handle('git:reflog', (_e, repoPath: string, ref: string) => wrap(() => git.getReflog(repoPath, ref)))
+
   ipcMain.handle('activity:list', () => activityLog())
 
   ipcMain.handle('git:apply-patch', (_e, repoPath: string) =>

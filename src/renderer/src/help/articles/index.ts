@@ -42,6 +42,7 @@ import conflictsResolveConflicts from './conflicts/resolve-conflicts'
 import conflictsMergeTool from './conflicts/merge-tool'
 import conflictsResolveManyFiles from './conflicts/resolve-many-files'
 import rebaseHistoryUndoAndRedo from './rebase-history/undo-and-redo'
+import rebaseHistoryReflog from './rebase-history/reflog'
 import rebaseHistoryInteractiveRebase from './rebase-history/interactive-rebase'
 import rebaseHistoryBisect from './rebase-history/bisect'
 import rebaseHistoryResetRevertCherryPick from './rebase-history/reset-revert-cherry-pick'
@@ -105,6 +106,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   conflictsMergeTool,
   conflictsResolveManyFiles,
   rebaseHistoryUndoAndRedo,
+  rebaseHistoryReflog,
   rebaseHistoryInteractiveRebase,
   rebaseHistoryBisect,
   rebaseHistoryResetRevertCherryPick,

@@ -61,6 +61,8 @@ const api = {
     return () => ipcRenderer.removeListener('self-update:changed', listener)
   },
   activityLog: (): Promise<import('../shared/activity').ActivityEntry[]> => ipcRenderer.invoke('activity:list'),
+  reflog: (repoPath: string, ref: string): Wrapped<import('../shared/reflog').ReflogEntry[]> =>
+    ipcRenderer.invoke('git:reflog', repoPath, ref),
   /** Asks for a patch file and applies it; null when the dialog was cancelled. */
   applyPatch: (
     repoPath: string

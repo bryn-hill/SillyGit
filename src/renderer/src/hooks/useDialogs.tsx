@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 
+/** The Activity dialog's tabs: commands SillyGit ran, or git's reflog. */
+export type ActivityTab = 'commands' | 'reflog'
+
 /** Which of the app's dialogs and overlays are open. */
 export function useDialogs(repoPath: string | null) {
   const [showSettings, setShowSettings] = useState(false)
@@ -9,7 +12,9 @@ export function useDialogs(repoPath: string | null) {
   const [palette, setPalette] = useState<'modal' | 'dropdown' | 'checkout' | null>(null)
   /** Tracked files, loaded when the Actions list opens, for its Blame and File history pickers. */
   const [trackedFiles, setTrackedFiles] = useState<string[]>([])
-  const [showActivity, setShowActivity] = useState(false)
+  const [activityTab, setActivityTab] = useState<ActivityTab | null>(null)
+  const showActivity = activityTab !== null
+  const setShowActivity = (open: boolean): void => setActivityTab(open ? 'commands' : null)
   const [showUpdate, setShowUpdate] = useState(false)
   const [showPublish, setShowPublish] = useState(false)
 
@@ -33,6 +38,8 @@ export function useDialogs(repoPath: string | null) {
     trackedFiles,
     showActivity,
     setShowActivity,
+    activityTab,
+    setActivityTab,
     showUpdate,
     setShowUpdate,
     showPublish,
