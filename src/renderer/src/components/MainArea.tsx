@@ -1,4 +1,4 @@
-import { lazy, Suspense, type JSX } from 'react'
+import { Activity, lazy, Suspense, type JSX } from 'react'
 import Sidebar from './Sidebar'
 import CommitGraph from './CommitGraph'
 import DetailPanel from './DetailPanel'
@@ -65,17 +65,16 @@ export default function MainArea({
   const { repoPath, status, operation, refresh, headHash } = repo
   const { selection, fileView, workingDiff, editingPath, fullScreenHash, resolvingPath, rebaseBase } = view
 
-  if (view.showLaunchpad) {
-    return (
-      <Launchpad
-        repoPath={repoPath}
-        openRepos={tabs.tabs}
-        onClose={() => view.setShowLaunchpad(false)}
-        onOpenTerminal={onOpenTerminal}
-      />
-    )
-  }
+  const launchpad = view.showLaunchpad && (
+    <Launchpad
+      repoPath={repoPath}
+      openRepos={tabs.tabs}
+      onClose={() => view.setShowLaunchpad(false)}
+      onOpenTerminal={onOpenTerminal}
+    />
+  )
   if (!repoPath) {
+    if (launchpad) return launchpad
     return (
       <EmptyState
         recentRepos={tabs.recentRepos}
@@ -123,6 +122,11 @@ export default function MainArea({
             onDiscard={git.discard}
             onCommit={commitBox.commit}
             onOpenCommitFileDiff={view.openCommitFile}
+            headHash={headHash}
+            onSplitApplied={() => {
+              view.closeFullScreen()
+              reload()
+            }}
             onOpenWorkingFile={view.openWorkingFile}
             activeFile={view.activeFile}
             operation={operation}
@@ -144,8 +148,27 @@ export default function MainArea({
       </>
     ) : null
 
-  if (resolvingPath) {
-    return (
+  const conflictCount = status?.conflicted.length ?? 0
+  const wipConflictLabel = ((): string | null => {
+    if (!operation || conflictCount === 0) return null
+    const files = conflictCount === 1 ? 'A file conflict was' : `${conflictCount} file conflicts were`
+    return operation.kind === 'rebase'
+      ? `${files} found when attempting to rebase ${operation.rebaseBranch ?? 'HEAD'} onto ${operation.currentLabel}`
+      : `${files} found when attempting to merge into ${operation.currentLabel}`
+  })()
+
+  // What takes the graph's place, if anything, and whether the detail panel stays beside it. The side bar,
+  // graph and detail panel are kept mounted (just hidden) while covered, and always sit in the same places,
+  // so switching views never rebuilds or moves them: the panel's file list stays put, and the graph comes
+  // back scrolled where it was.
+  let cover: JSX.Element | null = null
+  let panelBeside = true
+  if (launchpad) {
+    panelBeside = false
+    cover = launchpad
+  } else if (resolvingPath) {
+    panelBeside = false
+    cover = (
       <MergeResolver
         key={`${repoPath}\0${resolvingPath}`}
         repoPath={repoPath}
@@ -161,9 +184,9 @@ export default function MainArea({
         onOpenExternal={(path) => void conflicts.openExternal(path)}
       />
     )
-  }
-  if (rebaseBase) {
-    return (
+  } else if (rebaseBase) {
+    panelBeside = false
+    cover = (
       <InteractiveRebase
         key={rebaseBase}
         repoPath={repoPath}
@@ -172,75 +195,63 @@ export default function MainArea({
         onStart={git.startRebase}
       />
     )
-  }
-  if (fileView) {
-    return (
-      <div className="main-layout file-focus">
-        <FileHistoryView
-          key={`${repoPath}\0${view.fileViewOpens}`}
+  } else if (fileView) {
+    panelBeside = selection.type === 'working' || selection.type === 'commit'
+    cover = (
+      <FileHistoryView
+        key={`${repoPath}\0${view.fileViewOpens}`}
+        repoPath={repoPath}
+        target={fileView}
+        onClose={view.closeFileView}
+        onShowDiff={view.fileViewDiff()}
+        onModeChange={view.setFileViewMode}
+        onOpenCommit={view.openCommitFromFileView}
+        onShowInGraph={view.showCommitInGraph}
+        onCopyText={git.copyText}
+        onEditFile={view.editFromFileView}
+        onWorkingTreeChanged={reload}
+      />
+    )
+  } else if (editingPath) {
+    cover = (
+      <Suspense key={`${repoPath}\0${editingPath}`} fallback={<div className="file-editor" />}>
+        <FileEditor
           repoPath={repoPath}
-          target={fileView}
-          onClose={view.closeFileView}
-          onShowDiff={view.fileViewDiff()}
-          onModeChange={view.setFileViewMode}
-          onOpenCommit={view.openCommitFromFileView}
-          onShowInGraph={view.showCommitInGraph}
-          onCopyText={git.copyText}
-          onEditFile={view.editFromFileView}
-          onWorkingTreeChanged={reload}
+          path={editingPath}
+          loadDraft={() => view.loadDraft(editingPath)}
+          onDraftChange={(draft) => view.saveDraft(editingPath, draft)}
+          onClose={view.closeEditor}
+          onSaved={reload}
+          onOpenFileView={(path, mode) => view.openFileView(path, null, mode)}
         />
-        {(selection.type === 'working' || selection.type === 'commit') && detailPanel}
-      </div>
+      </Suspense>
     )
-  }
-  if (editingPath) {
-    return (
-      <div className="main-layout">
-        <Suspense fallback={<div className="file-editor" />}>
-          <FileEditor
-            key={`${repoPath}\0${editingPath}`}
-            repoPath={repoPath}
-            path={editingPath}
-            loadDraft={() => view.loadDraft(editingPath)}
-            onDraftChange={(draft) => view.saveDraft(editingPath, draft)}
-            onClose={view.closeEditor}
-            onSaved={reload}
-            onOpenFileView={(path, mode) => view.openFileView(path, null, mode)}
-          />
-        </Suspense>
-        {detailPanel}
-      </div>
-    )
-  }
-  if (workingDiff && selection.type === 'working') {
+  } else if (workingDiff && selection.type === 'working') {
     const file = (workingDiff.staged ? status?.staged : status?.unstaged)?.find((f) => f.path === workingDiff.path)
-    return (
-      <div className="main-layout file-focus">
-        <WorkingFileView
-          repoPath={repoPath}
-          path={workingDiff.path}
-          staged={workingDiff.staged}
-          untracked={file?.untracked ?? false}
-          refreshKey={status}
-          onClose={view.closeWorkingDiff}
-          onStage={git.stage}
-          onUnstage={git.unstage}
-          onEditFile={view.openEditor}
-          onOpenFileView={view.openFileView}
-          onWorkingTreeChanged={reload}
-        />
-        {detailPanel}
-      </div>
+    cover = (
+      <WorkingFileView
+        repoPath={repoPath}
+        path={workingDiff.path}
+        staged={workingDiff.staged}
+        untracked={file?.untracked ?? false}
+        refreshKey={status}
+        onClose={view.closeWorkingDiff}
+        onStage={git.stage}
+        onUnstage={git.unstage}
+        onEditFile={view.openEditor}
+        onOpenFileView={view.openFileView}
+        onWorkingTreeChanged={reload}
+      />
     )
-  }
-  if (fullScreenHash) {
-    return (
+  } else if (fullScreenHash) {
+    cover = (
       <CommitFullView
         key={`${repoPath}\0${fullScreenHash}`}
         repoPath={repoPath}
         hash={fullScreenHash}
-        initialPath={view.fullScreenPath}
-        isHead={fullScreenHash === headHash}
+        path={view.fullScreenPath}
+        highlightLine={view.fullScreenLine}
+        onPathChange={view.setFullScreenPath}
         onClose={() => {
           view.closeFullScreen()
           reload()
@@ -249,69 +260,62 @@ export default function MainArea({
         onWorkingTreeChanged={reload}
         onEditFile={view.openEditor}
         onOpenFileView={view.openFileView}
-        onCopyText={git.copyText}
       />
     )
   }
 
-  const conflictCount = status?.conflicted.length ?? 0
-  const wipConflictLabel = ((): string | null => {
-    if (!operation || conflictCount === 0) return null
-    const files = conflictCount === 1 ? 'A file conflict was' : `${conflictCount} file conflicts were`
-    return operation.kind === 'rebase'
-      ? `${files} found when attempting to rebase ${operation.rebaseBranch ?? 'HEAD'} onto ${operation.currentLabel}`
-      : `${files} found when attempting to merge into ${operation.currentLabel}`
-  })()
-
   return (
-    <div className="main-layout">
-      <Sidebar
-        width={layout.sidebarWidth}
-        branches={repo.branches}
-        headHash={headHash}
-        onCheckout={git.checkout}
-        onCreateBranch={branches.createBranch}
-        onSelectCommit={view.selectBranchCommit}
-        actions={branches.refActions}
-        stashes={repo.stashes}
-        stashActions={git.stashActions}
-        favourites={branches.favourites}
-        onToggleFavourite={branches.toggleFavourite}
-        branchListSettings={settings.branchList}
-        listedAt={repo.branchesListedAt}
-        cleanupSnoozed={cleanup.snoozed}
-        onOpenCleanup={cleanup.open}
-        onSnoozeCleanup={cleanup.snooze}
-      />
-      <PanelResizer
-        side="before"
-        onWidthChange={layout.setSidebarWidth}
-        onReset={() => layout.setSidebarWidth(undefined)}
-      />
-      <CommitGraph
-        repoPath={repoPath}
-        rows={repo.graphRows}
-        selection={selection}
-        hasWorkingChanges={hasWorkingChanges}
-        wipConflictLabel={wipConflictLabel}
-        headHash={headHash}
-        currentBranch={status?.branch ?? null}
-        branches={repo.branches}
-        onSelectWorking={view.toggleWorking}
-        onClickCommit={view.handleClickCommit}
-        onJumpToCommit={view.jumpToCommit}
-        onCheckout={git.checkout}
-        actions={branches.refActions}
-        hasMore={repo.hasMore}
-        loadingMore={repo.loadingMore}
-        onLoadMore={repo.loadMore}
-        searchFocusToken={view.searchFocusToken}
-        refColumnWidth={layout.refColumnWidth}
-        sprints={settings.sprints}
-        mergeAnimation={settings.mergeAnimation}
-        onRefColumnWidthChange={layout.setRefColumnWidth}
-      />
-      {detailPanel}
+    <div className={cover && panelBeside && detailPanel ? 'main-layout file-focus' : 'main-layout'}>
+      <Activity mode={cover ? 'hidden' : 'visible'}>
+        <Sidebar
+          width={layout.sidebarWidth}
+          branches={repo.branches}
+          headHash={headHash}
+          onCheckout={git.checkout}
+          onCreateBranch={branches.createBranch}
+          onSelectCommit={view.selectBranchCommit}
+          actions={branches.refActions}
+          stashes={repo.stashes}
+          stashActions={git.stashActions}
+          favourites={branches.favourites}
+          onToggleFavourite={branches.toggleFavourite}
+          branchListSettings={settings.branchList}
+          listedAt={repo.branchesListedAt}
+          cleanupSnoozed={cleanup.snoozed}
+          onOpenCleanup={cleanup.open}
+          onSnoozeCleanup={cleanup.snooze}
+        />
+        <PanelResizer
+          side="before"
+          onWidthChange={layout.setSidebarWidth}
+          onReset={() => layout.setSidebarWidth(undefined)}
+        />
+        <CommitGraph
+          repoPath={repoPath}
+          rows={repo.graphRows}
+          selection={selection}
+          hasWorkingChanges={hasWorkingChanges}
+          wipConflictLabel={wipConflictLabel}
+          headHash={headHash}
+          currentBranch={status?.branch ?? null}
+          branches={repo.branches}
+          onSelectWorking={view.toggleWorking}
+          onClickCommit={view.handleClickCommit}
+          onJumpToCommit={view.jumpToCommit}
+          onCheckout={git.checkout}
+          actions={branches.refActions}
+          hasMore={repo.hasMore}
+          loadingMore={repo.loadingMore}
+          onLoadMore={repo.loadMore}
+          searchFocusToken={view.searchFocusToken}
+          refColumnWidth={layout.refColumnWidth}
+          sprints={settings.sprints}
+          mergeAnimation={settings.mergeAnimation}
+          onRefColumnWidthChange={layout.setRefColumnWidth}
+        />
+      </Activity>
+      {cover}
+      <Activity mode={panelBeside ? 'visible' : 'hidden'}>{detailPanel}</Activity>
     </div>
   )
 }

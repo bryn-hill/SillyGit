@@ -204,3 +204,14 @@
   border: none;
   font-weight: 600;
 }
+
+/* The AI button sits inside the row's own height, so commit file rows stay compact. */
+.commit-file-list .file-actions {
+  margin: -6px 0;
+}
+
+/* AI review and splitting come after the commit's files, so the list sits where it does for every commit. */
+.detail-panel-content > .ai-section {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}

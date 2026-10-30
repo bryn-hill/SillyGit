@@ -34,20 +34,19 @@ export default function WorkingFileView({
   onOpenFileView,
   onWorkingTreeChanged
 }: Props): JSX.Element {
-  // The diff and the file it's for; a refresh of the same file keeps showing the old one meanwhile.
-  const file = `${repoPath}\0${path}\0${staged}`
-  const [diff, setDiff] = useState<{ file: string; text: string } | null>(null)
-  const diffText = diff?.file === file ? diff.text : null
+  // The last loaded diff and the file it's for. It stays up while another file's (or a refresh's) loads,
+  // rather than blinking to "Loading diff…" and back.
+  const [diff, setDiff] = useState<{ path: string; staged: boolean; untracked: boolean; text: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
     window.api.diff(repoPath, path, staged, untracked).then((res) => {
-      if (!cancelled) setDiff({ file, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
+      if (!cancelled) setDiff({ path, staged, untracked, text: res.ok ? res.data : `Unable to load diff: ${res.error}` })
     })
     return () => {
       cancelled = true
     }
-  }, [repoPath, path, staged, untracked, refreshKey, file])
+  }, [repoPath, path, staged, untracked, refreshKey])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -79,16 +78,16 @@ export default function WorkingFileView({
         </button>
       </div>
       <div className="commit-fullview-diff" data-testid="diff">
-        {diffText == null ? (
+        {diff == null ? (
           <div className="commit-fullview-empty">Loading diff…</div>
         ) : (
           <FileDiffViewer
             repoPath={repoPath}
             hash={null}
-            staged={staged}
-            untracked={untracked}
-            path={path}
-            diffText={diffText}
+            staged={diff.staged}
+            untracked={diff.untracked}
+            path={diff.path}
+            diffText={diff.text}
             onWorkingTreeChanged={onWorkingTreeChanged}
             onEditFile={onEditFile}
             onOpenFileView={onOpenFileView}

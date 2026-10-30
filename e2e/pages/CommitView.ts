@@ -1,8 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-/** The full-screen commit view with a file's diff. */
+/** The full-screen commit view with a file's diff; its file list is the detail panel beside it. */
 export class CommitView {
   readonly root: Locator
+  /** The commit's files, listed in the detail panel. */
+  readonly files: Locator
   readonly diff: Locator
   /** The scrollable area holding the diff or file content. */
   readonly scroller: Locator
@@ -13,12 +15,13 @@ export class CommitView {
     this.root = page.getByRole('region', { name: 'Commit diff' })
     this.diff = this.root.getByTestId('diff')
     this.scroller = this.diff.getByTestId('diff-scroller')
-    this.openFile = this.root.locator('.file-row[aria-current="true"]')
+    this.files = page.getByRole('complementary', { name: 'Details' })
+    this.openFile = this.files.locator('.file-row[aria-current="true"]')
     this.backButton = this.root.getByTitle('Back to repository view')
   }
 
   file(path: string): Locator {
-    return this.root.locator('.file-row').filter({ hasText: path })
+    return this.files.locator('.file-row').filter({ hasText: path })
   }
 
   /** Picks a toolbar option: 'File View', 'Diff View', 'Unified view' or 'Split view'. */

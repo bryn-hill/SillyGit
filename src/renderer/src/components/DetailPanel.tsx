@@ -22,7 +22,10 @@ interface Props {
   onUnstage: (paths: string[]) => void
   onDiscard: (file: FileStatus) => void
   onCommit: () => void
-  onOpenCommitFileDiff: (hash: string, path: string) => void
+  onOpenCommitFileDiff: (hash: string, path: string, line?: number) => void
+  headHash: string | null
+  /** AI split the checked-out commit. */
+  onSplitApplied: () => void
   operation: OperationState | null
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
@@ -42,11 +45,12 @@ export default function DetailPanel(props: Props): JSX.Element {
     const { hash } = props.selection
     return (
       <CommitDetailView
-        key={`${props.repoPath}\0${hash}`}
         repoPath={props.repoPath}
         hash={hash}
+        headHash={props.headHash}
         activePath={props.activeFile?.path ?? null}
-        onOpenFileDiff={(path) => props.onOpenCommitFileDiff(hash, path)}
+        onOpenFileDiff={props.onOpenCommitFileDiff}
+        onSplitApplied={props.onSplitApplied}
         onOpenFileView={props.onOpenFileView}
         onCopyText={props.onCopyText}
       />

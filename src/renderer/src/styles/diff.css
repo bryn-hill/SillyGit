@@ -95,18 +95,12 @@
   font-size: 12.5px;
 }
 
-.commit-fullview-sidebar {
-  width: 380px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  border-left: 1px solid var(--border);
-}
-
-/* A file's diff, history or blame with the side bar's file list kept on its right to pick another file. */
-.main-layout.file-focus > .detail-panel {
-  border-left: 1px solid var(--border);
+/*
+ * A file's diff, history or blame with the detail panel's file list kept on its right to pick another file.
+ * The dividing line is the view's, as it's the graph's beside the panel, so the panel doesn't move by a pixel.
+ */
+.main-layout.file-focus > .commit-fullview {
+  border-right: 1px solid var(--border);
 }
 
 .working-file-view .commit-fullview-diff {
