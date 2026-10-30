@@ -221,8 +221,8 @@
 }
 
 .error-banner {
-  background: #44242e;
-  color: #ff8383;
+  background: color-mix(in srgb, var(--red) 18%, var(--bg));
+  color: var(--red-soft);
   padding: 8px 14px;
   font-size: 12px;
   cursor: pointer;

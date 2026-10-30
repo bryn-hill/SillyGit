@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
-import type { GraphRow } from '../lib/graphLayout'
+import { LANE_COLORS, type GraphRow } from '../lib/graphLayout'
 import GraphCell, { ROW_HEIGHT, WipGraphCell } from './GraphCell'
 import type { Selection } from '../lib/selection'
 import type { BranchInfo, CommitSearchHit } from '../../../shared/types'
@@ -101,7 +101,7 @@ export default function CommitGraph({
   const headIndex = headHash ? rows.findIndex((r) => r.commit.hash === headHash) : -1
   const wipRow = headIndex === -1 ? rows[0] : rows[headIndex]
   const topLane = wipRow?.lane ?? 0
-  const topColor = wipRow?.color ?? '#bd93f9'
+  const topColor = wipRow?.color ?? LANE_COLORS[0]
   const [menu, setMenu] = useState<{ x: number; y: number; hash: string; target: RefTarget | null } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)

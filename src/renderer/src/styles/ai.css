@@ -7,9 +7,9 @@
 
 .ai-ask-button {
   width: 100%;
-  background: rgba(189, 147, 249, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--accent);
-  border: 1px solid rgba(189, 147, 249, 0.4);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 6px;
   font-weight: 600;
   padding: 7px 10px;
@@ -19,13 +19,13 @@
 }
 
 button.ai-ask-button:hover:not(:disabled) {
-  background: rgba(189, 147, 249, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   border-color: var(--accent);
 }
 
 button.ai-ask-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.35);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .ai-status {
@@ -40,8 +40,8 @@ button.ai-ask-button:focus-visible {
   font-size: 12px;
   line-height: 1.45;
   color: var(--red);
-  background: rgba(255, 85, 85, 0.08);
-  border: 1px solid rgba(255, 85, 85, 0.3);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
   border-radius: 6px;
   overflow-wrap: anywhere;
   max-height: 120px;
@@ -106,18 +106,18 @@ button.ai-ask-button:focus-visible {
 }
 
 .ai-sev-badge.sev-high {
-  background: rgba(255, 85, 85, 0.18);
+  background: color-mix(in srgb, var(--red) 18%, transparent);
   color: var(--red);
 }
 
 .ai-sev-badge.sev-medium {
-  background: rgba(255, 184, 108, 0.18);
+  background: color-mix(in srgb, var(--orange) 18%, transparent);
   color: var(--orange);
 }
 
 .ai-sev-badge.sev-low,
 .ai-sev-badge.sev-info {
-  background: rgba(98, 114, 164, 0.22);
+  background: color-mix(in srgb, var(--text-dim) 22%, transparent);
   color: var(--text-dim);
 }
 

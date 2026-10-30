@@ -6,7 +6,7 @@
 }
 
 .graph-row.sprint-band-odd {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.035));
+  background-image: linear-gradient(color-mix(in srgb, var(--text) 3.5%, transparent), color-mix(in srgb, var(--text) 3.5%, transparent));
 }
 
 .graph-row.sprint-start::before {

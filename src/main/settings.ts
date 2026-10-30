@@ -7,6 +7,7 @@ import { normalizeSprintSettings, type SprintSettings } from '../shared/sprints'
 import { normalizeMergeToolSettings, type MergeToolSettings } from '../shared/mergeTools'
 import { normalizeBranchListSettings, type BranchListSettings } from '../shared/branchStatus'
 import { normalizeCustomCommands, type CustomCommand } from '../shared/customCommands'
+import { normalizeThemePreference, type ThemePreference } from '../shared/theme'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -22,6 +23,8 @@ interface StoredSettings {
   autoFetchMinutes?: number
   /** Look up author avatars online (GitHub, GitLab, Gravatar); off shows initials only. */
   showAvatars?: boolean
+  /** Light, dark, or follow the system. */
+  theme?: ThemePreference
   /** Play the lanes-colliding animation on the graph when a merge lands. */
   mergeAnimation?: boolean
   /** Desktop notifications about pull requests. */
@@ -128,6 +131,16 @@ export async function getShowAvatars(): Promise<boolean> {
 export async function setShowAvatars(show: boolean): Promise<void> {
   await updateSettings((current) => {
     current.showAvatars = show
+  })
+}
+
+export async function getThemePreference(): Promise<ThemePreference> {
+  return normalizeThemePreference((await readSettings()).theme)
+}
+
+export async function setThemePreference(preference: ThemePreference): Promise<void> {
+  await updateSettings((current) => {
+    current.theme = normalizeThemePreference(preference)
   })
 }
 

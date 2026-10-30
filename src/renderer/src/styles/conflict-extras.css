@@ -1,15 +1,15 @@
 /* Merge conflict extras: AI auto-resolve, bulk selection, undo, external tool */
 button.merge-ai-button {
-  background: rgba(189, 147, 249, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent);
-  border: 1px solid rgba(189, 147, 249, 0.5);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 .merge-ai-summary {
   padding: 6px 10px;
   font-size: 12px;
   color: var(--accent);
-  background: rgba(189, 147, 249, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   border-bottom: 1px solid var(--border);
 }
 
@@ -20,8 +20,8 @@ button.merge-ai-button {
   padding: 3px 8px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
-  background: rgba(189, 147, 249, 0.14);
-  border-top: 1px solid rgba(189, 147, 249, 0.4);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .merge-ai-header button {
@@ -30,7 +30,7 @@ button.merge-ai-button {
 }
 
 .merge-ai-header.accepted {
-  background: rgba(189, 147, 249, 0.07);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
 }
 
 .merge-ai-badge {
@@ -63,17 +63,17 @@ button.merge-ai-button {
 }
 
 .output-proposal {
-  background: rgba(189, 147, 249, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--text-dim);
   font-style: italic;
 }
 
 .output-custom {
-  background: rgba(189, 147, 249, 0.16);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .conflict-row.selected {
-  background: rgba(189, 147, 249, 0.2);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .conflict-undo-banner {

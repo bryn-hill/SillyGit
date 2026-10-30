@@ -9,6 +9,8 @@ import type { SprintSettings } from '../../shared/sprints'
 import type { BranchListSettings } from '../../shared/branchStatus'
 import type { SavedLayout, SavedSession, SavedTabs } from '../../shared/types'
 import { wrap } from './wrap'
+import { applyThemePreference } from '../theme'
+import type { ThemePreference } from '../../shared/theme'
 
 /** Settings, the saved session (tabs, recents, layout), per-repo Run commands and favourite branches. */
 export function registerSettingsHandlers(): void {
@@ -108,6 +110,15 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('branches:set-cleanup-snooze', (_e, repoPath: string, until: number | null) =>
     wrap(() => settings.setCleanupSnooze(repoPath, until))
+  )
+
+  ipcMain.handle('settings:get-theme', () => settings.getThemePreference())
+
+  ipcMain.handle('settings:set-theme', (_e, preference: ThemePreference) =>
+    wrap(async () => {
+      await settings.setThemePreference(preference)
+      applyThemePreference(preference)
+    })
   )
 
   ipcMain.handle('settings:get-merge-animation', () => settings.getMergeAnimation())

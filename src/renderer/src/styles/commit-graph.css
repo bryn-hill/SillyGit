@@ -209,7 +209,7 @@
   border-radius: 6px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 40%, transparent);
 }
 
 /* Bridges the gap under the chip so the list stays open on the way down. */
@@ -289,7 +289,7 @@ body.ref-dragging * {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow) 40%, transparent);
   opacity: 0.85;
 }
 

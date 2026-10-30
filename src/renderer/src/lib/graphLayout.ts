@@ -1,15 +1,7 @@
 import type { GraphCommit } from '../../../shared/types'
 
-export const LANE_COLORS = [
-  '#bd93f9',
-  '#50fa7b',
-  '#ffb86c',
-  '#ff79c6',
-  '#ff5555',
-  '#8be9fd',
-  '#f1fa8c',
-  '#6272a4'
-]
+// CSS variables rather than hex, so lanes follow the theme (see styles/base.css).
+export const LANE_COLORS = Array.from({ length: 8 }, (_, i) => `var(--lane-${i})`)
 
 export interface GraphRow {
   commit: GraphCommit

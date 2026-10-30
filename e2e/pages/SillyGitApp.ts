@@ -33,6 +33,8 @@ export class SillyGitApp {
   readonly fileHistory: FileHistory
   readonly workingFile: WorkingFileView
 
+  /** <html>, whose data-theme says which theme is drawn. */
+  readonly document: Locator
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
   readonly repositoryCrumb: Locator
@@ -69,6 +71,7 @@ export class SillyGitApp {
     this.fileHistory = new FileHistory(page)
     this.workingFile = new WorkingFileView(page)
 
+    this.document = page.locator('html')
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })
     this.repositoryCrumb = page.getByRole('button', { name: /^Repository/ })

@@ -46,7 +46,7 @@
 }
 
 .edit-working-btn:hover:not(:disabled) {
-  background: rgba(189, 147, 249, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .toggle-group {
@@ -119,7 +119,7 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 40%, transparent);
   z-index: 11;
   padding: 6px;
   display: flex;
@@ -221,7 +221,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 3px 10px;
-  background: rgba(139, 233, 253, 0.08);
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
   color: var(--cyan);
   position: sticky;
   top: 0;
@@ -276,7 +276,7 @@
 }
 
 .diff-row-add {
-  background: rgba(80, 250, 123, 0.12);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
 }
 
 .diff-row-add .gutter-marker {
@@ -284,7 +284,7 @@
 }
 
 .diff-row-remove {
-  background: rgba(255, 85, 85, 0.12);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
 }
 
 .diff-row-remove .gutter-marker {
@@ -292,7 +292,7 @@
 }
 
 .diff-row-highlight {
-  background: rgba(189, 147, 249, 0.25) !important;
+  background: color-mix(in srgb, var(--accent) 25%, transparent) !important;
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -327,15 +327,15 @@
 }
 
 .diff-split-cell.diff-row-add {
-  background: rgba(80, 250, 123, 0.12);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
 }
 
 .diff-split-cell.diff-row-remove {
-  background: rgba(255, 85, 85, 0.12);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
 }
 
 .diff-split-cell.diff-row-blank {
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--text) 2%, transparent);
 }
 
 /* -- file view (full file content) -- */

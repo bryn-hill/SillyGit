@@ -7,6 +7,8 @@ export class TerminalPanel {
   /** Tabs running the Run button's command. */
   readonly runTabs: Locator
   readonly input: Locator
+  /** The active tab's xterm screen, painted in the terminal theme's background. */
+  readonly screen: Locator
 
   constructor(private readonly page: Page) {
     this.root = page.getByRole('region', { name: 'Terminal' })
@@ -14,6 +16,7 @@ export class TerminalPanel {
     this.runTabs = this.root.getByTestId('run-tab')
     this.newTabButton = this.root.getByTitle('New terminal')
     // xterm's hidden textarea, in the active tab.
+    this.screen = this.root.locator('.terminal-instance:visible .xterm-scrollable-element')
     this.input = this.root.locator('.terminal-instance:visible').getByRole('textbox', { name: 'Terminal input' })
   }
 

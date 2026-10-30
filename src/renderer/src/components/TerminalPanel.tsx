@@ -1,34 +1,62 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
-import { Terminal } from '@xterm/xterm'
+import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
+import type { Theme } from '../../../shared/theme'
 
 const MIN_HEIGHT = 120
 const DEFAULT_HEIGHT = 260
 
-const XTERM_THEME = {
-  background: '#282a36',
-  foreground: '#f8f8f2',
-  cursor: '#f8f8f2',
-  cursorAccent: '#282a36',
-  selectionBackground: 'rgba(189, 147, 249, 0.3)',
-  black: '#21222c',
-  red: '#ff5555',
-  green: '#50fa7b',
-  yellow: '#f1fa8c',
-  blue: '#bd93f9',
-  magenta: '#ff79c6',
-  cyan: '#8be9fd',
-  white: '#f8f8f2',
-  brightBlack: '#6272a4',
-  brightRed: '#ff6e6e',
-  brightGreen: '#69ff94',
-  brightYellow: '#ffffa5',
-  brightBlue: '#d6acff',
-  brightMagenta: '#ff92df',
-  brightCyan: '#a4ffff',
-  brightWhite: '#ffffff'
+// The terminal can't use CSS variables, so each theme's colours are spelled
+// out here, matching the tokens in styles/base.css.
+const XTERM_THEMES: Record<Theme, ITheme> = {
+  dark: {
+    background: '#282a36',
+    foreground: '#f8f8f2',
+    cursor: '#f8f8f2',
+    cursorAccent: '#282a36',
+    selectionBackground: 'rgba(189, 147, 249, 0.3)',
+    black: '#21222c',
+    red: '#ff5555',
+    green: '#50fa7b',
+    yellow: '#f1fa8c',
+    blue: '#bd93f9',
+    magenta: '#ff79c6',
+    cyan: '#8be9fd',
+    white: '#f8f8f2',
+    brightBlack: '#6272a4',
+    brightRed: '#ff6e6e',
+    brightGreen: '#69ff94',
+    brightYellow: '#ffffa5',
+    brightBlue: '#d6acff',
+    brightMagenta: '#ff92df',
+    brightCyan: '#a4ffff',
+    brightWhite: '#ffffff'
+  },
+  light: {
+    background: '#f7f7fa',
+    foreground: '#24252f',
+    cursor: '#24252f',
+    cursorAccent: '#f7f7fa',
+    selectionBackground: 'rgba(112, 72, 216, 0.25)',
+    black: '#24252f',
+    red: '#d03434',
+    green: '#1b8a3c',
+    yellow: '#8a7300',
+    blue: '#7048d8',
+    magenta: '#c02f7e',
+    cyan: '#0a7a99',
+    white: '#9a9db3',
+    brightBlack: '#676c89',
+    brightRed: '#e04848',
+    brightGreen: '#23a04a',
+    brightYellow: '#a68a00',
+    brightBlue: '#8a63e8',
+    brightMagenta: '#d9449a',
+    brightCyan: '#1590b5',
+    brightWhite: '#c4c6d4'
+  }
 }
 
 function PlusIcon(): JSX.Element {
@@ -69,11 +97,12 @@ interface TerminalInstanceProps {
   /** Runs this shell line instead of opening an interactive shell. */
   command?: string
   shown: boolean
+  theme: Theme
   onExit: (exitCode: number) => void
   onPty?: (ptyId: number) => void
 }
 
-function TerminalInstance({ cwd, command, shown, onExit, onPty }: TerminalInstanceProps): JSX.Element {
+function TerminalInstance({ cwd, command, shown, theme, onExit, onPty }: TerminalInstanceProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -88,8 +117,7 @@ function TerminalInstance({ cwd, command, shown, onExit, onPty }: TerminalInstan
       fontSize: 12,
       lineHeight: 1.3,
       cursorBlink: true,
-      scrollback: 5000,
-      theme: XTERM_THEME
+      scrollback: 5000
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
@@ -175,6 +203,11 @@ function TerminalInstance({ cwd, command, shown, onExit, onPty }: TerminalInstan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Also gives a new terminal its first colours, right after it opens.
+  useEffect(() => {
+    if (termRef.current) termRef.current.options.theme = XTERM_THEMES[theme]
+  }, [theme])
+
   useEffect(() => {
     if (!shown) return
     try {
@@ -228,6 +261,7 @@ export interface TerminalPanelHandle {
 
 interface Props {
   cwd: string | null
+  theme: Theme
   visible: boolean
   height: number
   onToggle: () => void
@@ -240,6 +274,7 @@ const STOP_GRACE_MS = 3000
 
 export default function TerminalPanel({
   cwd,
+  theme,
   visible,
   height,
   onToggle,
@@ -394,6 +429,7 @@ export default function TerminalPanel({
             cwd={tab.run ? tab.run.cwd : cwd}
             command={tab.run?.script}
             shown={visible && tab.id === activeId}
+            theme={theme}
             onExit={() => (tab.run ? markRunExited(tab.id) : closeTab(tab.id))}
             onPty={tab.run ? (ptyId) => runPtys.current.set(tab.id, ptyId) : undefined}
           />

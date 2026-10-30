@@ -228,6 +228,7 @@ export default function App(): JSX.Element {
             ref={terminalRef}
             onRunningChange={run.setRunningKeys}
             cwd={repoPath}
+            theme={settings.theme}
             visible={showTerminal}
             height={layout.terminalHeight}
             onToggle={() => setShowTerminal(false)}
@@ -269,6 +270,8 @@ export default function App(): JSX.Element {
       {dialogs.showSettings && (
         <SettingsModal
           onClose={() => dialogs.setShowSettings(false)}
+          themePreference={settings.themePreference}
+          onThemePreferenceChange={settings.setThemePreference}
           autoFetchMinutes={settings.autoFetchMinutes ?? 0}
           onAutoFetchChange={settings.setAutoFetchMinutes}
           sprints={settings.sprints}

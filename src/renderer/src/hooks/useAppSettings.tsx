@@ -2,12 +2,23 @@ import { DEFAULT_SPRINT_SETTINGS } from '../../../shared/sprints'
 import { DEFAULT_BRANCH_LIST_SETTINGS } from '../../../shared/branchStatus'
 import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName } from '../../../shared/mergeTools'
 import type { CustomCommand } from '../../../shared/customCommands'
+import type { ThemePreference } from '../../../shared/theme'
 import { useSavedSetting } from './useSavedSetting'
+import { useTheme } from './useTheme'
 
 const NO_COMMANDS: CustomCommand[] = []
 
 /** The app-wide settings kept by the main process, as the Settings dialog edits them. */
 export function useAppSettings(onError: (message: string) => void) {
+  // Light, dark or follow the system. Until it loads, "system" shows what the
+  // main process already applied from the saved choice.
+  const [themePreference, setThemePreference] = useSavedSetting<ThemePreference>(
+    window.api.getThemePreference,
+    window.api.setThemePreference,
+    'system',
+    onError
+  )
+  const theme = useTheme(themePreference)
   // Minutes between background fetches (0 = off).
   const [autoFetchMinutes, setAutoFetchMinutes] = useSavedSetting(
     window.api.getAutoFetchMinutes,
@@ -50,6 +61,10 @@ export function useAppSettings(onError: (message: string) => void) {
     onError
   )
   return {
+    themePreference,
+    setThemePreference,
+    /** The theme being drawn. */
+    theme,
     customCommands,
     setCustomCommands,
     autoFetchMinutes,

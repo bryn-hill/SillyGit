@@ -1,5 +1,6 @@
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, nativeTheme, shell } from 'electron'
 import { join } from 'path'
+import { windowBackground } from '../shared/theme'
 import icon from '../../resources/icon.png?asset'
 
 // When set, the window is never shown (still fully rendered, just not mapped
@@ -24,6 +25,7 @@ export function createWindow(): void {
     minHeight: 480,
     show: false,
     titleBarStyle: 'hiddenInset',
+    backgroundColor: windowBackground(nativeTheme.shouldUseDarkColors ? 'dark' : 'light'),
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
