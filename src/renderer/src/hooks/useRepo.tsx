@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BranchInfo, GraphCommit, OperationState, RepoRemote, RepoStatus, StashEntry } from '../../../shared/types'
+import type { BisectState } from '../../../shared/bisect'
 import { layoutGraph } from '../lib/graphLayout'
 import type { Selection } from '../lib/selection'
 
@@ -12,6 +13,7 @@ interface TabSnapshot {
   branches: BranchInfo[]
   graphCommits: GraphCommit[]
   operation: OperationState | null
+  bisect: BisectState | null
   remotes: RepoRemote[]
   stashes: StashEntry[]
   undoLabel: string | null
@@ -42,6 +44,7 @@ export function useRepo({
   const [remotes, setRemotes] = useState<RepoRemote[]>([])
   const [graphCommits, setGraphCommits] = useState<GraphCommit[]>([])
   const [operation, setOperation] = useState<OperationState | null>(null)
+  const [bisect, setBisect] = useState<BisectState | null>(null)
   const [stashes, setStashes] = useState<StashEntry[]>([])
   const [undoLabel, setUndoLabel] = useState<string | null>(null)
   const [redoLabel, setRedoLabel] = useState<string | null>(null)
@@ -63,7 +66,8 @@ export function useRepo({
     (path: string): Promise<void> => {
       const seq = ++refreshSeq.current
       const run = (async (): Promise<void> => {
-        const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes, redoRes] = await Promise.all([
+        const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes, redoRes, bisectRes] =
+          await Promise.all([
           window.api.getStatus(path),
           window.api.branches(path),
           window.api.graphLog(path, graphLimitRef.current),
@@ -71,7 +75,8 @@ export function useRepo({
           window.api.remotes(path),
           window.api.stashes(path),
           window.api.undoLabel(path),
-          window.api.redoLabel(path)
+          window.api.redoLabel(path),
+          window.api.bisectState(path)
         ])
         if (openRepo.current !== path) return
         // A newer refresh started meanwhile and its answers win. Wait for it,
@@ -82,6 +87,7 @@ export function useRepo({
         if (statusRes.ok) setStatus(statusRes.data)
         else onError(statusRes.error)
         setOperation(operationRes.ok ? operationRes.data : null)
+        setBisect(bisectRes.ok ? bisectRes.data : null)
         if (branchesRes.ok) {
           setBranches(branchesRes.data)
           setBranchesListedAt(Date.now())
@@ -96,6 +102,7 @@ export function useRepo({
           branches: branchesRes.ok ? branchesRes.data : (previous?.branches ?? []),
           graphCommits: graphRes.ok ? graphRes.data : (previous?.graphCommits ?? []),
           operation: operationRes.ok ? operationRes.data : null,
+          bisect: bisectRes.ok ? bisectRes.data : null,
           remotes: remotesRes.ok ? remotesRes.data : [],
           stashes: stashesRes.ok ? stashesRes.data : [],
           undoLabel: undoRes.ok ? undoRes.data : null,
@@ -124,6 +131,7 @@ export function useRepo({
     setBranches(snapshot?.branches ?? [])
     setGraphCommits(snapshot?.graphCommits ?? [])
     setOperation(snapshot?.operation ?? null)
+    setBisect(snapshot?.bisect ?? null)
     setRemotes(snapshot?.remotes ?? [])
     setStashes(snapshot?.stashes ?? [])
     setUndoLabel(snapshot?.undoLabel ?? null)
@@ -253,6 +261,7 @@ export function useRepo({
     branchesListedAt,
     remotes,
     operation,
+    bisect,
     stashes,
     undoLabel,
     redoLabel,

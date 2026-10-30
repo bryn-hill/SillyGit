@@ -1,4 +1,5 @@
 import { expect, type ElectronApplication, type Locator, type Page } from '@playwright/test'
+import { Bisect } from './Bisect'
 import { ClaudePanel } from './ClaudePanel'
 import { CommitGraph } from './CommitGraph'
 import { CommitView } from './CommitView'
@@ -32,6 +33,7 @@ export class SillyGitApp {
   readonly rebase: InteractiveRebase
   readonly fileHistory: FileHistory
   readonly workingFile: WorkingFileView
+  readonly bisect: Bisect
 
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
@@ -68,6 +70,7 @@ export class SillyGitApp {
     this.rebase = new InteractiveRebase(page)
     this.fileHistory = new FileHistory(page)
     this.workingFile = new WorkingFileView(page)
+    this.bisect = new Bisect(page)
 
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })

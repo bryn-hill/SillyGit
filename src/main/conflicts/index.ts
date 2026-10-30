@@ -6,6 +6,7 @@ export {
   abortOperation,
   cleanUpInteractiveRebase,
   continueOperation,
+  getBisectState,
   getOperationState,
   hasUnmergedPaths,
   interactiveRebaseDir,

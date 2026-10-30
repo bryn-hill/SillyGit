@@ -217,6 +217,8 @@ export interface RunRequest {
   title: string
   cwd: string
   script: string
+  /** Called when the run's process exits. */
+  onExit?: (exitCode: number) => void
 }
 
 export interface TerminalPanelHandle {
@@ -252,6 +254,8 @@ export default function TerminalPanel({
   const nextIdRef = useRef(1)
   // Each run tab's pty, so Stop can reach it.
   const runPtys = useRef(new Map<number, number>())
+  // Each run tab's onExit, if its request gave one.
+  const runExits = useRef(new Map<number, (exitCode: number) => void>())
 
   // As a string, so the parent only hears about it when the set changes.
   const runningKeys = JSON.stringify(tabs.filter((t) => t.run?.running).map((t) => t.run!.key))
@@ -275,8 +279,9 @@ export default function TerminalPanel({
   useImperativeHandle(
     ref,
     () => ({
-      startRun: ({ key, title, cwd: runCwd, script }) => {
+      startRun: ({ key, title, cwd: runCwd, script, onExit }) => {
         const id = nextIdRef.current++
+        if (onExit) runExits.current.set(id, onExit)
         const tab: TabState = { id, title, run: { key, cwd: runCwd, script, running: true } }
         setTabs((prev) => {
           const index = prev.findIndex((t) => t.run?.key === key)
@@ -292,8 +297,11 @@ export default function TerminalPanel({
     [stopRun]
   )
 
-  const markRunExited = useCallback((id: number) => {
+  const markRunExited = useCallback((id: number, exitCode: number) => {
     runPtys.current.delete(id)
+    const onExit = runExits.current.get(id)
+    runExits.current.delete(id)
+    onExit?.(exitCode)
     setTabs((prev) => prev.map((t) => (t.id === id && t.run ? { ...t, run: { ...t.run, running: false } } : t)))
   }, [])
 
@@ -309,6 +317,7 @@ export default function TerminalPanel({
 
   const closeTab = useCallback((id: number) => {
     runPtys.current.delete(id)
+    runExits.current.delete(id)
     setTabs((prev) => {
       const next = prev.filter((t) => t.id !== id)
       setActiveId((current) => {
@@ -394,7 +403,7 @@ export default function TerminalPanel({
             cwd={tab.run ? tab.run.cwd : cwd}
             command={tab.run?.script}
             shown={visible && tab.id === activeId}
-            onExit={() => (tab.run ? markRunExited(tab.id) : closeTab(tab.id))}
+            onExit={(exitCode) => (tab.run ? markRunExited(tab.id, exitCode) : closeTab(tab.id))}
             onPty={tab.run ? (ptyId) => runPtys.current.set(tab.id, ptyId) : undefined}
           />
         ))}
