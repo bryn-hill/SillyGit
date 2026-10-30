@@ -11,7 +11,7 @@
 [![MIT licence](https://img.shields.io/badge/licence-MIT-8b5cf6)](LICENSE)
 ![macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555)
 
-[**Download**](#download) · [Website](https://bryn-hill.github.io/sillygit/) · [Features](#features) · [Run from source](#run-from-source) · [Contributing](#contributing)
+[**Download**](#download) · [Website](https://bryn-hill.github.io/SillyGit/) · [Features](#features) · [Run from source](#run-from-source) · [Contributing](#contributing)
 
 <br>
 
