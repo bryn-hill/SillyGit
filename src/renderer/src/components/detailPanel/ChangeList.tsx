@@ -45,6 +45,7 @@ export default function ChangeList({
         <div
           className={`file-row ${active ? 'active' : ''}`}
           aria-current={active}
+          tabIndex={-1}
           onClick={() => onOpenFile(file, staged)}
           onContextMenu={(e) => {
             e.preventDefault()

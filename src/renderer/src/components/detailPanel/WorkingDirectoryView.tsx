@@ -3,6 +3,7 @@ import type { FileStatus, OperationState, RepoStatus } from '../../../../shared/
 import type { ActiveFile, ConflictActions, OpenFileView } from './types'
 import { OPERATION_NAMES, operationSummary } from './operation'
 import ConflictedFiles from './ConflictedFiles'
+import { onFileListKeyDown } from '../../lib/fileListNav'
 import ChangeList from './ChangeList'
 import CommitBox from './CommitBox'
 import OperationCommitBox from './OperationCommitBox'
@@ -58,7 +59,7 @@ export default function WorkingDirectoryView({
   const listProps = { activeFile, onOpenFile, onEditFile, onDiscard, onStage, onUnstage, onOpenFileView, onCopyText }
 
   return (
-    <div className="detail-panel-content">
+    <div className="detail-panel-content" onKeyDown={onFileListKeyDown}>
       {operation ? (
         <div className="operation-header" role="status" aria-label="Operation in progress">
           <div className="operation-header-title">

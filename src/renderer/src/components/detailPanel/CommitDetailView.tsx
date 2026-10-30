@@ -6,6 +6,7 @@ import AiResults, { idleAiRun, type AiRun } from '../AiResults'
 import SplitCommitPanel from '../SplitCommitPanel'
 import { fileMenuSections } from '../fileMenu'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
+import { onFileListKeyDown } from '../../lib/fileListNav'
 import type { OpenFileView } from './types'
 
 function SparkleIcon(): JSX.Element {
@@ -145,12 +146,13 @@ function CommitDetailBody({
             {detail.files.length === 0 && 'No file changes'}
           </span>
         </div>
-        <ul className="file-list commit-file-list">
+        <ul className="file-list commit-file-list" onKeyDown={onFileListKeyDown}>
           {detail.files.map((f) => (
             <li key={f.path}>
               <div
                 className={`file-row ${activePath === f.path ? 'active' : ''}`}
                 aria-current={activePath === f.path}
+                tabIndex={-1}
                 onClick={() => openFile(f.path)}
                 onContextMenu={(e) => {
                   e.preventDefault()
