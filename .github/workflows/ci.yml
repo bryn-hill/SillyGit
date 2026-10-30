@@ -30,8 +30,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 5
     steps:
-      # Wipe what the last run left. This can't run at the end of the job:
-      # setup-node's post step still needs package-lock.json to save the cache.
+      # Wipe what the last run left, even if it was cancelled.
       - name: Clean workspace
         run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
@@ -59,8 +58,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 15
     steps:
-      # Wipe what the last run left. This can't run at the end of the job:
-      # setup-node's post step still needs package-lock.json to save the cache.
+      # Wipe what the last run left, even if it was cancelled.
       - name: Clean workspace
         run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
@@ -71,7 +69,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          cache: npm
+          # The runner's own ~/.npm already persists between runs. Saving it
+          # to the Actions cache uploaded all 2.8 GB of it and hit the timeout.
+          package-manager-cache: false
 
       - run: npm ci
 
