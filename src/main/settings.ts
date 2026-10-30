@@ -8,6 +8,7 @@ import { normalizeMergeToolSettings, type MergeToolSettings } from '../shared/me
 import { normalizeBranchListSettings, type BranchListSettings } from '../shared/branchStatus'
 import { normalizeCustomCommands, type CustomCommand } from '../shared/customCommands'
 import { normalizeThemePreference, type ThemePreference } from '../shared/theme'
+import { normalizeEditorSettings, type EditorSettings } from '../shared/editors'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -33,6 +34,8 @@ interface StoredSettings {
   sprints?: Partial<SprintSettings>
   /** The external merge tool, if any. */
   mergeTool?: Partial<MergeToolSettings>
+  /** The code editor or IDE that "Open in" uses. */
+  editor?: Partial<EditorSettings>
   /** The user's own commands for the menus and command palette. */
   customCommands?: CustomCommand[]
   /** The Run button's command, per repo path. */
@@ -177,6 +180,14 @@ export async function getMergeToolSettings(): Promise<MergeToolSettings> {
 
 export async function setMergeToolSettings(next: MergeToolSettings): Promise<MergeToolSettings> {
   return updateSettings((current) => (current.mergeTool = normalizeMergeToolSettings(next)))
+}
+
+export async function getEditorSettings(): Promise<EditorSettings> {
+  return normalizeEditorSettings((await readSettings()).editor)
+}
+
+export async function setEditorSettings(next: EditorSettings): Promise<EditorSettings> {
+  return updateSettings((current) => (current.editor = normalizeEditorSettings(next)))
 }
 
 export async function getCustomCommands(): Promise<CustomCommand[]> {

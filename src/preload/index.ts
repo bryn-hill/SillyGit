@@ -337,6 +337,16 @@ const api = {
   setMergeToolSettings: (
     next: import('../shared/mergeTools').MergeToolSettings
   ): Wrapped<import('../shared/mergeTools').MergeToolSettings> => ipcRenderer.invoke('settings:set-merge-tool', next),
+  getEditorSettings: (): Promise<import('../shared/editors').EditorSettings> => ipcRenderer.invoke('settings:get-editor'),
+  setEditorSettings: (
+    next: import('../shared/editors').EditorSettings
+  ): Wrapped<import('../shared/editors').EditorSettings> => ipcRenderer.invoke('settings:set-editor', next),
+  /** The code editors and IDEs installed here; `rescan` looks again instead of using what was found at first. */
+  listEditors: (rescan?: boolean): Promise<import('../shared/editors').InstalledEditor[]> =>
+    ipcRenderer.invoke('editor:list', rescan),
+  /** Opens the repo, or `file` (relative to it) in the repo's window, in `editor`. */
+  openInEditor: (repoPath: string, editor: import('../shared/editors').EditorId, file?: string): Wrapped<void> =>
+    ipcRenderer.invoke('editor:open', repoPath, editor, file),
   getCustomCommands: (): Promise<import('../shared/customCommands').CustomCommand[]> =>
     ipcRenderer.invoke('settings:get-custom-commands'),
   setCustomCommands: (

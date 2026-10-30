@@ -5,7 +5,8 @@ import { tabForDigit } from '../lib/tabs'
 /**
  * App-wide keyboard shortcuts: Cmd+K / Cmd+Shift+P for the palette, Cmd+F
  * search, Cmd+Z / Cmd+Shift+Z undo and redo, Cmd+O / Cmd+T open a repo,
- * Ctrl+Tab, Cmd+Shift+[ ] and Cmd+1…9 for tabs, and Cmd+, for Settings.
+ * Ctrl+Tab, Cmd+Shift+[ ] and Cmd+1…9 for tabs, Cmd+, for Settings and
+ * Cmd+Shift+A to open the repo in the user's editor.
  * An effect event sees current state without re-registering the listener on
  * every render.
  */
@@ -24,6 +25,7 @@ export function useAppShortcuts(app: {
   cycleTab: (offset: number) => void
   selectTab: (path: string) => void
   openSettings: () => void
+  openInEditor: () => void
 }): void {
   const onShortcut = useEffectEvent((e: KeyboardEvent): void => {
     if (app.blocked) return
@@ -59,6 +61,9 @@ export function useAppShortcuts(app: {
     } else if (isPrimary(e) && key === ',') {
       e.preventDefault()
       app.openSettings()
+    } else if (isPrimary(e, true) && key === 'a' && app.repoOpen && !isTyping(e.target)) {
+      e.preventDefault()
+      app.openInEditor()
     }
   })
   useEffect(() => {

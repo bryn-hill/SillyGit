@@ -3,6 +3,7 @@ import { DEFAULT_BRANCH_LIST_SETTINGS } from '../../../shared/branchStatus'
 import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName } from '../../../shared/mergeTools'
 import type { CustomCommand } from '../../../shared/customCommands'
 import type { ThemePreference } from '../../../shared/theme'
+import { DEFAULT_EDITOR_SETTINGS } from '../../../shared/editors'
 import { useSavedSetting } from './useSavedSetting'
 import { useTheme } from './useTheme'
 
@@ -37,6 +38,13 @@ export function useAppSettings(onError: (message: string) => void) {
     window.api.getMergeToolSettings,
     window.api.setMergeToolSettings,
     DEFAULT_MERGE_TOOL_SETTINGS,
+    onError
+  )
+  // The editor "Open in" uses; null picks the first one installed.
+  const [editor, setEditor] = useSavedSetting(
+    window.api.getEditorSettings,
+    window.api.setEditorSettings,
+    DEFAULT_EDITOR_SETTINGS,
     onError
   )
   // Stale tags in the branch list.
@@ -75,6 +83,8 @@ export function useAppSettings(onError: (message: string) => void) {
     setMergeTool,
     /** The external merge tool's name, or null when none is set up. */
     externalToolName: mergeToolName(mergeTool),
+    editor,
+    setEditor,
     branchList,
     setBranchList,
     mergeAnimation,

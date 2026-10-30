@@ -13,6 +13,7 @@ import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
 import { BisectContext } from './lib/bisectMenu'
 import { LfsContext } from './lib/lfs'
+import { EditorContext } from './lib/editorMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import CreatePullRequestDialog from './components/CreatePullRequestDialog'
@@ -39,6 +40,7 @@ import { useTabs } from './hooks/useTabs'
 import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
 import { useLfs } from './hooks/useLfs'
+import { useEditor } from './hooks/useEditor'
 
 /**
  * The window: repo tabs, the toolbar, banners, the main area with the
@@ -97,6 +99,7 @@ export default function App(): JSX.Element {
     showError,
     setNotice
   })
+  const editor = useEditor({ repoPath, settings: settings.editor, onChange: settings.setEditor, showError })
   const terminalRef = useRef<TerminalPanelHandle | null>(null)
   const run = useRun({
     repo,
@@ -148,7 +151,8 @@ export default function App(): JSX.Element {
     openRepo: tabs.openRepo,
     cycleTab: tabs.cycle,
     selectTab: tabs.selectTab,
-    openSettings: () => dialogs.setShowSettings(true)
+    openSettings: () => dialogs.setShowSettings(true),
+    openInEditor: () => editor.open()
   })
 
   const { showTerminal, setShowTerminal, showClaude, setShowClaude } = layout
@@ -205,6 +209,10 @@ export default function App(): JSX.Element {
         onEditRunCommand={() => void run.editCommand()}
         terminalVisible={showTerminal}
         onToggleTerminal={() => setShowTerminal((v) => !v)}
+        editor={editor.current}
+        editors={editor.installed}
+        onOpenInEditor={() => editor.open()}
+        onChooseEditor={editor.choose}
         claudeVisible={showClaude}
         onToggleClaude={() => setShowClaude((v) => !v)}
         selfUpdate={selfUpdate?.status ?? NO_SELF_UPDATE}
@@ -243,27 +251,29 @@ export default function App(): JSX.Element {
         <div className="workspace">
           <div className="workspace-main">
             <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
-              <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
-                <LfsContext value={{ info: lfs.info, track: lfs.track }}>
-                  <MainArea
-                    repo={repo}
-                    view={view}
-                    settings={settings}
-                    layout={layout}
-                    git={actions}
-                    branches={branches}
-                    cleanup={cleanup}
-                    conflicts={conflicts}
-                    commitBox={commitBox}
-                    tabs={tabs}
-                    hasWorkingChanges={hasWorkingChanges}
-                    onOpenTerminal={() => setShowTerminal(true)}
-                    onCheckoutPullRequest={checkoutPullRequest}
-                    showError={showError}
-                    setNotice={setNotice}
-                  />
-                </LfsContext>
-              </BisectContext>
+              <EditorContext value={{ name: editor.current?.name ?? null, open: editor.open }}>
+                <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
+                  <LfsContext value={{ info: lfs.info, track: lfs.track }}>
+                    <MainArea
+                      repo={repo}
+                      view={view}
+                      settings={settings}
+                      layout={layout}
+                      git={actions}
+                      branches={branches}
+                      cleanup={cleanup}
+                      conflicts={conflicts}
+                      commitBox={commitBox}
+                      tabs={tabs}
+                      hasWorkingChanges={hasWorkingChanges}
+                      onOpenTerminal={() => setShowTerminal(true)}
+                      onCheckoutPullRequest={checkoutPullRequest}
+                      showError={showError}
+                      setNotice={setNotice}
+                    />
+                  </LfsContext>
+                </BisectContext>
+              </EditorContext>
             </CustomCommandsContext>
           </div>
           <TerminalPanel
@@ -340,6 +350,10 @@ export default function App(): JSX.Element {
           onBranchListChange={settings.setBranchList}
           mergeTool={settings.mergeTool}
           onMergeToolChange={settings.setMergeTool}
+          editor={settings.editor}
+          installedEditors={editor.installed}
+          onEditorChange={settings.setEditor}
+          onRescanEditors={editor.rescan}
           mergeAnimation={settings.mergeAnimation}
           onMergeAnimationChange={settings.setMergeAnimation}
           customCommands={settings.customCommands}
@@ -365,7 +379,8 @@ export default function App(): JSX.Element {
             hasWorkingChanges,
             customCommands: settings.customCommands,
             pullRequests,
-            checkoutPullRequest
+            checkoutPullRequest,
+            editor
           })}
           variant={dialogs.palette}
           onClose={() => dialogs.setPalette(null)}

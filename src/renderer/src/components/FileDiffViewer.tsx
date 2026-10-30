@@ -7,6 +7,7 @@ import { formatBytes, imageMime } from '../../../shared/imageDiff'
 import { LFS_MISSING_NOTE, isLfsPointerDiff, type LfsDiff } from '../../../shared/lfs'
 import { LfsContext } from '../lib/lfs'
 import ImageDiff from './ImageDiff'
+import { EditorContext } from '../lib/editorMenu'
 
 type Mode = 'file' | 'diff'
 type Layout = 'unified' | 'split'
@@ -496,7 +497,13 @@ export default function FileDiffViewer({
     hunkRefs.current[clamped]?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }
 
+  const editor = useContext(EditorContext)
+  // In the user's code editor when one was found, otherwise whatever the system opens the file with.
   const handleEditInWorkingDir = async (): Promise<void> => {
+    if (editor.name) {
+      editor.open(path)
+      return
+    }
     const base = repoPath.replace(/\/+$/, '')
     const res = await window.api.openPath(`${base}/${path}`)
     if (!res.ok) setRevertStatus({ ok: false, message: res.error })
@@ -572,7 +579,12 @@ export default function FileDiffViewer({
           >
             ✎ Edit file
           </button>
-          <button className="icon-button" onClick={handleEditInWorkingDir} title="Open in external editor" aria-label="Open in external editor">
+          <button
+            className="icon-button"
+            onClick={handleEditInWorkingDir}
+            title={editor.name ? `Open in ${editor.name}` : 'Open in external editor'}
+            aria-label="Open in external editor"
+          >
             ↗
           </button>
         </div>

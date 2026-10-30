@@ -43,6 +43,8 @@ export interface PaletteContext {
   canSelfUpdate: boolean
   /** Git LFS: whether git-lfs is installed and the repo stores files in it. */
   lfs?: { installed: boolean; used: boolean }
+  /** The code editor "Open in" uses, or null when none was found. */
+  editorName?: string | null
   actions: {
     undo: () => void
     redo: () => void
@@ -85,6 +87,8 @@ export interface PaletteContext {
     togglePinTab: (path: string) => void
     toggleClaude: () => void
     revealRepo: (path: string) => void
+    /** Opens the repo, or `file` in it, in the user's code editor. */
+    openInEditor?: (file?: string) => void
     copyText: (text: string) => void
     showActivity: () => void
     showUpdate: () => void
@@ -244,6 +248,15 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
     add('pin-tab', ctx.tabPinned ? 'Unpin tab' : 'Pin tab', () => a.togglePinTab(repoPath))
     add('claude', ctx.showClaude ? 'Hide Claude' : 'Show Claude', a.toggleClaude, 'Ctrl+Esc')
     add('reveal', 'Open repository folder', () => a.revealRepo(repoPath))
+    if (ctx.editorName && a.openInEditor) {
+      const openIn = a.openInEditor
+      add('open-in-editor', `Open in ${ctx.editorName}`, () => openIn(), `${MOD}⇧A`)
+      addList(
+        'open-file-in-editor',
+        `Open file in ${ctx.editorName}`,
+        ctx.trackedFiles.map((path) => ({ id: path, label: path, run: () => openIn(path) }))
+      )
+    }
     add('copy-path', 'Copy repository path', () => a.copyText(repoPath))
   }
   add('activity', 'Activity log', a.showActivity)

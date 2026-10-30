@@ -2,6 +2,7 @@ import { app, ipcMain } from 'electron'
 import { join } from 'path'
 import * as git from '../git'
 import type { MergeToolSettings } from '../../shared/mergeTools'
+import type { EditorSettings } from '../../shared/editors'
 import type { CustomCommand } from '../../shared/customCommands'
 import * as settings from '../settings'
 import * as run from '../run'
@@ -73,6 +74,9 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:set-merge-tool', (_e, next: MergeToolSettings) =>
     wrap(() => settings.setMergeToolSettings(next))
   )
+
+  ipcMain.handle('settings:get-editor', () => settings.getEditorSettings())
+  ipcMain.handle('settings:set-editor', (_e, next: EditorSettings) => wrap(() => settings.setEditorSettings(next)))
 
   ipcMain.handle('settings:get-custom-commands', () => settings.getCustomCommands())
   ipcMain.handle('settings:set-custom-commands', (_e, next: CustomCommand[]) =>

@@ -10,6 +10,7 @@ import { fileMenuSections } from '../fileMenu'
 import { LfsContext } from '../../lib/lfs'
 import LfsBadge from '../LfsBadge'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
+import { EditorContext } from '../../lib/editorMenu'
 import { onFileListKeyDown } from '../../lib/fileListNav'
 import type { OpenFileView } from './types'
 
@@ -119,6 +120,7 @@ function CommitDetailBody({
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string; lfs: boolean } | null>(null)
   const customMenu = useCustomCommandMenu()
   const lfs = useContext(LfsContext)
+  const editor = useContext(EditorContext)
   const [commitAi, setCommitAi] = useState<AiRun>(idleAiRun)
   const [fileAiPath, setFileAiPath] = useState<string | null>(null)
   const [fileAi, setFileAi] = useState<AiRun>(idleAiRun)
@@ -242,6 +244,8 @@ function CommitDetailBody({
             onBlame: () => onOpenFileView(fileMenu.path, hash, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.path, hash, 'history'),
             onFilterHistory,
+            onOpenInEditor: () => editor.open(fileMenu.path),
+            editorName: editor.name,
             onCopyPath: () => onCopyText(fileMenu.path),
             lfs: { installed: lfs.info.installed, tracked: fileMenu.lfs, onTrack: lfs.track },
             custom: customMenu('file', { file: fileMenu.path, sha: hash })

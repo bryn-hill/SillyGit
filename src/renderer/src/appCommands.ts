@@ -12,6 +12,7 @@ import type { Tabs } from './hooks/useTabs'
 import type { PanelLayout } from './hooks/usePanelLayout'
 import type { Dialogs } from './hooks/useDialogs'
 import type { Lfs } from './hooks/useLfs'
+import type { Editor } from './hooks/useEditor'
 import { paletteCommands } from './lib/paletteCommands'
 import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 import type { OpenPullRequest } from '../../shared/types'
@@ -37,6 +38,7 @@ export function appCommands(app: {
   customCommands: CustomCommand[]
   pullRequests: OpenPullRequest[]
   checkoutPullRequest: (repoPath: string, number: number) => Promise<void>
+  editor: Editor
 }): Command[] {
   const { repo, view, git, branches, conflicts, run, tabs, layout, dialogs } = app
   const { repoPath } = repo
@@ -92,6 +94,7 @@ export function appCommands(app: {
     showLaunchpad: view.showLaunchpad,
     canSelfUpdate: !!app.selfUpdate?.status.supported,
     lfs: { installed: app.lfs.info.installed, used: app.lfs.used },
+    editorName: app.editor.current?.name ?? null,
     actions: {
       undo: git.undo,
       redo: git.redo,
@@ -139,6 +142,7 @@ export function appCommands(app: {
       togglePinTab: tabs.togglePin,
       toggleClaude: () => layout.setShowClaude((v) => !v),
       revealRepo: git.revealRepo,
+      openInEditor: (file) => app.editor.open(file),
       copyText: git.copyText,
       showActivity: () => dialogs.setShowActivity(true),
       showUpdate: () => dialogs.setShowUpdate(true),

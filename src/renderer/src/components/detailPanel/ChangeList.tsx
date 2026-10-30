@@ -5,6 +5,7 @@ import { fileMenuSections } from '../fileMenu'
 import { LfsContext } from '../../lib/lfs'
 import LfsBadge from '../LfsBadge'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
+import { EditorContext } from '../../lib/editorMenu'
 import type { ActiveFile, OpenFileView } from './types'
 
 function statusLabel(code: string): string {
@@ -41,6 +42,7 @@ export default function ChangeList({
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus } | null>(null)
   const customMenu = useCustomCommandMenu()
   const lfs = useContext(LfsContext)
+  const editor = useContext(EditorContext)
 
   const renderRow = (file: FileStatus): JSX.Element => {
     const key = `${staged ? 's' : 'u'}:${file.path}`
@@ -134,6 +136,8 @@ export default function ChangeList({
             onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
             onFilterHistory,
+            onOpenInEditor: () => editor.open(fileMenu.file.path),
+            editorName: editor.name,
             onCopyPath: () => onCopyText(fileMenu.file.path),
             lfs: { installed: lfs.info.installed, tracked: !!fileMenu.file.lfs, onTrack: lfs.track },
             custom: customMenu('file', { file: fileMenu.file.path })

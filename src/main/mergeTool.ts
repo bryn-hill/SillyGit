@@ -1,45 +1,18 @@
 import { spawn } from 'child_process'
-import { constants, promises as fsp } from 'fs'
-import { homedir, tmpdir } from 'os'
-import { basename, delimiter, extname, isAbsolute, join } from 'path'
+import { promises as fsp } from 'fs'
+import { tmpdir } from 'os'
+import { basename, delimiter, extname, join } from 'path'
 import type { MergeToolResult } from '../shared/types'
 import { buildMergeToolArgs, mergeToolName, mergeToolPreset, type MergeToolSettings } from '../shared/mergeTools'
 import { getMergeToolSettings } from './settings'
 import { GitError, runGit } from './gitExec'
 import { hasConflictMarkers, pathsWithMarkers } from './conflicts'
+import { findExecutable, searchPath } from './executables'
 
 // Opens a conflicted file in an external merge tool, GitKraken's "Open in
 // <tool>". Like `git mergetool`, the tool gets the three versions as temporary
 // files plus the file in the repo to write the result to. When it closes, a
 // file without conflict markers is staged (marked resolved).
-
-// Apps started from the Dock or Finder on macOS get a bare PATH, without
-// Homebrew's or the user's own bin folders where tools like `code` live.
-function searchPath(): string[] {
-  const extra = ['/opt/homebrew/bin', '/usr/local/bin', join(homedir(), 'bin'), join(homedir(), '.local', 'bin')]
-  return [...(process.env.PATH ?? '').split(delimiter), ...extra].filter(Boolean)
-}
-
-async function isExecutable(path: string): Promise<boolean> {
-  return fsp
-    .access(path, constants.X_OK)
-    .then(() => true)
-    .catch(() => false)
-}
-
-/** The full path of `program`, looked up on PATH (plus the usual extra folders) and then in `fallbacks`. */
-export async function findExecutable(program: string, fallbacks: string[] = []): Promise<string | null> {
-  if (isAbsolute(program)) return (await isExecutable(program)) ? program : null
-  const exts = process.platform === 'win32' ? ['.exe', '.cmd', '.bat', ''] : ['']
-  for (const dir of searchPath()) {
-    for (const ext of exts) {
-      const candidate = join(dir, program + ext)
-      if (await isExecutable(candidate)) return candidate
-    }
-  }
-  for (const f of fallbacks) if (await isExecutable(f)) return f
-  return null
-}
 
 function run(program: string, args: string[], cwd: string): Promise<number> {
   return new Promise((resolve, reject) => {

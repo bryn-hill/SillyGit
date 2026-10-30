@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import type { BranchInfo, PullMode, RepoStatus } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
 import type { SelfUpdateStatus } from '../../../shared/selfUpdate'
+import type { InstalledEditor } from '../../../shared/editors'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
@@ -10,6 +11,7 @@ import {
   ActionsIcon,
   BranchIcon,
   ChevronIcon,
+  CodeIcon,
   FetchIcon,
   FolderIcon,
   GearIcon,
@@ -72,6 +74,13 @@ interface Props {
   onEditRunCommand: () => void
   terminalVisible: boolean
   onToggleTerminal: () => void
+  /** The editor the Open in button uses, or null when none was found. */
+  editor: InstalledEditor | null
+  /** Every editor found, for the button's menu. */
+  editors: InstalledEditor[]
+  onOpenInEditor: () => void
+  /** Makes `editor` the button's editor and opens the repo in it. */
+  onChooseEditor: (editor: InstalledEditor) => void
   claudeVisible: boolean
   onToggleClaude: () => void
   /** Where SillyGit's own checkout stands against origin/main; the Update button hides for packaged builds. */
@@ -117,6 +126,10 @@ export default function TopBar({
   onEditRunCommand,
   terminalVisible,
   onToggleTerminal,
+  editor,
+  editors,
+  onOpenInEditor,
+  onChooseEditor,
   claudeVisible,
   onToggleClaude,
   selfUpdate,
@@ -128,7 +141,8 @@ export default function TopBar({
   const [showPullMenu, setShowPullMenu] = useState(false)
   const [showRunMenu, setShowRunMenu] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
-  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showRunMenu || showMoreMenu
+  const [showEditorMenu, setShowEditorMenu] = useState(false)
+  const menuOpen = showBranchMenu || showRepoMenu || showPullMenu || showRunMenu || showMoreMenu || showEditorMenu
 
   // Escape closes whichever top-bar menu is open.
   useEffect(() => {
@@ -140,6 +154,7 @@ export default function TopBar({
       setShowPullMenu(false)
       setShowRunMenu(false)
       setShowMoreMenu(false)
+      setShowEditorMenu(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -453,6 +468,70 @@ export default function TopBar({
             onClick={onToggleTerminal}
             title="Toggle terminal (Ctrl+`)"
           />
+          <div className="tool-split">
+            <ToolButton
+              label={editor?.short ?? 'Editor'}
+              ariaLabel="Editor"
+              icon={<CodeIcon />}
+              onClick={() => (editor ? onOpenInEditor() : onOpenSettings())}
+              title={
+                editor
+                  ? `Open ${repoName} in ${editor.name} (${MOD}⇧A)`
+                  : 'No code editor found. Choose one, or set a command for yours, in Settings'
+              }
+            />
+            <button
+              className="tool-caret"
+              onClick={() => setShowEditorMenu((v) => !v)}
+              title="Choose the editor to open in"
+              aria-label="Editor options"
+              aria-haspopup="menu"
+              aria-expanded={showEditorMenu}
+            >
+              ▾
+            </button>
+            {showEditorMenu && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setShowEditorMenu(false)} />
+                <div className="branch-dropdown tool-menu" role="menu" aria-label="Editor options">
+                  {editors.length === 0 && editor?.id !== 'custom' && (
+                    <div className="tool-menu-hint">No code editors or IDEs were found.</div>
+                  )}
+                  {[...editors, ...(editor?.id === 'custom' ? [editor] : [])].map((option) => (
+                    <div
+                      key={option.id}
+                      role="menuitemradio"
+                      aria-checked={option.id === editor?.id}
+                      className="branch-dropdown-item"
+                      onClick={() => {
+                        setShowEditorMenu(false)
+                        onChooseEditor(option)
+                      }}
+                    >
+                      <span className="tool-menu-check">{option.id === editor?.id ? '✓' : ''}</span>
+                      Open in {option.name}
+                    </div>
+                  ))}
+                  <div className="dropdown-separator" />
+                  <div
+                    role="menuitem"
+                    className="branch-dropdown-item"
+                    onClick={() => {
+                      setShowEditorMenu(false)
+                      onOpenSettings()
+                    }}
+                  >
+                    <span className="tool-menu-check" />
+                    Editor settings…
+                  </div>
+                  <div className="dropdown-separator" />
+                  <div className="tool-menu-hint">
+                    Picking an editor makes it what the button opens. Right-click a file to open just that file.
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
       <div className="top-bar-right">

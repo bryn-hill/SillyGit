@@ -8,6 +8,8 @@ import AccountsSection from './settings/AccountsSection'
 import BranchesSection from './settings/BranchesSection'
 import CustomCommandsSection from './settings/CustomCommandsSection'
 import MergeToolSection from './settings/MergeToolSection'
+import EditorSection from './settings/EditorSection'
+import type { EditorSettings, InstalledEditor } from '../../../shared/editors'
 import NotificationsSection from './settings/NotificationsSection'
 import SprintsSection from './settings/SprintsSection'
 import type { CustomCommand } from '../../../shared/customCommands'
@@ -25,6 +27,10 @@ interface Props {
   onBranchListChange: (next: BranchListSettings) => void
   mergeTool: MergeToolSettings
   onMergeToolChange: (next: MergeToolSettings) => void
+  editor: EditorSettings
+  installedEditors: InstalledEditor[]
+  onEditorChange: (next: EditorSettings) => void
+  onRescanEditors: () => void
   mergeAnimation: boolean
   onMergeAnimationChange: (on: boolean) => void
   customCommands: CustomCommand[]
@@ -51,6 +57,10 @@ export default function SettingsModal({
   onBranchListChange,
   mergeTool,
   onMergeToolChange,
+  editor,
+  installedEditors,
+  onEditorChange,
+  onRescanEditors,
   mergeAnimation,
   onMergeAnimationChange,
   customCommands,
@@ -140,6 +150,13 @@ export default function SettingsModal({
           <BranchesSection branchList={branchList} onChange={onBranchListChange} />
 
           <SprintsSection sprints={sprints} onChange={onSprintsChange} />
+
+          <EditorSection
+            editor={editor}
+            installed={installedEditors}
+            onChange={onEditorChange}
+            onRescan={onRescanEditors}
+          />
 
           <MergeToolSection mergeTool={mergeTool} onChange={onMergeToolChange} />
 

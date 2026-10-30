@@ -14,6 +14,9 @@ interface FileMenuOptions {
   onEdit?: () => void
   /** Narrows the graph to the commits touching a file or folder. */
   onFilterHistory?: (path: string) => void
+  /** Opens the file in the user's code editor, named by `editorName`. */
+  onOpenInEditor?: () => void
+  editorName?: string | null
   onCopyPath?: () => void
   /** Offers "Track with LFS" (in the working tree): whether git-lfs is installed, the file is already in LFS, and how to track a pattern. */
   lfs?: { installed: boolean; tracked: boolean; onTrack: (pattern: string) => void }
@@ -26,6 +29,9 @@ export function fileMenuSections(o: FileMenuOptions): ContextMenuItem[][] {
   const open: ContextMenuItem[] = []
   if (o.onOpenDiff) open.push({ id: 'diff', label: 'Open diff', onSelect: o.onOpenDiff })
   if (o.onEdit && !o.deleted) open.push({ id: 'edit', label: 'Edit file', onSelect: o.onEdit })
+  if (o.onOpenInEditor && o.editorName) {
+    open.push({ id: 'open-in-editor', label: `Open in ${o.editorName}`, disabled: o.deleted, onSelect: o.onOpenInEditor })
+  }
   const history: ContextMenuItem[] = []
   if (o.onBlame) history.push({ id: 'blame', label: 'Blame', disabled: o.deleted || o.untracked, onSelect: o.onBlame })
   if (o.onHistory) history.push({ id: 'history', label: 'File history', disabled: o.untracked, onSelect: o.onHistory })

@@ -207,3 +207,12 @@ export function MoreIcon(): JSX.Element {
     </svg>
   )
 }
+
+export function CodeIcon(): JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path d="M5 4.5 1.8 8 5 11.5M11 4.5 14.2 8 11 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.2 3 6.8 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
