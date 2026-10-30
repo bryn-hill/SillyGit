@@ -126,10 +126,34 @@ if [ "$WITH_WINE" = 1 ]; then
   else
     softwareupdate --install-rosetta --agree-to-license
   fi
-  if brew list --cask wine-stable >/dev/null 2>&1; then
-    note "wine-stable already installed"
+  # Homebrew disabled its Wine casks in September 2026 (they fail Gatekeeper),
+  # but still knows the build and checksum, so fetch that build ourselves and
+  # link it the way the cask did.
+  wine_app="/Applications/Wine Stable.app"
+  if command -v wine >/dev/null 2>&1; then
+    note "wine already installed at $(command -v wine)"
+  elif [ -d "$wine_app" ]; then
+    note "$wine_app already there"
   else
-    brew install --cask wine-stable
+    cask="$(brew info --cask --json=v2 wine-stable)"
+    wine_url="$(printf '%s' "$cask" | jq -r '.casks[0].url')"
+    wine_sha="$(printf '%s' "$cask" | jq -r '.casks[0].sha256')"
+    wine_tmp="$(mktemp -d)"
+    curl -fsSL -o "$wine_tmp/wine.tar.xz" "$wine_url"
+    if [ "$(shasum -a 256 "$wine_tmp/wine.tar.xz" | cut -d' ' -f1)" = "$wine_sha" ]; then
+      tar -xJf "$wine_tmp/wine.tar.xz" -C /Applications
+    else
+      fail_later "Wine download checksum mismatch, skipped"
+    fi
+    rm -rf "$wine_tmp"
+  fi
+  if [ -d "$wine_app" ]; then
+    for bin in wine wineserver wineboot winepath; do
+      src="$wine_app/Contents/Resources/wine/bin/$bin"
+      if [ -e "$src" ] && [ ! -e "/opt/homebrew/bin/$bin" ]; then
+        ln -s "$src" "/opt/homebrew/bin/$bin"
+      fi
+    done
   fi
 fi
 
