@@ -135,3 +135,34 @@ test("a commit's files sit right of its diff, and its history keeps them there",
   await history.diffTab.click()
   await commit.expectShowing('notes.txt', 'some notes')
 })
+
+test.describe('reading a long diff from the keyboard', () => {
+  test.beforeEach(async ({ sillygit, repo }) => {
+    const long = Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n') + '\n'
+    repo.writeFile('a.txt', long)
+    repo.writeFile('b.txt', long)
+    await sillygit.openRepository(repo.path)
+    await sillygit.details.listedFile('Unstaged', 'a.txt').click()
+    await sillygit.workingFile.expectShowing('a.txt', 'line 0')
+  })
+
+  test('page keys scroll the open diff while the arrows move between files', async ({ sillygit }) => {
+    const view = sillygit.workingFile
+    const keyboard = sillygit.page.keyboard
+
+    await keyboard.press('PageDown')
+    await expect.poll(() => view.scrollTop()).toBeGreaterThan(0)
+    await keyboard.press('End')
+    const bottom = await view.scrollTop()
+    await keyboard.press('Space')
+    await expect.poll(() => view.scrollTop()).toBe(bottom)
+    await keyboard.press('Home')
+    await expect.poll(() => view.scrollTop()).toBe(0)
+    await expect(sillygit.details.activeFile).toContainText('a.txt')
+
+    await keyboard.press('ArrowDown')
+    await view.expectShowing('b.txt', 'line 0')
+    await keyboard.press('Space')
+    await expect.poll(() => view.scrollTop()).toBeGreaterThan(0)
+  })
+})
