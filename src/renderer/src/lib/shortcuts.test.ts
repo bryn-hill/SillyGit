@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { isPrimary, isTyping, matchScore } from './shortcuts'
 
-// Vitest runs without a navigator here, so the non-macOS (Ctrl) bindings apply.
+// Node has a navigator of its own that reports macOS on a Mac, so hide it and test the non-macOS (Ctrl) bindings.
+vi.hoisted(() => vi.stubGlobal('navigator', undefined))
 const key = (mods: Partial<Record<'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey', boolean>>): KeyboardEvent =>
   ({ metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...mods }) as KeyboardEvent
 
