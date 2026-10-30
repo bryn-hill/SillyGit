@@ -164,6 +164,7 @@ export function appCommands(app: {
       toggleOverview: () => view.setShowOverview((v) => !v),
       cycleTab: tabs.cycle,
       clone: tabs.clone,
+      publish: () => dialogs.setShowPublish(true),
       toggleTerminal: () => layout.setShowTerminal((v) => !v),
       openRepo: tabs.openRepo,
       openRecentRepo: (path) => tabs.openRecentRepo(path),

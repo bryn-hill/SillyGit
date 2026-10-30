@@ -6,10 +6,10 @@ const article: HelpArticle = {
   category: 'remotes-prs',
   summary: 'Share your commits and bring in other people\'s, and choose how pulls combine them.',
   keywords: ['push', 'pull', 'fetch', 'sync', 'remote', 'upstream', 'rebase pull', 'fast-forward only', 'auto fetch'],
-  related: ['remotes-prs/launchpad', 'branches/branch-menu', 'conflicts/resolve-conflicts', 'integrations/accounts'],
+  related: ['remotes-prs/launchpad', 'branches/branch-menu', 'conflicts/resolve-conflicts', 'integrations/accounts', 'remotes-prs/publish-repository'],
   body: `- **Fetch** downloads new commits from your remotes but changes none of your branches. SillyGit fetches in the background every few minutes; change or turn that off in **Settings > Fetch in the background**.
 - **Pull** fetches, then brings the new commits into your checked-out branch. The badge on the **Pull** button counts how many commits are waiting.
-- **Push** sends your commits to the remote. A branch that has never been pushed is pushed and set to track a remote branch of the same name.
+- **Push** sends your commits to the remote. A branch that has never been pushed is pushed and set to track a remote branch of the same name. A repository with no remote shows **Publish** instead; see [Clone from your accounts and publish repositories](help:remotes-prs/publish-repository).
 
 ## Choosing how to pull
 

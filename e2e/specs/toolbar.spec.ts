@@ -37,10 +37,11 @@ test.describe('toolbar', () => {
     await expect(pop).toBeDisabled()
   })
 
-  test('Pull and Push are disabled without a remote', async ({ sillygit, repo }) => {
+  test('without a remote Pull is disabled and Push becomes Publish', async ({ sillygit, repo }) => {
     await sillygit.openRepository(repo.path)
     await expect(sillygit.toolbarButton('Pull')).toBeDisabled()
-    await expect(sillygit.toolbarButton('Push')).toBeDisabled()
+    await expect(sillygit.toolbarButton('Push')).toHaveCount(0)
+    await expect(sillygit.toolbarButton('Publish repository')).toBeEnabled()
   })
 
   test('Branch creates a branch and checks it out', async ({ sillygit, repo }) => {

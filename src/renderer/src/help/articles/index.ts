@@ -36,6 +36,7 @@ import remotesPrsCreatePullRequest from './remotes-prs/create-pull-request'
 import remotesPrsReviewPullRequests from './remotes-prs/review-pull-requests'
 import remotesPrsCheckOutPullRequest from './remotes-prs/check-out-pull-request'
 import remotesPrsNotifications from './remotes-prs/notifications'
+import remotesPrsPublishRepository from './remotes-prs/publish-repository'
 import conflictsResolveConflicts from './conflicts/resolve-conflicts'
 import conflictsMergeTool from './conflicts/merge-tool'
 import conflictsResolveManyFiles from './conflicts/resolve-many-files'
@@ -97,6 +98,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   remotesPrsReviewPullRequests,
   remotesPrsCheckOutPullRequest,
   remotesPrsNotifications,
+  remotesPrsPublishRepository,
   conflictsResolveConflicts,
   conflictsMergeTool,
   conflictsResolveManyFiles,

@@ -18,6 +18,8 @@ import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import CreatePullRequestDialog from './components/CreatePullRequestDialog'
 import GitFlowSetupDialog from './components/GitFlowSetupDialog'
+import CloneDialog from './components/CloneDialog'
+import PublishRepoDialog from './components/PublishRepoDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
@@ -150,7 +152,7 @@ export default function App(): JSX.Element {
     commitBox.resetAmend()
     view.resetForRepo(lastSelection)
   }
-  const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, askText, showError, setNotice })
+  const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, showError, setNotice })
   // The window stays hidden until the last session is back up, repo and all,
   // so launch never flashes the empty "no repo" screen.
   const startupReady = tabs.sessionRestored && (!repoPath || status !== null)
@@ -162,7 +164,7 @@ export default function App(): JSX.Element {
   useEscapeToLeaveFocus()
   const helpOpen = useHelpCentre().open
   useAppShortcuts({
-    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity || helpOpen,
+    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity || dialogs.showPublish || tabs.cloneOpen || helpOpen,
     paletteOpen: dialogs.palette !== null,
     repoOpen: !!repoPath,
     busy: git.busy,
@@ -214,6 +216,7 @@ export default function App(): JSX.Element {
           recentRepos={tabs.recentRepos}
           onOpenRecentRepo={(path) => tabs.openRecentRepo(path, true)}
           onPush={actions.push}
+          onPublish={() => dialogs.setShowPublish(true)}
           onPull={actions.pull}
           pullMode={actions.pullMode}
           onFetch={actions.fetch}
@@ -363,6 +366,33 @@ export default function App(): JSX.Element {
             onCreated={branches.pullRequestCreated}
             onOpenUrl={actions.openUrl}
             onClose={branches.closeCreatePullRequest}
+          />
+        )}
+        {tabs.cloneOpen && (
+          <CloneDialog
+            onClone={(url) => void tabs.cloneUrl(url)}
+            onOpenSettings={() => {
+              tabs.closeClone()
+              dialogs.setShowSettings(true)
+            }}
+            onClose={tabs.closeClone}
+          />
+        )}
+        {dialogs.showPublish && repoPath && (
+          <PublishRepoDialog
+            key={repoPath}
+            repoPath={repoPath}
+            branch={status?.branch ?? null}
+            onPublished={(result) => {
+              dialogs.setShowPublish(false)
+              void repo.refresh(repoPath)
+              setNotice(`Published ${result.branch} to ${result.webUrl ?? result.cloneUrl}.`)
+            }}
+            onOpenSettings={() => {
+              dialogs.setShowPublish(false)
+              dialogs.setShowSettings(true)
+            }}
+            onClose={() => dialogs.setShowPublish(false)}
           />
         )}
         {branches.gitFlow.setup && (

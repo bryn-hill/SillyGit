@@ -1,6 +1,5 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { SavedLayout, SavedSession } from '../../../shared/types'
-import type { PromptRequest } from '../components/PromptDialog'
 import { cycleTab, moveTab, openTab, tabAfterClosing, togglePinnedTab } from '../lib/tabs'
 import type { GitRunner } from './useGitRunner'
 import type { MainView } from './useMainView'
@@ -17,7 +16,6 @@ export function useTabs({
   view,
   showRepo,
   restoreLayout,
-  askText,
   showError,
   setNotice
 }: {
@@ -26,7 +24,6 @@ export function useTabs({
   view: MainView
   showRepo: (path: string | null) => void
   restoreLayout: (layout: Partial<SavedLayout>) => void
-  askText: (request: PromptRequest) => Promise<string | null>
   showError: (message: string | null) => void
   setNotice: (message: string | null) => void
 }) {
@@ -38,6 +35,7 @@ export function useTabs({
   // Tabs are saved only once the previous session has been restored, so the
   // defaults never overwrite it.
   const [sessionRestored, setSessionRestored] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
 
   // Saved straight away (tabs change rarely) so a quick quit never loses one.
   useEffect(() => {
@@ -111,14 +109,12 @@ export function useTabs({
     await switchToRepo(path, replace)
   }
 
-  const clone = async (): Promise<void> => {
-    const url = await askText({
-      title: 'Clone a repository',
-      label: 'Repository URL',
-      placeholder: 'https://github.com/owner/repo.git',
-      submitLabel: 'Choose folder…'
-    })
-    if (!url?.trim()) return
+  /** Opens the clone dialog: a URL, or a repo from a signed-in account. */
+  const clone = (): void => setCloneOpen(true)
+
+  /** Asks where to clone `url`, clones it there and opens it in a new tab. */
+  const cloneUrl = async (url: string): Promise<void> => {
+    setCloneOpen(false)
     await git.withBusy(async () => {
       setNotice('Cloning…')
       const res = await window.api.clone(url.trim())
@@ -169,6 +165,9 @@ export function useTabs({
     openRepo,
     openRecentRepo,
     clone,
+    cloneOpen,
+    cloneUrl,
+    closeClone: () => setCloneOpen(false),
     selectTab,
     closeTabs,
     togglePin,

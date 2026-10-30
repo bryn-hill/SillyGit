@@ -22,6 +22,7 @@
 @import './styles/repo-overview.css';
 @import './styles/pr-review.css';
 @import './styles/create-pr.css';
+@import './styles/clone.css';
 @import './styles/claude-panel.css';
 @import './styles/merge-conflicts.css';
 @import './styles/graph-paging.css';

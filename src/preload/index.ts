@@ -392,6 +392,17 @@ const api = {
     ipcRenderer.invoke('accounts:add', input),
   removeAccount: (id: string): Wrapped<import('../shared/accounts').ProviderAccount[]> =>
     ipcRenderer.invoke('accounts:remove', id),
+  /** Repositories the signed-in git host accounts (or just `accountId`) can reach, for the clone dialog. */
+  hostedRepos: (accountId?: string): Wrapped<import('../shared/hostedRepos').HostedRepoList> =>
+    ipcRenderer.invoke('accounts:repos', accountId),
+  /** Where an account can create a repository: the user, organizations, groups, workspaces or projects. */
+  publishOwners: (accountId: string): Wrapped<import('../shared/hostedRepos').PublishOwner[]> =>
+    ipcRenderer.invoke('accounts:publish-owners', accountId),
+  /** Creates the repository on the account's host, adds it as origin and pushes the checked-out branch. */
+  publishRepo: (
+    repoPath: string,
+    input: import('../shared/hostedRepos').PublishInput
+  ): Wrapped<import('../shared/hostedRepos').PublishResult> => ipcRenderer.invoke('repo:publish', repoPath, input),
   getMergeToolSettings: (): Promise<import('../shared/mergeTools').MergeToolSettings> =>
     ipcRenderer.invoke('settings:get-merge-tool'),
   setMergeToolSettings: (

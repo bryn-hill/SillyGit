@@ -41,6 +41,8 @@ interface Props {
   recentRepos: string[]
   onOpenRecentRepo: (path: string) => void
   onPush: () => void
+  /** With no remote, Push becomes Publish: create the repository on a signed-in host and push to it. */
+  onPublish: () => void
   /** Pulls the way the Pull menu last chose, or `mode` when picked from the menu. */
   onPull: (mode?: PullMode) => void
   pullMode: PullMode
@@ -101,6 +103,7 @@ export default function TopBar({
   recentRepos,
   onOpenRecentRepo,
   onPush,
+  onPublish,
   onPull,
   pullMode,
   onFetch,
@@ -333,14 +336,25 @@ export default function TopBar({
               </>
             )}
           </div>
-          <ToolButton
-            label="Push"
-            icon={<PushIcon />}
-            disabled={busy || !hasRemotes}
-            onClick={onPush}
-            title={hasRemotes ? `Push to remote (${MOD}⇧U)` : noRemote}
-            badge={status?.ahead}
-          />
+          {hasRemotes ? (
+            <ToolButton
+              label="Push"
+              icon={<PushIcon />}
+              disabled={busy}
+              onClick={onPush}
+              title={`Push to remote (${MOD}⇧U)`}
+              badge={status?.ahead}
+            />
+          ) : (
+            <ToolButton
+              label="Publish"
+              ariaLabel="Publish repository"
+              icon={<PushIcon />}
+              disabled={busy}
+              onClick={onPublish}
+              title="This repository has no remote yet. Create it on GitHub, GitLab, Bitbucket or Azure DevOps and push to it"
+            />
+          )}
           <ToolButton
             label="Branch"
             ariaLabel="Create branch"

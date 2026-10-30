@@ -170,6 +170,14 @@ export async function credentialsFor(
   return { account: toPublic(account), creds: credentialsOf(account, token) }
 }
 
+/** A signed-in account and its token, by the account's id. */
+export async function credentialsById(id: string): Promise<{ account: ProviderAccount; creds: Credentials } | null> {
+  const account = (await readAccounts()).find((a) => a.id === id)
+  if (!account) return null
+  const token = decrypt(account)
+  return token ? { account: toPublic(account), creds: credentialsOf(account, token) } : null
+}
+
 /** The Azure DevOps account and token for an organization, when one is signed in. */
 export async function azureCredentialsFor(
   organization: string
