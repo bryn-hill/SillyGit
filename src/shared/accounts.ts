@@ -1,5 +1,5 @@
-/** Hosting services SillyGit can sign in to with a personal access token. */
-export type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'gitea'
+/** Services SillyGit can sign in to with a personal access token: git hosts, and Jira for issues. */
+export type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'gitea' | 'jira'
 
 /** A signed-in account. The token itself never leaves the main process. */
 export interface ProviderAccount {
@@ -21,7 +21,7 @@ export interface ProviderAccount {
 export interface NewAccountInput {
   provider: GitProvider
   host: string
-  /** Bitbucket only: the Atlassian account email the API token belongs to. */
+  /** Bitbucket and Jira Cloud: the Atlassian account email the API token belongs to. */
   username?: string
   token: string
 }
@@ -33,6 +33,12 @@ export interface ProviderInfo {
   hostEditable: boolean
   /** Bitbucket's API tokens are used together with the account's email. */
   needsUsername: boolean
+  /** Jira: the email is asked for, but left out for a Data Center personal access token. */
+  optionalUsername?: boolean
+  /** An issue tracker, not a git host: git never gets its token. */
+  issueTracker?: boolean
+  /** Placeholder for the Server field. */
+  hostPlaceholder?: string
   /** The page where the user creates a token, with the right scopes picked where the service allows it. */
   tokenUrl: (host: string) => string
   /** Which permissions the token needs, shown under the form. */
@@ -73,10 +79,30 @@ export const PROVIDERS: Record<GitProvider, ProviderInfo> = {
     needsUsername: false,
     tokenUrl: (host) => `https://${host}/user/settings/applications`,
     scopesHint: 'Scopes: read:user and write:repository.'
+  },
+  jira: {
+    label: 'Jira',
+    defaultHost: '',
+    hostEditable: true,
+    needsUsername: false,
+    optionalUsername: true,
+    issueTracker: true,
+    hostPlaceholder: 'your-site.atlassian.net',
+    tokenUrl: (host) =>
+      isJiraCloud(host)
+        ? 'https://id.atlassian.com/manage-profile/security/api-tokens'
+        : `https://${host}/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens`,
+    scopesHint:
+      'Jira Cloud: your Atlassian email and an API token (a classic one, or one with read:jira-work and read:jira-user). Jira Data Center: leave the email empty and use a personal access token.'
   }
 }
 
-export const PROVIDER_ORDER: GitProvider[] = ['github', 'gitlab', 'bitbucket', 'gitea']
+export const PROVIDER_ORDER: GitProvider[] = ['github', 'gitlab', 'bitbucket', 'gitea', 'jira']
+
+/** Jira Cloud sites live on atlassian.net; anything else is Jira Data Center or Server. */
+export function isJiraCloud(host: string): boolean {
+  return host === 'atlassian.net' || host.endsWith('.atlassian.net')
+}
 
 /**
  * Cleans up what the user typed as a host: drops a scheme, path, trailing

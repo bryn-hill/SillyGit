@@ -8,6 +8,7 @@ import {
 } from '../../../../shared/accounts'
 import Avatar from '../Avatar'
 import { resetAvatars } from '../../lib/avatars'
+import { resetJiraSites } from '../../lib/jira'
 
 function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAccount) => void; onCancel: () => void }): JSX.Element {
   const [provider, setProvider] = useState<GitProvider>('github')
@@ -70,13 +71,13 @@ function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAcco
           </label>
           <input
             id="account-host"
-            placeholder={info.defaultHost || 'git.example.com'}
+            placeholder={info.defaultHost || info.hostPlaceholder || 'git.example.com'}
             value={host}
             onChange={(e) => setHost(e.target.value)}
           />
         </>
       )}
-      {info.needsUsername && (
+      {(info.needsUsername || info.optionalUsername) && (
         <>
           <label className="modal-label" htmlFor="account-username">
             Atlassian account email
@@ -84,14 +85,14 @@ function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAcco
           <input
             id="account-username"
             type="email"
-            placeholder="you@example.com"
+            placeholder={info.optionalUsername ? 'you@example.com (Jira Cloud only)' : 'you@example.com'}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
         </>
       )}
       <label className="modal-label" htmlFor="account-token">
-        Personal access token
+        {info.issueTracker ? 'API token' : 'Personal access token'}
       </label>
       <input
         id="account-token"
@@ -144,6 +145,7 @@ export default function AccountsSection(): JSX.Element {
     if (!ok) return
     const res = await window.api.removeAccount(account.id)
     if (res.ok) setAccounts(res.data)
+    if (PROVIDERS[account.provider].issueTracker) resetJiraSites()
   }
 
   return (
@@ -152,7 +154,7 @@ export default function AccountsSection(): JSX.Element {
       {accounts && accounts.length === 0 && !adding && (
         <div className="modal-hint">
           Add a personal access token to push and pull over HTTPS, see pull requests in Launchpad without the GitHub
-          CLI, and show your team&apos;s avatars.
+          CLI, and show your team&apos;s avatars. Add Jira to see your Jira issues in Launchpad and link issue keys.
         </div>
       )}
       {accounts && accounts.length > 0 && (
@@ -189,6 +191,7 @@ export default function AccountsSection(): JSX.Element {
             setAccounts((list) => [...(list ?? []).filter((a) => a.id !== account.id), account])
             setAdding(false)
             resetAvatars()
+            if (PROVIDERS[account.provider].issueTracker) resetJiraSites()
           }}
         />
       ) : (

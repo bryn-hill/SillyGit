@@ -5,6 +5,7 @@ export class Launchpad {
   readonly root: Locator
   readonly cards: Locator
   readonly issues: Locator
+  readonly jiraIssues: Locator
   /** The Start work dialog for an issue. */
   readonly startWork: Locator
   readonly branchName: Locator
@@ -14,6 +15,7 @@ export class Launchpad {
     this.root = page.getByTestId('launchpad')
     this.cards = this.root.getByTestId('launchpad-card')
     this.issues = this.root.getByRole('region', { name: 'Assigned issues' }).getByTestId('launchpad-issue')
+    this.jiraIssues = this.root.getByRole('region', { name: 'Jira issues' }).getByTestId('launchpad-jira-issue')
     this.startWork = page.getByRole('dialog', { name: /^Start work on / })
     this.branchName = this.startWork.getByLabel('Branch name')
     this.startButton = this.startWork.getByRole('button', { name: /^(Start work|Check out)$/ })
@@ -36,6 +38,20 @@ export class Launchpad {
   /** Opens the Start work dialog for the issue titled `title`. */
   async startWorkOn(title: string): Promise<void> {
     await this.issue(title).getByRole('button', { name: 'Start work' }).click()
+  }
+
+  jiraIssue(key: string): Locator {
+    return this.jiraIssues.filter({ hasText: key })
+  }
+
+  /** Opens the Start work dialog for the Jira issue `key`. */
+  async startWorkOnJira(key: string): Promise<void> {
+    await this.jiraIssue(key).getByRole('button', { name: `Start work on ${key}` }).click()
+  }
+
+  /** The Start work dialog's repository picker, shown for Jira issues. */
+  get repository(): Locator {
+    return this.startWork.getByRole('combobox', { name: 'Repository' })
   }
 
   stackOn(branch: string): Locator {

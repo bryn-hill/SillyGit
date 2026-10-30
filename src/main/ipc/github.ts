@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import * as issueWork from '../issueWork'
+import * as jira from '../jira'
 import * as launchpad from '../launchpad'
 import * as prReview from '../prReview'
 import * as prCheckout from '../prCheckout'
@@ -9,7 +10,7 @@ import type { CreatePullRequestInput } from '../../shared/createPullRequest'
 import type { SubmitReviewInput } from '../../shared/prReview'
 import { wrap } from './wrap'
 
-/** Launchpad, starting work on its issues, and creating and reviewing pull requests in the app. */
+/** Launchpad, its GitHub and Jira issues and starting work on them, and creating and reviewing pull requests in the app. */
 export function registerGithubHandlers(): void {
   ipcMain.handle('launchpad:get-data', (_e, repoPaths: string[]) =>
     wrap(() => launchpad.getLaunchpadData(repoPaths))
@@ -33,9 +34,14 @@ export function registerGithubHandlers(): void {
     wrap(() => issueWork.issueWorkOptions(repoPath, branch))
   )
 
-  ipcMain.handle('issues:start-work', (_e, repoPath: string, number: number, branch: string, stack: boolean) =>
-    wrap(() => issueWork.startIssueWork(repoPath, number, branch, stack))
+  // `issue` is a GitHub issue number or a Jira key.
+  ipcMain.handle('issues:start-work', (_e, repoPath: string, issue: number | string, branch: string, stack: boolean) =>
+    wrap(() => issueWork.startIssueWork(repoPath, issue, branch, stack))
   )
+
+  ipcMain.handle('jira:assigned-issues', () => wrap(() => jira.assignedJiraIssues()))
+
+  ipcMain.handle('jira:sites', () => wrap(() => jira.jiraSites()))
 
   ipcMain.handle('pr:get-detail', (_e, repoPath: string, number: number) =>
     wrap(() => prReview.getPullRequestDetail(repoPath, number))

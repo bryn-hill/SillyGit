@@ -3,7 +3,9 @@ import type { LaunchpadBucketId, LaunchpadData, LaunchpadIssue, LaunchpadPullReq
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
 import { timeAgo } from '../lib/timeAgo'
 import PullRequestReview from './PullRequestReview'
-import StartWorkDialog from './StartWorkDialog'
+import StartWorkDialog, { type WorkItem } from './StartWorkDialog'
+import { issueBranchName } from '../../../shared/issues'
+import { jiraBranchName, type JiraIssue, type JiraIssues } from '../../../shared/jira'
 
 /** A pull request to open in the review screen. */
 export interface PullRequestRef {
@@ -142,6 +144,61 @@ function IssueCard({ issue, onStartWork }: { issue: LaunchpadIssue; onStartWork:
   )
 }
 
+/** Start work on a GitHub issue, in its own repo. */
+function githubWorkItem(issue: LaunchpadIssue): WorkItem {
+  return {
+    issue: issue.number,
+    label: `#${issue.number}`,
+    title: issue.title,
+    branch: issueBranchName(issue.number, issue.title),
+    repoPath: issue.repoPath,
+    outcome: `Its pull request will close #${issue.number}.`
+  }
+}
+
+/** Start work on a Jira issue, in a repo the user picks. */
+function jiraWorkItem(issue: JiraIssue): WorkItem {
+  return {
+    issue: issue.key,
+    label: issue.key,
+    title: issue.summary,
+    branch: jiraBranchName(issue.key, issue.summary),
+    repoPath: null,
+    outcome: `Its pull request will name ${issue.key}.`
+  }
+}
+
+const JIRA_STATUS_CLASS: Record<JiraIssue['statusCategory'], string> = {
+  new: 'jira-status-new',
+  indeterminate: 'jira-status-progress',
+  done: 'jira-status-done'
+}
+
+function JiraIssueCard({ issue, onStartWork }: { issue: JiraIssue; onStartWork: () => void }): JSX.Element {
+  return (
+    <div className="launchpad-card" data-testid="launchpad-jira-issue">
+      <div className="launchpad-card-main">
+        <div className="launchpad-card-title">{issue.summary}</div>
+        <div className="launchpad-card-meta">
+          {issue.key}
+          {issue.type && ` · ${issue.type}`}
+          {issue.priority && ` · ${issue.priority}`}
+          {issue.updatedAt && ` · ${timeAgo(issue.updatedAt)}`}
+        </div>
+      </div>
+      {issue.status && <span className={`jira-status ${JIRA_STATUS_CLASS[issue.statusCategory]}`}>{issue.status}</span>}
+      <div className="launchpad-card-actions">
+        <button onClick={onStartWork} aria-label={`Start work on ${issue.key}`}>
+          Start work
+        </button>
+        <button className="subtle" onClick={() => window.api.openExternal(issue.url)} title="Open in Jira">
+          Open
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Launchpad({
   initialReview = null,
   repoPath,
@@ -163,7 +220,8 @@ export default function Launchpad({
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const [addingRepo, setAddingRepo] = useState(false)
   const [reviewing, setReviewing] = useState<PullRequestRef | null>(initialReview)
-  const [startingWork, setStartingWork] = useState<LaunchpadIssue | null>(null)
+  const [startingWork, setStartingWork] = useState<WorkItem | null>(null)
+  const [jira, setJira] = useState<JiraIssues | null>(null)
 
   useEffect(() => {
     window.api.getWorkspaceRepos().then((repos) => {
@@ -198,6 +256,20 @@ export default function Launchpad({
       cancelled = true
     }
   }, [workspaceLoaded, allRepoPaths, request])
+
+  // Jira isn't tied to the repos, and a slow site shouldn't hold up the pull requests.
+  useEffect(() => {
+    let cancelled = false
+    window.api.jiraAssignedIssues().then((res) => {
+      if (cancelled) return
+      setJira(
+        res.ok ? res.data : { connected: true, issues: [], problems: [{ host: 'Jira', message: res.error }] }
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [reloads])
 
   const handleMerge = (pr: LaunchpadPullRequest): void => {
     const ok = window.confirm(`Merge #${pr.number} "${pr.title}" into ${pr.baseRefName}?`)
@@ -240,6 +312,7 @@ export default function Launchpad({
 
   const groups = data?.connected ? groupByBucket(data.pullRequests) : []
   const issues = data?.connected ? (data.issues ?? []) : []
+  const jiraIssues = jira?.issues ?? []
 
   if (reviewing)
     return (
@@ -302,7 +375,7 @@ export default function Launchpad({
           </div>
         )}
         {!error && data && !data.connected && <UnavailableNotice data={data} onOpenTerminal={onOpenTerminal} />}
-        {!error && data?.connected && groups.length === 0 && issues.length === 0 && (
+        {!error && data?.connected && groups.length === 0 && issues.length === 0 && jiraIssues.length === 0 && (
           <div className="launchpad-notice">You're all caught up — no open pull requests need your attention.</div>
         )}
         {!error &&
@@ -372,7 +445,30 @@ export default function Launchpad({
                 <IssueCard
                   key={`${issue.repoPath}#${issue.number}`}
                   issue={issue}
-                  onStartWork={() => setStartingWork(issue)}
+                  onStartWork={() => setStartingWork(githubWorkItem(issue))}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+        {jira?.connected && (jiraIssues.length > 0 || jira.problems.length > 0) && (
+          <section className="launchpad-bucket" aria-label="Jira issues">
+            <div className="launchpad-bucket-header">
+              <span className="launchpad-bucket-dot" style={{ background: 'var(--cyan)' }} />
+              <span className="launchpad-bucket-label">Jira issues</span>
+              <span className="launchpad-bucket-count">{jiraIssues.length}</span>
+            </div>
+            {jira.problems.map((p) => (
+              <div key={p.host} className="launchpad-notice-hint" role="alert">
+                Couldn't load issues from {p.host}: {p.message}
+              </div>
+            ))}
+            <div className="launchpad-cards">
+              {jiraIssues.map((issue) => (
+                <JiraIssueCard
+                  key={`${issue.host}/${issue.key}`}
+                  issue={issue}
+                  onStartWork={() => setStartingWork(jiraWorkItem(issue))}
                 />
               ))}
             </div>
@@ -389,14 +485,15 @@ export default function Launchpad({
       </div>
       {startingWork && (
         <StartWorkDialog
-          key={`${startingWork.repoPath}#${startingWork.number}`}
-          issue={startingWork}
+          key={`${startingWork.repoPath}#${startingWork.issue}`}
+          item={startingWork}
+          repos={allRepoPaths}
           onCancel={() => setStartingWork(null)}
-          onStarted={(result) => {
-            const issue = startingWork
+          onStarted={(path, result) => {
+            const item = startingWork
             setStartingWork(null)
             const how = result.created ? (result.stackedOn ? `stacked on ${result.stackedOn}` : 'created') : 'checked out'
-            onStartedWork(issue.repoPath, `Working on #${issue.number} on ${result.branch} (${how}).`)
+            onStartedWork(path, `Working on ${item.label} on ${result.branch} (${how}).`)
           }}
         />
       )}

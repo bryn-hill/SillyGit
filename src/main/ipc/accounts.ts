@@ -3,6 +3,7 @@ import { join } from 'path'
 import { promises as fsp } from 'fs'
 import * as accounts from '../accounts'
 import * as github from '../github'
+import { forgetJiraSites } from '../jira'
 import * as settings from '../settings'
 import { AvatarResolver, type AvatarSources } from '../avatars'
 import { githubAccess, remoteLocations } from '../hosting'
@@ -66,12 +67,18 @@ export function registerAccountHandlers(): void {
     wrap(async () => {
       const account = await accounts.addAccount(input)
       await avatarResolver?.forgetMisses()
+      forgetJiraSites()
       void restartPrNotifications()
       return account
     })
   )
 
-  ipcMain.handle('accounts:remove', (_e, id: string) => wrap(() => accounts.removeAccount(id)))
+  ipcMain.handle('accounts:remove', (_e, id: string) =>
+    wrap(() => {
+      forgetJiraSites()
+      return accounts.removeAccount(id)
+    })
+  )
 
   ipcMain.handle('settings:get-show-avatars', () => settings.getShowAvatars())
 

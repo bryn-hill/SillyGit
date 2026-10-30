@@ -11,6 +11,7 @@ import { LfsContext } from '../../lib/lfs'
 import LfsBadge from '../LfsBadge'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import { onFileListKeyDown } from '../../lib/fileListNav'
+import JiraText from '../JiraText'
 import type { OpenFileView } from './types'
 
 function SparkleIcon(): JSX.Element {
@@ -150,9 +151,13 @@ function CommitDetailBody({
         <SignatureBadge signature={detail.signature} />
       </div>
       <div className="commit-subject-large" data-testid="commit-subject">
-        {detail.subject}
+        <JiraText text={detail.subject} />
       </div>
-      {body && <div className="commit-body">{body}</div>}
+      {body && (
+        <div className="commit-body">
+          <JiraText text={body} />
+        </div>
+      )}
       <div className="commit-author-row">
         <Avatar name={detail.author} email={detail.authorEmail} hash={detail.hash} repoPath={repoPath} size={28} />
         <div>

@@ -1,4 +1,5 @@
 import { ISSUE_KEY } from '../shared/issues'
+import { JIRA_ISSUE_KEY } from '../shared/jira'
 import type { IssueWorkOptions, StartIssueWorkResult } from '../shared/types'
 import { GitError, runGit } from './gitExec'
 import { createStackedBranch } from './stacks'
@@ -41,14 +42,14 @@ export async function issueWorkOptions(repoPath: string, branch: string): Promis
 }
 
 /**
- * Creates `branch` for issue `number` and checks it out: stacked on the
- * current branch with `stack`, otherwise off the default branch. A branch
- * that already exists is just checked out, so starting work again picks up
- * where it was left.
+ * Creates `branch` for an issue and checks it out: stacked on the current
+ * branch with `stack`, otherwise off the default branch. A branch that
+ * already exists is just checked out, so starting work again picks up where
+ * it was left. `issue` is a GitHub issue number or a Jira key ("PROJ-12").
  */
 export async function startIssueWork(
   repoPath: string,
-  number: number,
+  issue: number | string,
   branch: string,
   stack: boolean
 ): Promise<StartIssueWorkResult> {
@@ -72,7 +73,8 @@ export async function startIssueWork(
     // --no-track: the new branch shouldn't push to or pull from the trunk it started from.
     await runGit(repoPath, ['checkout', '--no-track', '-b', name, (await defaultBase(repoPath)).ref])
   }
-  await runGit(repoPath, ['config', `branch.${name}.${ISSUE_KEY}`, String(number)])
+  const configKey = typeof issue === 'number' ? ISSUE_KEY : JIRA_ISSUE_KEY
+  await runGit(repoPath, ['config', `branch.${name}.${configKey}`, String(issue)])
   return { branch: name, created, stackedOn }
 }
 
@@ -83,4 +85,10 @@ export async function startIssueWork(
 export async function issueForBranch(repoPath: string, branch: string): Promise<number | null> {
   const recorded = Number((await runGit(repoPath, ['config', '--get', `branch.${branch}.${ISSUE_KEY}`]).catch(() => '')).trim())
   return Number.isSafeInteger(recorded) && recorded > 0 ? recorded : null
+}
+
+/** The Jira issue Start work recorded for `branch`, e.g. "PROJ-12". */
+export async function jiraIssueForBranch(repoPath: string, branch: string): Promise<string | null> {
+  const recorded = (await runGit(repoPath, ['config', '--get', `branch.${branch}.${JIRA_ISSUE_KEY}`]).catch(() => '')).trim()
+  return /^[A-Z][A-Z0-9_]+-\d+$/.test(recorded) ? recorded : null
 }

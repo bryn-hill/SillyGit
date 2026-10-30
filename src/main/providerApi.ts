@@ -1,12 +1,12 @@
 import { fetchJson } from './http'
-import type { GitProvider } from '../shared/accounts'
+import { isJiraCloud, type GitProvider } from '../shared/accounts'
 
 /** A token and what the service needs alongside it. */
 export interface Credentials {
   provider: GitProvider
   host: string
   token: string
-  /** Bitbucket: the Atlassian account email (or username) the token belongs to. */
+  /** Bitbucket and Jira Cloud: the Atlassian account email (or username) the token belongs to. */
   username?: string
 }
 
@@ -21,6 +21,9 @@ export function apiBase(provider: GitProvider, host: string): string {
       return 'https://api.bitbucket.org/2.0'
     case 'gitea':
       return `https://${host}/api/v1`
+    case 'jira':
+      // Data Center has no v3; v2 has everything SillyGit asks for.
+      return `https://${host}/rest/api/${isJiraCloud(host) ? 3 : 2}`
   }
 }
 
@@ -43,6 +46,9 @@ export function authHeaders(creds: Credentials): Record<string, string> {
       return { Authorization: basic(creds.username ?? '', creds.token) }
     case 'gitea':
       return { Authorization: `token ${creds.token}` }
+    case 'jira':
+      // Cloud API tokens go with the account email; Data Center tokens are bearer tokens.
+      return creds.username ? { Authorization: basic(creds.username, creds.token) } : { Authorization: `Bearer ${creds.token}` }
   }
 }
 
@@ -145,6 +151,24 @@ export async function verifyAccount(creds: Credentials): Promise<VerifiedAccount
         displayName: user.full_name || user.login,
         avatarUrl: user.avatar_url ?? null,
         emails: uniqueEmails([user.email])
+      }
+    }
+    case 'jira': {
+      if (isJiraCloud(creds.host) && !creds.username) throw new Error('Jira Cloud needs the email your API token belongs to')
+      const user = await fetchJson<{
+        accountId?: string
+        name?: string
+        displayName?: string
+        emailAddress?: string
+        avatarUrls?: Record<string, string>
+      }>(`${base}/myself`, { headers })
+      const login = user.emailAddress || user.name || creds.username || user.accountId || 'jira'
+      return {
+        username: login,
+        displayName: user.displayName || login,
+        avatarUrl: user.avatarUrls?.['48x48'] ?? null,
+        // Jira knows the account's email, but its commits get a git host's avatar, not Jira's.
+        emails: []
       }
     }
   }

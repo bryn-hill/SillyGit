@@ -72,13 +72,6 @@ test('Start work can stack the new branch on the one checked out', async ({ sill
 
 test('the pull request for an issue branch closes the issue', async ({ sillygit, repo, electronApp }) => {
   await stubAssignedIssue(electronApp, repo)
-  await electronApp.evaluate(({ ipcMain }) => {
-    ipcMain.removeHandler('shell:open-external')
-    ipcMain.handle('shell:open-external', (_e, url: string) => {
-      ;(globalThis as { openedUrl?: string }).openedUrl = url
-      return { ok: true, data: undefined }
-    })
-  })
   await sillygit.openRepository(repo.path)
   await sillygit.tabs.launchpad.click()
   await sillygit.launchpad.startWorkOn('Export button does nothing on Safari')
@@ -94,10 +87,6 @@ test('the pull request for an issue branch closes the issue', async ({ sillygit,
   await sillygit.graph.badge('origin/12-safari-export').click({ button: 'right' })
   await sillygit.page.getByRole('menuitem', { name: /^Start a pull request/ }).click()
 
-  await expect
-    .poll(() => electronApp.evaluate(() => (globalThis as { openedUrl?: string }).openedUrl))
-    .toBeTruthy()
-  const url = new URL((await electronApp.evaluate(() => (globalThis as { openedUrl?: string }).openedUrl))!)
-  expect(url.searchParams.get('title')).toBe('fix: export on safari')
-  expect(url.searchParams.get('body')).toBe('Closes #12')
+  await expect(sillygit.createPullRequest.title).toHaveValue('fix: export on safari')
+  await expect(sillygit.createPullRequest.description).toHaveValue('Closes #12')
 })
