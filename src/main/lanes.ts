@@ -102,8 +102,18 @@ async function withTempIndex<T>(
   try {
     if (copyIndex) {
       // Starting from the real index keeps its file stat cache, so `add -A`
-      // only has to read files that changed.
-      await fsp.copyFile(await gitPath(repoPath, 'index'), file).catch(() => {})
+      // only has to read files that changed. The copy keeps the index's mtime:
+      // git compares it with each file's to spot files changed in the same
+      // second the index was written (whose stat looks clean), and a fresh
+      // mtime hides those, so an edit that kept the file's size was missed.
+      const index = await gitPath(repoPath, 'index')
+      await fsp
+        .copyFile(index, file)
+        .then(async () => {
+          const { atime, mtime } = await fsp.stat(index)
+          await fsp.utimes(file, atime, mtime)
+        })
+        .catch(() => {})
       await runGit(repoPath, ['read-tree', '-m', tree], env).catch(() => runGit(repoPath, ['read-tree', tree], env))
     } else {
       await runGit(repoPath, ['read-tree', tree], env)

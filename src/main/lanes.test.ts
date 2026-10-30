@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -92,6 +92,19 @@ describe('lanes', () => {
     expect((await lanesStatus(dir))!.files).toEqual([])
     expect(read('a.txt')).toBe(numbered(30, { 2: 'one says hi', 25: 'two says hi' }))
     expect(run('diff', 'HEAD', '--stat')).toBe('')
+  })
+
+  it('sees an edit that keeps the file size, made in the second the index was written', async () => {
+    await enterLanes(dir, 'main', 'one')
+    // As if a.txt was saved in the second the index was written (back-dated so the test
+    // doesn't depend on the clock): git can't trust a.txt's cached stat then.
+    const second = new Date(Math.floor(Date.now() / 1000) * 1000 - 60_000)
+    utimesSync(join(dir, 'a.txt'), second, second)
+    run('update-index', '--refresh')
+    utimesSync(join(dir, '.git', 'index'), second, second)
+    write('a.txt', numbered(30).replace('line 2\n', 'line X\n'))
+    utimesSync(join(dir, 'a.txt'), second, second)
+    expect((await lanesStatus(dir))!.files.map((f) => f.path)).toEqual(['a.txt'])
   })
 
   it('keeps owners while you keep typing, and new lines join their neighbours', async () => {
