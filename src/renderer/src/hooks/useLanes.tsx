@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { WORKSPACE_BRANCH, type LaneMove, type LanesStatus } from '../../../shared/lanes'
 import type { PromptRequest } from '../components/PromptDialog'
 import type { Repo } from './useRepo'
@@ -26,15 +26,20 @@ export function useLanes({
   // Ownership moves don't change git status, so they reload the lanes themselves.
   const [version, setVersion] = useState(0)
   const [loaded, setLoaded] = useState<{ repoPath: string; lanes: LanesStatus | null } | null>(null)
+  // Reads are numbered so an answer only replaces a newer one's. A newer ask
+  // doesn't throw away the answer still on its way: on a busy machine a read
+  // takes seconds and the repo refreshes again meanwhile, so dropping
+  // superseded answers left the lanes showing state from before a commit.
+  const asked = useRef(0)
+  const shown = useRef(0)
   useEffect(() => {
     if (!repoPath) return
-    let current = true
+    const seq = ++asked.current
     window.api.lanesStatus(repoPath).then((res) => {
-      if (current) setLoaded({ repoPath, lanes: res.ok ? res.data : null })
+      if (seq < shown.current) return
+      shown.current = seq
+      setLoaded({ repoPath, lanes: res.ok ? res.data : null })
     })
-    return () => {
-      current = false
-    }
   }, [repoPath, status, version])
   const lanes = loaded?.repoPath === repoPath ? loaded.lanes : null
   const reload = (): void => setVersion((v) => v + 1)
