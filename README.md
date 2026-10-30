@@ -11,7 +11,7 @@
 [![MIT licence](https://img.shields.io/badge/licence-MIT-8b5cf6)](LICENSE)
 ![macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555)
 
-[**Download**](#download) · [Website](https://bryn-hill.github.io/SillyGit/) · [Features](#features) · [Run from source](#run-from-source) · [Contributing](#contributing)
+[**Download**](#download) · [Website](https://bryn-hill.github.io/SillyGit/) · [Features](#features) · [Compared](#how-it-compares) · [Run from source](#run-from-source) · [Contributing](#contributing)
 
 <br>
 
@@ -260,6 +260,58 @@ ending with a worked example, plus a walkthrough the first time you open a repos
 For how each feature works, open the help centre in the app (<kbd>F1</kbd>). The articles
 are also readable on GitHub in
 [`src/renderer/src/help/articles/`](src/renderer/src/help/articles/).
+
+## How it compares
+
+SillyGit next to the Git clients people usually switch from. ✓ means the app does it, – means
+it doesn't. Checked against each app's own site and release notes in October 2026; if
+something here is wrong or out of date, please [open an issue](https://github.com/bryn-hill/sillygit/issues).
+
+| | SillyGit | GitKraken | Fork | GitHub Desktop | Sourcetree | Tower |
+| --- | --- | --- | --- | --- | --- | --- |
+| Price | Free | Free for local and public repos, paid for private | $59.99 once | Free | Free | From $69 a year |
+| Source code | Open (MIT) | Closed | Closed | Open (MIT) | Closed | Closed |
+| macOS and Windows | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Linux | Build it yourself | ✓ | – | – | – | – |
+| Signed installers | – | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Updates itself | – | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Built with | Electron | Electron | Native | Electron | Native | Native |
+| Around since | October 2026 | Years | Years | Years | Years | Years |
+| Commit graph | ✓ | ✓ | ✓ | – (a list) | ✓ | ✓ |
+| Stage single lines | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Three-way merge editor | ✓ | ✓ | ✓ | – (AI suggestion or your editor) | – (external tool) | – (pick a side, or an external tool) |
+| Interactive rebase | ✓ | ✓ | ✓ | Reorder and squash only | ✓ | ✓ |
+| Undo most operations | ✓ | ✓ | – | Last commit only | – | ✓ |
+| Review pull requests | GitHub, Azure DevOps | ✓ | – | – | – | ✓ |
+| Branch from an issue or Jira ticket | ✓ | ✓ | – | – | – | – |
+| AI commit messages | ✓ (Claude) | Paid plans | ✓ | ✓ (Copilot) | – | macOS only |
+| Coding agent inside the app | ✓ (Claude Code) | – | – | – | – | – |
+| Several branches in one folder ([lanes](#features)) | ✓ | – | – | – | – | – |
+| Run any commit without checking it out | ✓ | – | – | – | – | – |
+
+**What you give up with SillyGit**
+
+- It's new and it's a one-person project. The first release was in October 2026, so expect
+  bugs and things that change between releases.
+- The builds aren't signed. macOS and Windows both warn you the first time you open it.
+- It doesn't update itself. When a new release comes out you download it again.
+- There's no Linux download. You can build an AppImage from source.
+- It's an Electron app, so it uses more memory and starts slower than Fork, Sourcetree or
+  Tower, which are native. GitKraken and GitHub Desktop are Electron too.
+- The test suite runs on a Mac, so Windows gets less testing.
+- The Claude features need Claude Code signed in or an Anthropic API key, which you pay for
+  separately. Everything else works without one.
+- There's no paid support. Problems go in GitHub issues.
+
+**What you get**
+
+- Everything is free, including private repositories, pull request review and Jira. GitKraken
+  needs a paid plan for private repos, Tower is a subscription and Fork is a one-off licence.
+- The source is open, so you can read what it does to your repository or change it.
+- Claude Code runs in a side panel, and asks before it edits files or runs commands.
+- Lanes let you keep several branches checked out in one working copy and commit to each.
+- **Run in isolation** runs any commit in a private copy, without touching your branch.
+- **Undo** reads Git's reflog, so it can take back things you did in the terminal too.
 
 ## Run from source
 

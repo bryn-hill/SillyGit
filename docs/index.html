@@ -21,6 +21,7 @@
     <a class="brand" href="./"><img src="images/logo.png" alt="" width="32" height="32">SillyGit</a>
     <nav>
       <a href="#features">Features</a>
+      <a class="wide-only" href="#compare">Compare</a>
       <a href="#download">Download</a>
       <a href="https://github.com/bryn-hill/sillygit">GitHub</a>
     </nav>
@@ -149,6 +150,62 @@
       </ul>
     </section>
 
+    <section id="compare" class="compare">
+      <h2>How it compares</h2>
+      <p class="note">SillyGit next to the Git clients people usually switch from. Checked against each app's own site and release notes in October 2026. If something here is wrong or out of date, please <a href="https://github.com/bryn-hill/sillygit/issues">open an issue</a>.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th scope="col"></th><th scope="col">SillyGit</th><th scope="col">GitKraken</th><th scope="col">Fork</th><th scope="col">GitHub Desktop</th><th scope="col">Sourcetree</th><th scope="col">Tower</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Price</th><td>Free</td><td>Free for local and public repos, paid for private</td><td>$59.99 once</td><td>Free</td><td>Free</td><td>From $69 a year</td></tr>
+            <tr><th scope="row">Source code</th><td>Open (MIT)</td><td>Closed</td><td>Closed</td><td>Open (MIT)</td><td>Closed</td><td>Closed</td></tr>
+            <tr><th scope="row">macOS and Windows</th><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><th scope="row">Linux</th><td>Build it yourself</td><td>✓</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+            <tr><th scope="row">Signed installers</th><td>–</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><th scope="row">Updates itself</th><td>–</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><th scope="row">Built with</th><td>Electron</td><td>Electron</td><td>Native</td><td>Electron</td><td>Native</td><td>Native</td></tr>
+            <tr><th scope="row">Around since</th><td>October 2026</td><td>Years</td><td>Years</td><td>Years</td><td>Years</td><td>Years</td></tr>
+            <tr><th scope="row">Commit graph</th><td>✓</td><td>✓</td><td>✓</td><td>– (a list)</td><td>✓</td><td>✓</td></tr>
+            <tr><th scope="row">Stage single lines</th><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><th scope="row">Three-way merge editor</th><td>✓</td><td>✓</td><td>✓</td><td>– (AI suggestion or your editor)</td><td>– (external tool)</td><td>– (pick a side, or an external tool)</td></tr>
+            <tr><th scope="row">Interactive rebase</th><td>✓</td><td>✓</td><td>✓</td><td>Reorder and squash only</td><td>✓</td><td>✓</td></tr>
+            <tr><th scope="row">Undo most operations</th><td>✓</td><td>✓</td><td>–</td><td>Last commit only</td><td>–</td><td>✓</td></tr>
+            <tr><th scope="row">Review pull requests</th><td>GitHub, Azure DevOps</td><td>✓</td><td>–</td><td>–</td><td>–</td><td>✓</td></tr>
+            <tr><th scope="row">Branch from an issue or Jira ticket</th><td>✓</td><td>✓</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+            <tr><th scope="row">AI commit messages</th><td>✓ (Claude)</td><td>Paid plans</td><td>✓</td><td>✓ (Copilot)</td><td>–</td><td>macOS only</td></tr>
+            <tr><th scope="row">Coding agent inside the app</th><td>✓ (Claude Code)</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+            <tr><th scope="row">Several branches in one folder (<a href="#features">lanes</a>)</th><td>✓</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+            <tr><th scope="row">Run any commit without checking it out</th><td>✓</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="cards">
+        <article>
+          <h3>What you give up</h3>
+          <ul>
+            <li>It's new and it's a one-person project. The first release was in October 2026, so expect bugs and things that change between releases.</li>
+            <li>The builds aren't signed. macOS and Windows both warn you the first time you open it.</li>
+            <li>It doesn't update itself. When a new release comes out you download it again.</li>
+            <li>There's no Linux download. You can build an AppImage from source.</li>
+            <li>It's an Electron app, so it uses more memory and starts slower than Fork, Sourcetree or Tower, which are native. GitKraken and GitHub Desktop are Electron too.</li>
+            <li>The test suite runs on a Mac, so Windows gets less testing.</li>
+            <li>The Claude features need Claude Code signed in or an Anthropic API key, which you pay for separately. Everything else works without one.</li>
+            <li>There's no paid support. Problems go in GitHub issues.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>What you get</h3>
+          <ul>
+            <li>Everything is free, including private repositories, pull request review and Jira. GitKraken needs a paid plan for private repos, Tower is a subscription and Fork is a one-off licence.</li>
+            <li>The source is open, so you can read what it does to your repository or change it.</li>
+            <li>Claude Code runs in a side panel, and asks before it edits files or runs commands.</li>
+            <li>Lanes let you keep several branches checked out in one working copy and commit to each.</li>
+            <li><b>Run in isolation</b> runs any commit in a private copy, without touching your branch.</li>
+            <li><b>Undo</b> reads Git's reflog, so it can take back things you did in the terminal too.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
     <section id="download" class="download">
       <h2>Download</h2>
       <p class="note">This is an early release. The builds aren't signed yet, so your system will warn you the first time you open SillyGit.</p>
