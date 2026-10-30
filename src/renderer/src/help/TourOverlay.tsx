@@ -3,6 +3,7 @@ import type { TourStep } from '../../../shared/help/types'
 import Markdown from '../components/claude/Markdown'
 import { openHelp } from './openHelp'
 import { placeCard, type Box } from './tourPlacement'
+import { getHelpCentreState } from './helpCentreStore'
 
 /** Room left around the spotlighted element. */
 const PAD = 6
@@ -74,6 +75,8 @@ export default function TourOverlay({ step, index, count, onNext, onBack, onClos
 
   // Captured first, so the app's own shortcuts don't act behind the walkthrough.
   const onKey = useEffectEvent((e: KeyboardEvent) => {
+    // The help centre opened by "Learn more" sits on top and owns the keyboard.
+    if (getHelpCentreState().open) return
     if (e.key === 'Escape') onClose()
     else if (e.key === 'ArrowRight') onNext()
     else if (e.key === 'ArrowLeft') onBack()

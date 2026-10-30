@@ -30,6 +30,7 @@ import {
   UpdateIcon
 } from './topBar/icons'
 import { PULL_OPTIONS, RUN_OPTIONS, runTitle, updateTitle } from './topBar/options'
+import HelpMenu from '../help/HelpMenu'
 
 interface Props {
   repoPath: string | null
@@ -575,6 +576,7 @@ export default function TopBar({
             <TerminalIcon />
           </button>
         )}
+        <HelpMenu />
         <button className="icon-button" onClick={onOpenSettings} title="Settings" data-tour="settings">
           <GearIcon />
         </button>

@@ -4,6 +4,7 @@ import { startTour } from './tourBus'
 import { HelpContext } from './useHelp'
 import { useTour } from './useTour'
 import TourOverlay from './TourOverlay'
+import HelpCentreHost from './HelpCentreHost'
 
 /**
  * Provides help to the app and shows the first-use walkthrough, which starts
@@ -25,6 +26,7 @@ export default function HelpProvider({ repoOpen, children }: { repoOpen: boolean
           onClose={tour.close}
         />
       )}
+      <HelpCentreHost />
     </HelpContext>
   )
 }

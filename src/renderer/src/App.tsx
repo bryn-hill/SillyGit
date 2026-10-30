@@ -43,7 +43,8 @@ import { useEscapeToLeaveFocus } from './hooks/useEscapeToLeaveFocus'
 import { useLfs } from './hooks/useLfs'
 import { useEditor } from './hooks/useEditor'
 import { useLanes } from './hooks/useLanes'
-import { HelpProvider } from './help'
+import { HelpProvider, openHelp } from './help'
+import { useHelpCentre } from './help/useHelpCentre'
 
 /**
  * The window: repo tabs, the toolbar, banners, the main area with the
@@ -150,8 +151,9 @@ export default function App(): JSX.Element {
   const checkoutPullRequest = usePullRequestCheckout({ repo, git, view, tabs, showError, setNotice })
 
   useEscapeToLeaveFocus()
+  const helpOpen = useHelpCentre().open
   useAppShortcuts({
-    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity,
+    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity || helpOpen,
     paletteOpen: dialogs.palette !== null,
     repoOpen: !!repoPath,
     busy: git.busy,
@@ -164,7 +166,8 @@ export default function App(): JSX.Element {
     cycleTab: tabs.cycle,
     selectTab: tabs.selectTab,
     openSettings: () => dialogs.setShowSettings(true),
-    openInEditor: () => editor.open()
+    openInEditor: () => editor.open(),
+    openHelp: () => openHelp()
   })
 
   const { showTerminal, setShowTerminal, showClaude, setShowClaude } = layout
