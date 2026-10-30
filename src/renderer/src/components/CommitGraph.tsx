@@ -7,7 +7,7 @@ import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMen
 import { selectedHashes } from '../lib/selection'
 import { groupRefs, parseRefs, type RefBadge } from '../lib/refs'
 import RefCell, { type RefHandlers } from './RefCell'
-import { dropTarget, useRefDrag } from './RefDrag'
+import { commitDropTarget, dropTarget, useRefDrag } from './RefDrag'
 import { commitsLabel } from '../lib/refDrag'
 import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
 import { timeAgo } from '../lib/time'
@@ -331,6 +331,7 @@ export default function CommitGraph({
         data-hash={row.commit.hash}
         data-search-match={hitSet?.has(row.commit.hash) || undefined}
         {...dropTarget(pills[0]?.local?.label)}
+        {...commitDropTarget(row.commit.hash)}
         onPointerDown={(e) => {
           const hashes = dragCommits(row.commit.hash)
           // Oldest first, the order they're picked in.

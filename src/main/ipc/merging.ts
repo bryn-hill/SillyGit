@@ -2,12 +2,14 @@ import { ipcMain } from 'electron'
 import * as conflicts from '../conflicts'
 import * as mergeTool from '../mergeTool'
 import { parseConflictMarkers } from '../../shared/conflicts'
+import * as editCommit from '../editCommit'
 import * as fixup from '../fixup'
 import * as rebase from '../rebase'
 import * as bisect from '../bisect'
 import type { BisectVerdict } from '../../shared/bisect'
 import * as refDrop from '../refDrop'
 import * as ai from '../ai'
+import type { MoveDirection, SquashMode } from '../../shared/editCommit'
 import type { RebaseStep } from '../../shared/rebase'
 import type { MergeStrategy } from '../../shared/mergeOptions'
 import type { ConflictSnapshot, RenameKeep } from '../../shared/types'
@@ -51,6 +53,24 @@ export function registerMergeHandlers(): void {
 
   ipcMain.handle('git:fixup-into', (_e, repoPath: string, target: string) =>
     wrap(() => fixup.fixupInto(repoPath, target))
+  )
+
+  ipcMain.handle('git:reword-commit', (_e, repoPath: string, hash: string, message: string) =>
+    wrap(() => editCommit.rewordCommit(repoPath, hash, message))
+  )
+
+  ipcMain.handle('git:move-commit', (_e, repoPath: string, hash: string, direction: MoveDirection) =>
+    wrap(() => editCommit.moveCommit(repoPath, hash, direction))
+  )
+
+  ipcMain.handle('git:squash-commits', (_e, repoPath: string, sources: string[], target: string, mode: SquashMode) =>
+    wrap(() => editCommit.squashCommits(repoPath, sources, target, mode))
+  )
+
+  ipcMain.handle(
+    'git:uncommit-change',
+    (_e, repoPath: string, hash: string, path: string, oldPath: string | null, unitId: string | null) =>
+      wrap(() => editCommit.uncommitChange(repoPath, hash, path, oldPath, unitId))
   )
 
   ipcMain.handle('git:plan-absorb', (_e, repoPath: string) => wrap(() => fixup.planAbsorb(repoPath)))

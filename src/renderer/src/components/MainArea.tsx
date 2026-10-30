@@ -163,6 +163,8 @@ export default function MainArea({
               view.closeFullScreen()
               reload()
             }}
+            canEditCommit={branches.refActions.canEditCommit}
+            onUncommitFile={(hash, path, oldPath) => git.uncommitChange(hash, path, oldPath, null)}
             onOpenWorkingFile={view.openWorkingFile}
             activeFile={view.activeFile}
             operation={operation}
@@ -327,6 +329,11 @@ export default function MainArea({
         onWorkingTreeChanged={reload}
         onEditFile={view.openEditor}
         onOpenFileView={view.openFileView}
+        onUncommitHunk={
+          branches.refActions.canEditCommit(fullScreenHash)
+            ? (path, unitId) => git.uncommitChange(fullScreenHash, path, null, unitId)
+            : undefined
+        }
       />
     )
   }

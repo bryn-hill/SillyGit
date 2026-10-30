@@ -45,6 +45,20 @@
   width: 100%;
 }
 
+.prompt-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+}
+
 .modal-label {
   font-size: 11px;
   text-transform: uppercase;

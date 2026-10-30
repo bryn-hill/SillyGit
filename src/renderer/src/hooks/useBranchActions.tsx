@@ -297,6 +297,9 @@ export function useBranchActions({
       )
   }
 
+  /** Whether `hash` is on the checked-out branch, so it can be reworded, moved, squashed or have changes taken out. */
+  const canEditCommit = (hash: string): boolean => !!status?.branch && repo.headAncestors.has(hash)
+
   const refActions: RefActions = {
     checkout: actions.checkout,
     checkoutRemote: actions.checkoutRemote,
@@ -312,6 +315,15 @@ export function useBranchActions({
     fixupInto: actions.fixupInto,
     canFixup: (hash) =>
       !!status?.branch && status.staged.length > 0 && (hash === headHash || repo.headAncestors.has(hash)),
+    canEditCommit,
+    rewordCommit: (hash) => void actions.rewordCommit(hash),
+    moveCommit: actions.moveCommit,
+    canMoveCommit: (hash, direction) => {
+      if (!canEditCommit(hash)) return false
+      if (direction === 'up') return hash !== headHash
+      const parents = repo.commitByHash.get(hash)?.parents ?? []
+      return parents.length === 1 && canEditCommit(parents[0])
+    },
     deleteBranch,
     renameBranch,
     pull: pullBranch,

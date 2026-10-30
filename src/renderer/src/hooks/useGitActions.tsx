@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { ConflictableResult, FileStatus, FixupResult, PullMode, StashEntry, StashPushOptions } from '../../../shared/types'
 import type { RebasePlan, RebaseStep } from '../../../shared/rebase'
 import type { MergeResult, MergeStrategy } from '../../../shared/mergeOptions'
-import type { DragSource, DropOption } from '../lib/refDrag'
+import type { MoveDirection, SquashMode } from '../../../shared/editCommit'
+import type { DragSource, DropOption, DropTarget } from '../lib/refDrag'
 import type { IpcResult } from '../lib/ipc'
 import { loadPullMode, savePullMode } from '../lib/preferences'
 import type { PromptRequest } from '../components/PromptDialog'
@@ -68,6 +69,56 @@ export function useGitActions({
       `Absorbed the staged changes into ${count} ${count === 1 ? 'commit' : 'commits'}.`
     )
   }
+
+  /** Asks for a new message for `hash`, starting from its current one, and rewords it. */
+  const rewordCommit = async (hash: string): Promise<void> => {
+    if (!repoPath) return
+    const detail = await window.api.commitDetail(repoPath, hash)
+    if (!detail.ok) {
+      showError(detail.error)
+      return
+    }
+    const current = [detail.data.subject, detail.data.body].filter((part) => part.trim()).join('\n\n')
+    const message = await askText({
+      title: `Reword ${hash.slice(0, 7)}`,
+      label: 'Commit message',
+      defaultValue: current,
+      submitLabel: 'Reword',
+      multiline: true,
+      hint: 'The commits after it are replayed on top. Press ⌘/Ctrl+Enter to save.'
+    })
+    if (message === null || message.trim() === current.trim()) return
+    runFixup((path) => window.api.rewordCommit(path, hash, message), `Reworded ${hash.slice(0, 7)}.`)
+  }
+
+  /** Swaps `hash` with the commit after it (up) or before it (down). */
+  const moveCommit = (hash: string, direction: MoveDirection): void =>
+    runFixup((path) => window.api.moveCommit(path, hash, direction), `Moved ${hash.slice(0, 7)} ${direction}.`)
+
+  /** Folds `sources` into `target`, with their messages (squash) or without (fixup). */
+  const squashCommits = (sources: string[], target: string, mode: SquashMode): void => {
+    const what = sources.length === 1 ? sources[0].slice(0, 7) : `${sources.length} commits`
+    runFixup(
+      (path) => window.api.squashCommits(path, sources, target, mode),
+      `${mode === 'squash' ? 'Squashed' : 'Fixed up'} ${what} into ${target.slice(0, 7)}.`
+    )
+  }
+
+  /** Takes `path` (or one hunk of it) out of `hash` and puts the change back in the working tree. */
+  const uncommitChange = (hash: string, path: string, oldPath: string | null, unitId: string | null): void =>
+    runGitThen(
+      (repo) => window.api.uncommitChange(repo, hash, path, oldPath, unitId),
+      (data) => {
+        view.closeFullScreen()
+        if (data.conflicts) {
+          view.showConflicts()
+          return
+        }
+        const done = `Took ${unitId ? 'that change' : path} out of ${hash.slice(0, 7)}. It is in your working changes now.`
+        setNotice(data.pushed ? `${done} That commit was already pushed, so pushing now needs a force push.` : done)
+        view.goToWorkingChanges()
+      }
+    )
 
   const stage = (paths: string[]): void => runGit((path) => window.api.stage(path, paths))
 
@@ -204,15 +255,21 @@ export function useGitActions({
   }
 
   /** What a branch or commit dropped on a branch does, picked from the drop menu. */
-  const runDropAction = (source: DragSource, target: string, option: DropOption): void => {
+  const runDropAction = (source: DragSource, target: DropTarget, option: DropOption): void => {
+    if (source.kind === 'commits' && (option.action === 'squash' || option.action === 'fixup')) {
+      if (target.commit) squashCommits(source.hashes, target.commit, option.action)
+      return
+    }
+    if (!target.branch) return
+    const branch = target.branch
     if (source.kind === 'commits') {
-      runConflictable((path) => window.api.cherryPickOnto(path, source.hashes, target))
+      runConflictable((path) => window.api.cherryPickOnto(path, source.hashes, branch))
     } else if (option.action === 'merge') {
-      runMerge(source.name, (path) => window.api.mergeInto(path, source.name, target, option.strategy))
+      runMerge(source.name, (path) => window.api.mergeInto(path, source.name, branch, option.strategy))
     } else if (option.action === 'rebase') {
-      runConflictable((path) => window.api.rebaseBranchOnto(path, source.name, target))
+      runConflictable((path) => window.api.rebaseBranchOnto(path, source.name, branch))
     } else if (option.action === 'fast-forward') {
-      runGit((path) => window.api.fastForward(path, target, source.name))
+      runGit((path) => window.api.fastForward(path, branch, source.name))
     }
   }
 
@@ -261,6 +318,10 @@ export function useGitActions({
     runConflictable,
     fixupInto,
     absorb,
+    rewordCommit,
+    moveCommit,
+    squashCommits,
+    uncommitChange,
     stage,
     unstage,
     discard,

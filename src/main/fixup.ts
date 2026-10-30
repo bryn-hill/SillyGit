@@ -45,13 +45,14 @@ async function refuseMerges(repoPath: string, oldest: string): Promise<void> {
   if (merges > 0) throw new GitError('There is a merge after that commit, so it can’t be rewritten in a straight line.')
 }
 
-async function isPushed(repoPath: string, hash: string): Promise<boolean> {
+/** Whether a remote branch has `hash`, so rewriting it needs a force push. */
+export async function isPushed(repoPath: string, hash: string): Promise<boolean> {
   const out = await runGit(repoPath, ['branch', '-r', '--contains', hash]).catch(() => '')
   return out.trim().length > 0
 }
 
 /** Squashes the fixup commits on HEAD into their targets, oldest target `oldest`. */
-async function autosquash(repoPath: string, oldest: string): Promise<{ conflicts: boolean }> {
+export async function autosquash(repoPath: string, oldest: string): Promise<{ conflicts: boolean }> {
   return runMayConflict(repoPath, ['rebase', '-i', '--autosquash', '--autostash', ...(await rebaseBase(repoPath, oldest))], {
     ...(await rebaseEditorEnv(repoPath)),
     GIT_SEQUENCE_EDITOR: 'true'

@@ -502,7 +502,12 @@ export default function App(): JSX.Element {
           />
         )}
         {promptDialog}
-        <RefDropMenu repoPath={repoPath} onError={showError} onPick={actions.runDropAction} />
+        <RefDropMenu
+          repoPath={repoPath}
+          canSquash={(sources, target) => [...sources, target].every(branches.refActions.canEditCommit)}
+          onError={showError}
+          onPick={actions.runDropAction}
+        />
       </div>
     </HelpProvider>
   )

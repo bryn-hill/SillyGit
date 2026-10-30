@@ -13,7 +13,16 @@ export const DRAG_THRESHOLD = 5
 /** The attribute that marks an element as a drop target; its value is a local branch name. */
 export const DROP_ATTR = 'data-drop-branch'
 
-export type DropAction = 'fast-forward' | 'merge' | 'rebase' | 'cherry-pick'
+/** The attribute that marks a graph row as a drop target for squashing commits; its value is the commit. */
+export const DROP_COMMIT_ATTR = 'data-drop-commit'
+
+/** Where a drag was let go: on a local branch, a commit (a graph row), or a row that is both. */
+export interface DropTarget {
+  branch: string | null
+  commit: string | null
+}
+
+export type DropAction = 'fast-forward' | 'merge' | 'rebase' | 'cherry-pick' | 'squash' | 'fixup'
 
 export interface DropOption {
   action: DropAction
@@ -36,12 +45,45 @@ export function commitsLabel(hashes: string[]): string {
   return hashes.length === 1 ? hashes[0].slice(0, 7) : `${hashes.length} commits`
 }
 
-/** The branch a drop at `el` lands on, or null when there is none or it's the dragged branch itself. */
-export function dropTargetOf(el: Element | null, source: DragSource): string | null {
-  const target = el?.closest(`[${DROP_ATTR}]`)?.getAttribute(DROP_ATTR) ?? null
-  if (!target) return null
-  if (source.kind === 'branch' && source.name === target) return null
-  return target
+/**
+ * What a drop at `el` lands on, or null for nothing: a branch (not the
+ * dragged one), and for dragged commits also a commit they aren't among.
+ */
+export function dropTargetOf(el: Element | null, source: DragSource): DropTarget | null {
+  const found = el?.closest(source.kind === 'commits' ? `[${DROP_ATTR}], [${DROP_COMMIT_ATTR}]` : `[${DROP_ATTR}]`)
+  let branch = found?.getAttribute(DROP_ATTR) ?? null
+  if (source.kind === 'branch' && source.name === branch) branch = null
+  let commit = source.kind === 'commits' ? (found?.getAttribute(DROP_COMMIT_ATTR) ?? null) : null
+  if (commit && source.kind === 'commits' && source.hashes.includes(commit)) commit = null
+  return branch || commit ? { branch, commit } : null
+}
+
+/** How the drag ghost names a drop target. */
+export function dropTargetName(target: DropTarget): string {
+  return target.branch ?? target.commit?.slice(0, 7) ?? ''
+}
+
+/**
+ * The squash options for commits dropped on `target`, another commit; both
+ * must be on the checked-out branch (`canSquash`), else one disabled option says why.
+ */
+export function squashOptions(source: DragSource, target: string, canSquash: boolean): DropOption[] {
+  if (source.kind !== 'commits') return []
+  const into = target.slice(0, 7)
+  if (!canSquash) {
+    return [
+      {
+        action: 'squash',
+        label: `Squash ${source.label} into ${into}`,
+        disabled: true,
+        title: 'Only commits of the checked-out branch, with no merge between them, can be squashed'
+      }
+    ]
+  }
+  return [
+    { action: 'squash', label: `Squash ${source.label} into ${into}`, title: 'Combine the commits and keep all their messages' },
+    { action: 'fixup', label: `Fix up ${into} with ${source.label}`, title: `Combine the commits and keep only ${into}'s message` }
+  ]
 }
 
 /**

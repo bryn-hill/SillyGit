@@ -34,6 +34,9 @@ interface Props {
   headHash: string | null
   /** AI split the checked-out commit. */
   onSplitApplied: () => void
+  /** Whether a commit is on the checked-out branch, so changes can be taken out of it. */
+  canEditCommit: (hash: string) => boolean
+  onUncommitFile: (hash: string, path: string, oldPath: string | null) => void
   operation: OperationState | null
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
@@ -83,6 +86,7 @@ export default function DetailPanel(props: Props): JSX.Element {
         activePath={props.activeFile?.path ?? null}
         onOpenFileDiff={props.onOpenCommitFileDiff}
         onSplitApplied={props.onSplitApplied}
+        onUncommitFile={props.canEditCommit(hash) ? props.onUncommitFile : undefined}
         onOpenFileView={props.onOpenFileView}
         onFilterHistory={props.onFilterHistory}
         onCopyText={props.onCopyText}

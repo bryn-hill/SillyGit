@@ -25,6 +25,8 @@ interface FileMenuOptions {
   lfs?: { installed: boolean; tracked: boolean; onTrack: (pattern: string) => void }
   /** Offers "Ignore" for an untracked file: adds the chosen pattern to the repo's .gitignore. */
   onIgnore?: (pattern: string) => void
+  /** Takes the file's changes out of the commit (one of the checked-out branch's) into the working tree. */
+  onUncommit?: () => void
   /** The user's custom commands for files. */
   custom?: ContextMenuItem[]
 }
@@ -85,5 +87,14 @@ export function fileMenuSections(o: FileMenuOptions): ContextMenuItem[][] {
       }))
     })
   }
-  return [open, history, stash, tracking, copy, o.custom ?? []].filter((section) => section.length > 0)
+  const rewrite: ContextMenuItem[] = []
+  if (o.onUncommit) {
+    rewrite.push({
+      id: 'uncommit',
+      label: 'Uncommit this file',
+      title: 'Take this file’s changes out of the commit and put them back in your working changes',
+      onSelect: o.onUncommit
+    })
+  }
+  return [open, history, stash, rewrite, tracking, copy, o.custom ?? []].filter((section) => section.length > 0)
 }

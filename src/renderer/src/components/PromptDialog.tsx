@@ -15,6 +15,8 @@ export interface PromptRequest {
   hint?: string
   /** Lets the field be saved empty, to clear a value. */
   allowEmpty?: boolean
+  /** A box for several lines, such as a commit message; Cmd/Ctrl+Enter submits. */
+  multiline?: boolean
 }
 
 interface Props extends PromptRequest {
@@ -33,6 +35,7 @@ export default function PromptDialog({
   suggestions,
   hint,
   allowEmpty = false,
+  multiline = false,
   onSubmit,
   onCancel
 }: Props): JSX.Element {
@@ -54,6 +57,20 @@ export default function PromptDialog({
           <label className="modal-label">{label}</label>
           {options ? (
             <Select value={value} options={options.map((o) => ({ value: o, label: o }))} onChange={setValue} aria-label={label} />
+          ) : multiline ? (
+            <textarea
+              autoFocus
+              className="prompt-textarea"
+              aria-label={label}
+              placeholder={placeholder}
+              value={value}
+              rows={8}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
+                else if (e.key === 'Escape') onCancel()
+              }}
+            />
           ) : (
             <input
               autoFocus

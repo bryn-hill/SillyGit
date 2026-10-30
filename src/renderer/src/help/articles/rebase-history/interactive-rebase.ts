@@ -6,7 +6,7 @@ const article: HelpArticle = {
   category: 'rebase-history',
   summary: 'Reorder, squash, fix up, reword or drop commits by dragging, without a text editor.',
   keywords: ['interactive rebase', 'squash', 'reorder', 'reword', 'drop', 'fixup', 'rebase -i', 'clean history'],
-  related: ['commits/fixup-and-absorb', 'branches/stacked-branches', 'rebase-history/undo-and-redo'],
+  related: ['rebase-history/edit-older-commits', 'commits/fixup-and-absorb', 'branches/stacked-branches', 'rebase-history/undo-and-redo'],
   body: `Right-click the commit just *below* the ones you want to change and choose **Interactive rebase <branch> to here…**. The editor lists every commit after it, oldest at the top.
 
 For each commit, choose an action from its menu or press its key:
@@ -20,6 +20,8 @@ For each commit, choose an action from its menu or press its key:
 | Drop | D | Remove the commit |
 
 Drag commits, or use **Alt+Up** and **Alt+Down**, to reorder them. Click **Start Rebase** to run it (**Reset** puts every row back to pick). No text editor opens at any point. If a step conflicts, resolve it as usual and click **Continue Rebase**.
+
+To change just one commit, the commit menu can do it in one step: see [Edit an older commit in place](help:rebase-history/edit-older-commits).
 
 Only rewrite commits you haven't pushed, or be ready to force push.
 

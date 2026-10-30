@@ -138,6 +138,11 @@ export class CommitGraph {
     await dragOnto(this.row(subject).locator('.graph-row-message'), this.badge(onto))
   }
 
+  /** Drags a commit row (by subject) onto another commit's row. */
+  async dragCommitOntoCommit(subject: string, onto: string): Promise<void> {
+    await dragOnto(this.row(subject).locator('.graph-row-message'), this.row(onto).locator('.graph-row-message'))
+  }
+
   workingChangesRow(): Locator {
     return this.row('Uncommitted changes')
   }

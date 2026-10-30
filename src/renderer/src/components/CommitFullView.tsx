@@ -17,6 +17,8 @@ interface Props {
   onWorkingTreeChanged?: () => void
   onEditFile?: (path: string) => void
   onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
+  /** Takes one hunk of a file out of the commit into the working tree; left out when the commit can't be edited. */
+  onUncommitHunk?: (path: string, unitId: string) => void
 }
 
 /** One file of a commit, full window, in place of the graph: its diff, or the file as it was if the commit didn't change it. */
@@ -30,7 +32,8 @@ export default function CommitFullView({
   onNavigateToCommit,
   onWorkingTreeChanged,
   onEditFile,
-  onOpenFileView
+  onOpenFileView,
+  onUncommitHunk
 }: Props): JSX.Element {
   const [detail, setDetail] = useState<CommitDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +120,7 @@ export default function CommitFullView({
                 onWorkingTreeChanged={onWorkingTreeChanged}
                 onEditFile={onEditFile}
                 onOpenFileView={onOpenFileView}
+                onUncommitHunk={onUncommitHunk && ((unitId) => onUncommitHunk(diff.path, unitId))}
               />
             )}
           </div>

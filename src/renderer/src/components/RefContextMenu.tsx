@@ -10,6 +10,7 @@ import { useBisectMenu } from '../lib/bisectMenu'
 import { useJiraSites } from '../lib/jira'
 import { jiraKeyInBranch } from '../../../shared/jira'
 import { MERGE_STRATEGY_CHOICES, type MergeStrategy } from '../../../shared/mergeOptions'
+import type { MoveDirection } from '../../../shared/editCommit'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 const MAX_REF_LENGTH = 36
@@ -50,6 +51,13 @@ export interface RefActions extends StackActions, GitFlowActions {
   fixupInto: (hash: string) => void
   /** Whether something is staged and `hash` is on the current branch, so it can take a fixup. */
   canFixup: (hash: string) => boolean
+  /** Whether `hash` is a commit of the checked-out branch, which can be edited in place. */
+  canEditCommit: (hash: string) => boolean
+  /** Asks for a new message for `hash` and rewords it. */
+  rewordCommit: (hash: string) => void
+  /** Swaps `hash` with the commit after it (up) or before it (down). */
+  moveCommit: (hash: string, direction: MoveDirection) => void
+  canMoveCommit: (hash: string, direction: MoveDirection) => boolean
   resetTo: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
   revertCommit: (hash: string) => void
   deleteBranch: (target: RefTarget) => void
@@ -217,6 +225,23 @@ export default function RefContextMenu({
   sections.push(commitItems)
 
   const rewriteItems: ContextMenuItem[] = []
+  if (currentBranch && actions.canEditCommit(hash)) {
+    rewriteItems.push({
+      id: 'reword',
+      label: 'Reword commit message…',
+      title: 'Change this commit’s message and replay the commits after it',
+      onSelect: () => actions.rewordCommit(hash)
+    })
+    const moves: ContextMenuItem[] = (['up', 'down'] as const)
+      .filter((direction) => actions.canMoveCommit(hash, direction))
+      .map((direction) => ({
+        id: `move-${direction}`,
+        label: direction === 'up' ? 'Move commit up (later)' : 'Move commit down (earlier)',
+        title: direction === 'up' ? 'Swap this commit with the one after it' : 'Swap this commit with the one before it',
+        onSelect: () => actions.moveCommit(hash, direction)
+      }))
+    rewriteItems.push(...moves)
+  }
   if (currentBranch && actions.canFixup(hash)) {
     rewriteItems.push({
       id: 'fixup',

@@ -28,6 +28,32 @@ function shQuote(value: string): string {
   return `'${value.replace(/\\/g, '/').replace(/'/g, `'\\''`)}'`
 }
 
+/**
+ * The commits `revs` (a range for git log) names, oldest first, with full
+ * messages. Throws when there are more than an interactive rebase takes.
+ */
+export async function listCommits(repoPath: string, revs: string[]): Promise<RebaseCommit[]> {
+  const out = await runGit(repoPath, [
+    'log',
+    '--reverse',
+    `--max-count=${MAX_COMMITS + 1}`,
+    `--format=%H${FS}%h${FS}%s${FS}%an${FS}%ae${FS}%aI${FS}%B${RS}`,
+    ...revs
+  ])
+  const commits: RebaseCommit[] = out
+    .split(RS)
+    .map((r) => r.replace(/^\n/, ''))
+    .filter((r) => r.length > 0)
+    .map((r) => {
+      const [hash, shortHash, subject, author, authorEmail, date, message] = r.split(FS)
+      return { hash, shortHash, subject, author, authorEmail, date, message: message.replace(/\n+$/, '') }
+    })
+  if (commits.length > MAX_COMMITS) {
+    throw new GitError(`That is more than ${MAX_COMMITS} commits. Pick a more recent commit.`)
+  }
+  return commits
+}
+
 async function verifyCommit(repoPath: string, rev: string): Promise<string> {
   const out = await runGit(repoPath, ['rev-parse', '-q', '--verify', `${rev}^{commit}`]).catch(() => '')
   if (!out.trim()) throw new GitError(`"${rev}" is not a commit.`)
@@ -54,24 +80,7 @@ export async function planInteractiveRebase(repoPath: string, base: string): Pro
   if (Number(merges) > 0) {
     throw new GitError('Those commits include a merge. Interactive rebase works on a straight line of commits; pick a commit after the merge.')
   }
-  const out = await runGit(repoPath, [
-    'log',
-    '--reverse',
-    `--max-count=${MAX_COMMITS + 1}`,
-    `--format=%H${FS}%h${FS}%s${FS}%an${FS}%ae${FS}%aI${FS}%B${RS}`,
-    range
-  ])
-  const commits: RebaseCommit[] = out
-    .split(RS)
-    .map((r) => r.replace(/^\n/, ''))
-    .filter((r) => r.length > 0)
-    .map((r) => {
-      const [hash, shortHash, subject, author, authorEmail, date, message] = r.split(FS)
-      return { hash, shortHash, subject, author, authorEmail, date, message: message.replace(/\n+$/, '') }
-    })
-  if (commits.length > MAX_COMMITS) {
-    throw new GitError(`That is more than ${MAX_COMMITS} commits. Pick a more recent commit.`)
-  }
+  const commits = await listCommits(repoPath, [range])
   const [shortHash, subject] = (await runGit(repoPath, ['log', '-1', `--format=%h${FS}%s`, baseHash])).trim().split(FS)
   return { branch, head, base: { hash: baseHash, shortHash, subject }, commits }
 }
@@ -113,6 +122,20 @@ export async function startInteractiveRebase(
   const invalid = validateSteps(steps, messageOf)
   if (invalid) throw new GitError(invalid)
 
+  return runRebase(repoPath, [plan.base.hash], steps, messageOf)
+}
+
+/**
+ * Hands git the todo for `steps` and the messages they need, and runs the
+ * rebase from `baseArgs` (a commit, or `--root`). The caller has checked the
+ * steps name exactly the commits after that base.
+ */
+export async function runRebase(
+  repoPath: string,
+  baseArgs: string[],
+  steps: RebaseStep[],
+  messageOf: (hash: string) => string
+): Promise<ConflictableResult> {
   const dir = await interactiveRebaseDir(repoPath)
   const gitDir = (await runGit(repoPath, ['rev-parse', '--absolute-git-dir'])).trim()
   await fsp.rm(dir, { recursive: true, force: true })
@@ -125,7 +148,7 @@ export async function startInteractiveRebase(
   await fsp.writeFile(join(dir, 'editor.sh'), editorScript(gitDir, dir), { mode: 0o755 })
 
   try {
-    return await runMayConflict(repoPath, ['rebase', '-i', '--autostash', plan.base.hash], {
+    return await runMayConflict(repoPath, ['rebase', '-i', '--autostash', ...baseArgs], {
       ...(await rebaseEditorEnv(repoPath)),
       GIT_SEQUENCE_EDITOR: `cp ${shQuote(todo)}`
     })

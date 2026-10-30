@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, type JSX, type PointerEvent } from 'react'
-import { DRAG_THRESHOLD, DROP_ATTR, dropTargetOf, sourceName, type DragSource } from '../lib/refDrag'
+import {
+  DRAG_THRESHOLD,
+  DROP_ATTR,
+  DROP_COMMIT_ATTR,
+  dropTargetName,
+  dropTargetOf,
+  sourceName,
+  type DragSource,
+  type DropTarget
+} from '../lib/refDrag'
 
 // GitKraken-style drag and drop of branches and commits, with pointer events
 // rather than HTML5 drag and drop, which swallows the clicks and double-clicks
@@ -21,6 +30,9 @@ export const useRefDrag = (): RefDrag => handle
 export const dropTarget = (branch: string | null | undefined): Record<string, string> =>
   branch ? { [DROP_ATTR]: branch } : {}
 
+/** Props that make a graph row a drop target for squashing commits into `hash`. */
+export const commitDropTarget = (hash: string): Record<string, string> => ({ [DROP_COMMIT_ATTR]: hash })
+
 // How close to a scrolling list's top or bottom edge the pointer scrolls it, and how fast.
 const EDGE = 32
 const EDGE_SPEED = 12
@@ -29,15 +41,15 @@ interface Ghost {
   source: DragSource
   x: number
   y: number
-  target: string | null
+  target: DropTarget | null
 }
 
 /** Runs drags begun with useRefDrag and draws what's being dragged. Mount it once. */
 export default function RefDragLayer({
   onDrop
 }: {
-  /** A drag let go over a branch; x and y are where, for the menu. */
-  onDrop: (source: DragSource, target: string, x: number, y: number) => void
+  /** A drag let go over a branch or commit; x and y are where, for the menu. */
+  onDrop: (source: DragSource, target: DropTarget, x: number, y: number) => void
 }): JSX.Element | null {
   const [ghost, setGhost] = useState<Ghost | null>(null)
   const cleanup = useRef<(() => void) | null>(null)
@@ -50,7 +62,7 @@ export default function RefDragLayer({
     let dragging = false
     let x = startX
     let y = startY
-    let target: string | null = null
+    let target: DropTarget | null = null
     let over: Element | null = null
     let scroller: Element | null = null
 
@@ -64,7 +76,7 @@ export default function RefDragLayer({
     const locate = (): void => {
       const el = document.elementFromPoint(x, y)
       target = dropTargetOf(el, source)
-      mark(target ? (el?.closest(`[${DROP_ATTR}]`) ?? null) : null)
+      mark(target ? (el?.closest(`[${DROP_ATTR}], [${DROP_COMMIT_ATTR}]`) ?? null) : null)
       scroller = el?.closest('[data-drag-scroll]') ?? null
       setGhost({ source, x, y, target })
     }
@@ -153,7 +165,7 @@ export default function RefDragLayer({
       aria-hidden="true"
     >
       <span className="ref-drag-ghost-source">{sourceName(ghost.source)}</span>
-      {ghost.target && <span className="ref-drag-ghost-target"> → {ghost.target}</span>}
+      {ghost.target && <span className="ref-drag-ghost-target"> → {dropTargetName(ghost.target)}</span>}
     </div>
   )
 }

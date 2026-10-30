@@ -58,6 +58,8 @@ interface Props {
   onCopyText: (text: string) => void
   /** AI split the checked-out commit. */
   onSplitApplied: () => void
+  /** Takes a file's changes out of the commit into the working tree; left out when the commit can't be edited. */
+  onUncommitFile?: (hash: string, path: string, oldPath: string | null) => void
 }
 
 /**
@@ -132,7 +134,8 @@ function CommitDetailBody({
   onOpenFileView,
   onFilterHistory,
   onCopyText,
-  onSplitApplied
+  onSplitApplied,
+  onUncommitFile
 }: Omit<Props, 'hash'> & {
   detail: CommitDetail
   /** Another commit is selected and still loading; this one stays up meanwhile but can't be used. */
@@ -143,7 +146,14 @@ function CommitDetailBody({
   onToggleFolder: (path: string) => void
 }): JSX.Element {
   const { hash } = detail
-  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string; lfs: boolean } | null>(null)
+  const [fileMenu, setFileMenu] = useState<{
+    x: number
+    y: number
+    path: string
+    origPath: string | null
+    status: string
+    lfs: boolean
+  } | null>(null)
   const customMenu = useCustomCommandMenu()
   const lfs = useContext(LfsContext)
   const editor = useContext(EditorContext)
@@ -260,7 +270,14 @@ function CommitDetailBody({
                   onClick={() => openFile(f.path)}
                   onContextMenu={(e) => {
                     e.preventDefault()
-                    setFileMenu({ x: e.clientX, y: e.clientY, path: f.path, status: f.status[0], lfs: !!f.lfs })
+                    setFileMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      path: f.path,
+                      origPath: f.origPath ?? null,
+                      status: f.status[0],
+                      lfs: !!f.lfs
+                    })
                   }}
                 >
                   <span className={`status-code code-${f.status[0]}`}>{f.status[0]}</span>
@@ -313,6 +330,7 @@ function CommitDetailBody({
             editorName: editor.name,
             onCopyPath: () => onCopyText(fileMenu.path),
             lfs: { installed: lfs.info.installed, tracked: fileMenu.lfs, onTrack: lfs.track },
+            onUncommit: onUncommitFile && (() => onUncommitFile(hash, fileMenu.path, fileMenu.origPath)),
             custom: customMenu('file', { file: fileMenu.path, sha: hash })
           })}
           onClose={() => setFileMenu(null)}

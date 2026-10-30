@@ -39,6 +39,8 @@ interface Props {
   lanes?: DiffLanes
   /** Just shows the change, with no hunk actions (a stash's file, say). */
   readOnly?: boolean
+  /** A commit's diff: takes a hunk out of the commit into the working tree. Left out when the commit can't be edited. */
+  onUncommitHunk?: (hunkId: string) => void
 }
 
 /** A changed line's lane, to edge it in the lane's colour. */
@@ -421,7 +423,8 @@ export default function FileDiffViewer({
   onEditFile,
   onOpenFileView,
   lanes,
-  readOnly = false
+  readOnly = false,
+  onUncommitHunk
 }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('diff')
   const [layout, setLayout] = useState<Layout>('unified')
@@ -628,14 +631,27 @@ export default function FileDiffViewer({
     lanes.onMove(lane, lines)
   }
 
-  // A commit's hunk is undone in the working tree. An uncommitted change can be staged or
+  // A commit's hunk is undone in the working tree, or, on the checked-out branch, taken out of the commit. An uncommitted change can be staged or
   // unstaged a hunk or a few lines at a time, and an unstaged one discarded. A diff that
   // ignores whitespace isn't the file's real change, so it can't be applied, and nor can
   // the diff of what LFS pointers stand for, since git stores the pointers. A comparison only reads.
+  const uncommitAction: HunkAction[] =
+    onUncommitHunk && !ignoreWhitespace
+      ? [
+          {
+            verb: 'Uncommit',
+            busyLabel: 'Uncommitting…',
+            icon: '⤺',
+            title: 'Take this change out of the commit and put it back in your working changes',
+            lines: false,
+            run: (hunkId) => onUncommitHunk(hunkId)
+          }
+        ]
+      : []
   const actions: HunkAction[] = lfsWantContents || readOnly || base != null
     ? []
     : hash != null
-      ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory')]
+      ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory'), ...uncommitAction]
       : ignoreWhitespace
         ? []
         : lanes && !staged

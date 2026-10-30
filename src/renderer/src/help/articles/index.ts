@@ -46,6 +46,7 @@ import conflictsResolveManyFiles from './conflicts/resolve-many-files'
 import rebaseHistoryUndoAndRedo from './rebase-history/undo-and-redo'
 import rebaseHistoryReflog from './rebase-history/reflog'
 import rebaseHistoryInteractiveRebase from './rebase-history/interactive-rebase'
+import rebaseHistoryEditOlderCommits from './rebase-history/edit-older-commits'
 import rebaseHistoryBisect from './rebase-history/bisect'
 import rebaseHistoryResetRevertCherryPick from './rebase-history/reset-revert-cherry-pick'
 import lanesLanesOverview from './lanes/lanes-overview'
@@ -113,6 +114,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   rebaseHistoryUndoAndRedo,
   rebaseHistoryReflog,
   rebaseHistoryInteractiveRebase,
+  rebaseHistoryEditOlderCommits,
   rebaseHistoryBisect,
   rebaseHistoryResetRevertCherryPick,
   lanesLanesOverview,

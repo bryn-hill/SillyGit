@@ -259,6 +259,32 @@ const api = {
   /** Commits what's staged as a fixup of `target` and squashes it in. */
   fixupInto: (repoPath: string, target: string): Wrapped<import('../shared/types').FixupResult> =>
     ipcRenderer.invoke('git:fixup-into', repoPath, target),
+  /** Gives a commit of the current branch a new message. */
+  rewordCommit: (repoPath: string, hash: string, message: string): Wrapped<import('../shared/types').FixupResult> =>
+    ipcRenderer.invoke('git:reword-commit', repoPath, hash, message),
+  /** Swaps a commit of the current branch with its newer (up) or older (down) neighbour. */
+  moveCommit: (
+    repoPath: string,
+    hash: string,
+    direction: import('../shared/editCommit').MoveDirection
+  ): Wrapped<import('../shared/types').FixupResult> => ipcRenderer.invoke('git:move-commit', repoPath, hash, direction),
+  /** Folds `sources` into `target`, keeping their messages (squash) or not (fixup). */
+  squashCommits: (
+    repoPath: string,
+    sources: string[],
+    target: string,
+    mode: import('../shared/editCommit').SquashMode
+  ): Wrapped<import('../shared/types').FixupResult> =>
+    ipcRenderer.invoke('git:squash-commits', repoPath, sources, target, mode),
+  /** Takes a file, or one hunk of it (`unitId`), out of an older commit and into the working tree. */
+  uncommitChange: (
+    repoPath: string,
+    hash: string,
+    path: string,
+    oldPath: string | null,
+    unitId: string | null
+  ): Wrapped<import('../shared/types').FixupResult> =>
+    ipcRenderer.invoke('git:uncommit-change', repoPath, hash, path, oldPath, unitId),
   /** Which earlier commit each staged hunk belongs in. */
   planAbsorb: (repoPath: string): Wrapped<import('../shared/absorb').AbsorbPlan> =>
     ipcRenderer.invoke('git:plan-absorb', repoPath),
