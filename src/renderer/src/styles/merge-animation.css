@@ -1,4 +1,4 @@
-/* ---------- new commit / merge animation, Mini Metro style: flat lines grow into a station ---------- */
+/* ---------- new commits (committed, merged, pulled) animate in, Mini Metro style: flat lines grow into a station ---------- */
 
 .merge-burst {
   /* No z-index: later rows' commit avatars sit on top, like stations on a line. */
@@ -13,10 +13,11 @@
   stroke-width: 5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 1 1;
+  /* Starts wholly off the path: a zero-length dash would still draw its round cap as a dot. */
+  stroke-dasharray: 1 2;
   animation:
-    merge-line-grow 460ms cubic-bezier(0.65, 0, 0.35, 1) var(--line-delay, 0ms) both,
-    merge-line-settle 300ms ease-in-out 720ms forwards;
+    merge-line-grow 460ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--burst-delay, 0ms) + var(--line-delay, 0ms)) both,
+    merge-line-settle 300ms ease-in-out calc(var(--burst-delay, 0ms) + 720ms) forwards;
 }
 
 /* A white station with a thick ring in the branch's colour. */
@@ -26,8 +27,8 @@
   transform-box: fill-box;
   transform-origin: center;
   animation:
-    merge-station-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) 400ms both,
-    merge-fade-out 260ms ease-in 800ms forwards;
+    merge-station-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--burst-delay, 0ms) + 400ms) both,
+    merge-fade-out 260ms ease-in calc(var(--burst-delay, 0ms) + 800ms) forwards;
 }
 
 .merge-burst-pulse {
@@ -37,27 +38,27 @@
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: merge-pulse 420ms ease-out 480ms forwards;
+  animation: merge-pulse 420ms ease-out calc(var(--burst-delay, 0ms) + 480ms) forwards;
 }
 
 .merge-burst-node {
   opacity: 0;
-  animation: merge-fade-in 1ms linear 1050ms forwards;
+  animation: merge-fade-in 1ms linear calc(var(--burst-delay, 0ms) + 1050ms) forwards;
 }
 
 /* A new commit's avatar is its station. */
 .commit-burst-avatar {
-  animation: merge-station-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) 400ms both;
+  animation: merge-station-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--burst-delay, 0ms) + 400ms) both;
 }
 
 .merge-burst-join {
   opacity: 0;
-  animation: merge-fade-in 1ms linear 460ms forwards;
+  animation: merge-fade-in 1ms linear calc(var(--burst-delay, 0ms) + 460ms) forwards;
 }
 
 @keyframes merge-line-grow {
   from {
-    stroke-dashoffset: 1;
+    stroke-dashoffset: 1.05;
   }
   to {
     stroke-dashoffset: 0;
@@ -110,10 +111,10 @@
     display: none;
   }
   .merge-burst-station {
-    animation: merge-fade-out 600ms ease-in 300ms forwards;
+    animation: merge-fade-out 600ms ease-in calc(var(--burst-delay, 0ms) + 300ms) forwards;
   }
   .merge-burst-node {
-    animation: merge-fade-in 1ms linear 900ms forwards;
+    animation: merge-fade-in 1ms linear calc(var(--burst-delay, 0ms) + 900ms) forwards;
   }
   .merge-burst-join,
   .commit-burst-avatar {

@@ -32,8 +32,11 @@ export default function GraphCell({
    * row's node because it is the checked-out commit.
    */
   wipLink?: { kind: 'pass' | 'end'; lane: number; color: string }
-  /** Set on a merge commit that has just landed: plays the merge animation, again whenever it changes. */
-  burst?: number
+  /**
+   * Set on a commit that has just arrived: plays its animation after `delay`
+   * ms, again whenever `id` changes.
+   */
+  burst?: { id: number; delay: number }
 }): JSX.Element {
   const maxLanes = Math.max(row.before.length, row.after.length, row.lane + 1, (wipLink?.lane ?? 0) + 1)
   const width = graphWidth(maxLanes)
@@ -82,11 +85,15 @@ export default function GraphCell({
     }
   }
 
+  // While the animation plays, its own lines draw the joins.
+  const joinClass = burst !== undefined ? 'merge-burst-join' : undefined
+
   const hasAboveOwn = row.lane < row.before.length && row.before[row.lane] !== null
   if (hasAboveOwn) {
     elements.push(
       <line
         key="own-top"
+        className={joinClass}
         x1={laneX(row.lane)}
         y1={0}
         x2={laneX(row.lane)}
@@ -96,9 +103,6 @@ export default function GraphCell({
       />
     )
   }
-
-  // While the animation plays, its own lines draw the joins.
-  const joinClass = burst !== undefined ? 'merge-burst-join' : undefined
 
   const hasBelowOwn = row.lane < row.after.length && row.after[row.lane] !== null
   if (hasBelowOwn) {
@@ -164,15 +168,19 @@ export default function GraphCell({
   }
 
   return (
-    <div className="graph-cell" style={{ width, height: ROW_HEIGHT }}>
+    <div
+      className="graph-cell"
+      // Every part of the animation, in this cell and the overlay, waits this long.
+      style={{ width, height: ROW_HEIGHT, ...(burst && ({ '--burst-delay': `${burst.delay}ms` } as CSSProperties)) }}
+    >
       <svg width={width} height={ROW_HEIGHT} className="graph-svg">
         {elements}
       </svg>
-      {burst !== undefined && <MergeBurst key={`burst-${burst}`} row={row} />}
+      {burst !== undefined && <MergeBurst key={`burst-${burst.id}`} row={row} />}
       {!isMerge && (
         <Avatar
           // Keyed so the pop replays for each new animation.
-          key={`avatar-${burst ?? 'still'}`}
+          key={`avatar-${burst?.id ?? 'still'}`}
           className={`graph-node-avatar ${burst !== undefined ? 'commit-burst-avatar' : ''}`}
           name={row.commit.author}
           email={row.commit.authorEmail}

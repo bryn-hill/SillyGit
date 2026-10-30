@@ -132,7 +132,12 @@ export default function CommitGraph({
     () => (sprints.enabled ? sprintMarks(rows.map((r) => r.commit.committedAt || r.commit.date), sprints) : null),
     [rows, sprints]
   )
-  const burst = useMergeBurst(rows, headHash, mergeAnimation)
+  const burst = useMergeBurst(rows, mergeAnimation)
+
+  const burstFor = (hash: string): { id: number; delay: number } | undefined => {
+    const delay = burst?.delays.get(hash)
+    return burst && delay !== undefined ? { id: burst.id, delay } : undefined
+  }
 
   const now = new Date()
   const today = localDay(now.toISOString())
@@ -284,7 +289,7 @@ export default function CommitGraph({
           repoPath={repoPath}
           connector={badges.length > 0}
           wipLink={wipLinkFor(index)}
-          burst={burst?.hash === row.commit.hash ? burst.id : undefined}
+          burst={burstFor(row.commit.hash)}
         />
         <div className="graph-row-message">
           <span className="graph-row-subject" style={{ color: row.color }}>

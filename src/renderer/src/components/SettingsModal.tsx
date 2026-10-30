@@ -108,8 +108,8 @@ export default function SettingsModal({
               Animate new commits and merges on the graph
             </label>
             <div className="modal-hint">
-              When a commit or merge lands on the checked-out branch, its lines grow into it like a metro map. If your
-              system asks for reduced motion, nothing moves.
+              When commits arrive, whether you commit, merge, pull or fetch, their lines grow into them like a metro
+              map. If your system asks for reduced motion, nothing moves.
             </div>
           </section>
 

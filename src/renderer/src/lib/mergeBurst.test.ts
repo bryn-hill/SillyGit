@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GraphCommit } from '../../../shared/types'
 import { layoutGraph } from './graphLayout'
-import { newCommitAtHead } from './mergeBurst'
+import { MAX_BURST_COMMITS, newCommits } from './mergeBurst'
 
 const commit = (hash: string, parents: string[]): GraphCommit =>
   ({ hash, parents, author: 'a', authorEmail: 'a@example.com', date: '', committedAt: '', subject: hash, refs: [] })
@@ -14,39 +14,53 @@ const merged = layoutGraph([
   commit('root', [])
 ])
 
-describe('newCommitAtHead', () => {
-  it('finds a merge HEAD just moved onto', () => {
-    expect(newCommitAtHead(before, merged, 'M')).toBe('M')
+describe('newCommits', () => {
+  it('finds a merge that just landed', () => {
+    expect(newCommits(before, merged)).toEqual(['M'])
   })
 
-  it('finds a plain commit HEAD just moved onto', () => {
+  it('finds a plain commit that just landed', () => {
     const next = layoutGraph([commit('c', ['main1']), commit('main1', ['root']), commit('feat', ['root']), commit('root', [])])
-    expect(newCommitAtHead(before, next, 'c')).toBe('c')
+    expect(newCommits(before, next)).toEqual(['c'])
   })
 
-  it('ignores a pull that brought in several commits at once', () => {
+  it('finds every commit a pull or fetch brought in, oldest first', () => {
     const next = layoutGraph([
       commit('c2', ['c1']),
+      commit('f2', ['feat']),
       commit('c1', ['main1']),
       commit('main1', ['root']),
       commit('feat', ['root']),
       commit('root', [])
     ])
-    expect(newCommitAtHead(before, next, 'c2')).toBeNull()
+    expect(newCommits(before, next)).toEqual(['c1', 'f2', 'c2'])
   })
 
-  it('ignores a commit that was already there, e.g. after a refresh or loading more', () => {
-    expect(newCommitAtHead(merged, merged, 'M')).toBeNull()
+  it('animates only the newest of a big pull', () => {
+    const many = Array.from({ length: MAX_BURST_COMMITS + 5 }, (_, i) => i)
+    const next = layoutGraph([
+      ...many.reverse().map((i) => commit(`n${i}`, [i === 0 ? 'main1' : `n${i - 1}`])),
+      commit('main1', ['root']),
+      commit('feat', ['root']),
+      commit('root', [])
+    ])
+    const found = newCommits(before, next)
+    expect(found).toHaveLength(MAX_BURST_COMMITS)
+    expect(found.at(-1)).toBe(`n${MAX_BURST_COMMITS + 4}`)
+  })
+
+  it('ignores commits that were already there, e.g. after a refresh', () => {
+    expect(newCommits(merged, merged)).toEqual([])
+  })
+
+  it('ignores loading more history', () => {
+    const top = layoutGraph([commit('main1', ['root'])])
+    expect(newCommits(top, before)).toEqual([])
   })
 
   it('ignores the first load and switching to another repo', () => {
-    expect(newCommitAtHead([], merged, 'M')).toBeNull()
+    expect(newCommits([], merged)).toEqual([])
     const other = layoutGraph([commit('x', ['y']), commit('y', [])])
-    expect(newCommitAtHead(other, merged, 'M')).toBeNull()
-  })
-
-  it('ignores a new commit that is not checked out', () => {
-    expect(newCommitAtHead(before, merged, 'main1')).toBeNull()
-    expect(newCommitAtHead(before, merged, null)).toBeNull()
+    expect(newCommits(other, merged)).toEqual([])
   })
 })
