@@ -11,7 +11,7 @@ const article: HelpArticle = {
 
 Click **Update** (or **Update SillyGit…** in the palette) to see what's coming in. Applying it fast-forwards your checkout, runs \`npm install\` if dependencies changed, rebuilds and restarts the app. Your uncommitted changes to the checkout are set aside and put back.
 
-It only updates when your checkout is on \`main\` with no commits of its own. Installed builds (from an installer) don't show the button; download a new build to update those.
+It only updates when your checkout is on \`main\` with no commits of its own. Installed builds (from a download) don't show the button; to update those, download the newest build from the Releases page of SillyGit's GitHub repository (github.com/bryn-hill/sillygit/releases) and replace the app.
 
 ## Example
 
