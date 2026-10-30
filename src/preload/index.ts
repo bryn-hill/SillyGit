@@ -60,6 +60,17 @@ const api = {
     ipcRenderer.on('self-update:changed', listener)
     return () => ipcRenderer.removeListener('self-update:changed', listener)
   },
+  /** Folders asked for with `sillygit <folder>` (or the Dock) since last taken. */
+  takeLaunchRequests: (): Promise<import('../shared/launcher').LaunchRequest[]> => ipcRenderer.invoke('launcher:take'),
+  /** Called when there are new launch requests to take. */
+  onLaunchRequested: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('launcher:requested', listener)
+    return () => ipcRenderer.removeListener('launcher:requested', listener)
+  },
+  /** Writes the `sillygit` command and puts it on the PATH. */
+  installCommand: (): Wrapped<import('../shared/launcher').CommandInstallResult> =>
+    ipcRenderer.invoke('launcher:install-command'),
   activityLog: (): Promise<import('../shared/activity').ActivityEntry[]> => ipcRenderer.invoke('activity:list'),
   reflog: (repoPath: string, ref: string): Wrapped<import('../shared/reflog').ReflogEntry[]> =>
     ipcRenderer.invoke('git:reflog', repoPath, ref),

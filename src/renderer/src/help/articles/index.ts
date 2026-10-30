@@ -1,6 +1,7 @@
 import type { HelpArticle } from '../../../../shared/help/types'
 import gettingStartedWelcome from './getting-started/welcome'
 import gettingStartedOpenARepository from './getting-started/open-a-repository'
+import gettingStartedCommandLine from './getting-started/command-line'
 import gettingStartedTheWindow from './getting-started/the-window'
 import gettingStartedCommandPalette from './getting-started/command-palette'
 import gettingStartedKeyboardShortcuts from './getting-started/keyboard-shortcuts'
@@ -67,6 +68,7 @@ import settingsUpdateSillygit from './settings/update-sillygit'
 export const HELP_ARTICLES: HelpArticle[] = [
   gettingStartedWelcome,
   gettingStartedOpenARepository,
+  gettingStartedCommandLine,
   gettingStartedTheWindow,
   gettingStartedCommandPalette,
   gettingStartedKeyboardShortcuts,

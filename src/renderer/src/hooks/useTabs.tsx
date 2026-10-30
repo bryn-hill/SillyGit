@@ -79,18 +79,22 @@ export function useTabs({
   /** Picks a folder and opens it, offering to make it a git repo first if it isn't one. */
   const openRepo = async (): Promise<void> => {
     const picked = await window.api.openRepoDialog()
-    if (!picked) return
-    const isRepo = await window.api.isGitRepo(picked)
+    if (picked) await openFolder(picked)
+  }
+
+  /** Opens `path` in a tab, offering to make it a git repo first if it isn't one. */
+  const openFolder = async (path: string): Promise<void> => {
+    const isRepo = await window.api.isGitRepo(path)
     if (!isRepo) {
-      const shouldInit = window.confirm(`"${picked}" is not a git repository yet. Initialize one here?`)
+      const shouldInit = window.confirm(`"${path}" is not a git repository yet. Initialize one here?`)
       if (!shouldInit) return
-      const initRes = await window.api.initRepo(picked)
+      const initRes = await window.api.initRepo(path)
       if (!initRes.ok) {
         showError(initRes.error)
         return
       }
     }
-    await switchToRepo(picked)
+    await switchToRepo(path)
   }
 
   /** Opens a recent repo, in place of the current tab when `replace` is set. */
@@ -163,6 +167,7 @@ export function useTabs({
     pinnedTabs,
     recentRepos,
     openRepo,
+    openFolder,
     openRecentRepo,
     clone,
     cloneOpen,

@@ -232,6 +232,8 @@ ending with a worked example, plus a walkthrough the first time you open a repos
 ### App
 
 - Multi-repo tabs with pinning, and the last session restored on launch.
+- A `sillygit` terminal command (`sillygit .` opens the repo you're in as a
+  tab); install it from the command palette.
 - Integrated terminal (xterm.js with WebGL).
 - Command palette for nearly every action.
 - Light, dark or system theme.

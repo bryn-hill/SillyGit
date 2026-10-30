@@ -19,6 +19,7 @@ import { registerSigningHandlers } from './ipc/signing'
 import { registerNotificationHandlers, startPrNotifications } from './ipc/notifications'
 import { registerAiHandlers } from './ipc/ai'
 import { registerSelfUpdateHandlers, startUpdateChecks } from './ipc/selfUpdate'
+import { queueOpenFile, queueSecondInstance, queueStartupPaths, registerLauncherHandlers } from './ipc/launcher'
 import icon from '../../resources/icon.png?asset'
 
 // The main process: starts the window and answers the renderer over IPC.
@@ -38,11 +39,29 @@ function registerIpcHandlers(): void {
   registerSigningHandlers()
   registerNotificationHandlers()
   registerAiHandlers()
+  registerLauncherHandlers()
   registerTerminalHandlers(getMainWindow)
   registerClaudeHandlers(getMainWindow)
 }
 
+// One SillyGit at a time, so `sillygit <folder>` opens a tab in the running
+// one. A dev-server run (`npm run dev`, say from SillyGit's own Run button)
+// stays separate so it can run beside an everyday SillyGit.
+const singleInstance = !process.env['ELECTRON_RENDERER_URL']
+if (singleInstance && !app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', (_e, argv, cwd) => queueSecondInstance(argv, cwd, getMainWindow, createWindow))
+  // macOS: a folder dropped on the Dock icon, or `open -a SillyGit <folder>`. Can arrive before ready.
+  app.on('open-file', (e, path) => {
+    e.preventDefault()
+    queueOpenFile(path, getMainWindow, createWindow)
+  })
+  queueStartupPaths(getMainWindow)
+}
+
 app.whenReady().then(async () => {
+  if (singleInstance && !app.hasSingleInstanceLock()) return
   // net.fetch goes through the system's proxy settings, like the rest of Chromium.
   setFetch((url, init) => net.fetch(url, init))
   setNetworkEnv(accounts.gitAuthEnv)

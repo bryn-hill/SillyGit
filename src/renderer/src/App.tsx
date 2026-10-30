@@ -40,6 +40,7 @@ import { useConflicts } from './hooks/useConflicts'
 import { useRun } from './hooks/useRun'
 import { useBisect } from './hooks/useBisect'
 import { useTabs } from './hooks/useTabs'
+import { useCommandLine } from './hooks/useCommandLine'
 import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
 import { useEscapeToLeaveFocus } from './hooks/useEscapeToLeaveFocus'
@@ -154,6 +155,12 @@ export default function App(): JSX.Element {
     view.resetForRepo(lastSelection)
   }
   const tabs = useTabs({ repo, git, view, showRepo, restoreLayout: layout.restore, showError, setNotice })
+  const commandLine = useCommandLine({
+    sessionRestored: tabs.sessionRestored,
+    openFolder: tabs.openFolder,
+    showError,
+    setNotice
+  })
   // The window stays hidden until the last session is back up, repo and all,
   // so launch never flashes the empty "no repo" screen.
   const startupReady = tabs.sessionRestored && (!repoPath || status !== null)
@@ -464,7 +471,8 @@ export default function App(): JSX.Element {
               customCommands: settings.customCommands,
               pullRequests,
               checkoutPullRequest,
-              editor
+              editor,
+              installCommand: commandLine.install
             })}
             variant={dialogs.palette === 'dropdown' ? 'dropdown' : 'modal'}
             startIn={dialogs.palette === 'checkout' ? 'checkout' : undefined}

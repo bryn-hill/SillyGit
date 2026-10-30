@@ -42,6 +42,7 @@ export function appCommands(app: {
   pullRequests: OpenPullRequest[]
   checkoutPullRequest: (repoPath: string, number: number) => Promise<void>
   editor: Editor
+  installCommand: () => Promise<void>
 }): Command[] {
   const { repo, view, git, branches, conflicts, run, tabs, layout, dialogs } = app
   const { repoPath } = repo
@@ -167,6 +168,7 @@ export function appCommands(app: {
       showActivity: () => dialogs.setShowActivity(true),
       showReflog: () => dialogs.setActivityTab('reflog'),
       showUpdate: () => dialogs.setShowUpdate(true),
+      installCommand: () => void app.installCommand(),
       toggleLaunchpad: () => view.setShowLaunchpad((v) => !v),
       toggleOverview: () => view.setShowOverview((v) => !v),
       cycleTab: tabs.cycle,

@@ -48,6 +48,8 @@ function relaunch(): void {
   // electron-vite starts Electron with the relative entry "."; make it absolute.
   const args = process.argv.slice(1).map((arg) => (arg === '.' ? appPath : arg))
   app.relaunch({ args })
+  // Let the new instance take the single-instance lock rather than hand its launch to this one.
+  app.releaseSingleInstanceLock()
   app.quit()
 }
 

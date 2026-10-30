@@ -6,13 +6,20 @@ const article: HelpArticle = {
   category: 'getting-started',
   summary: 'Open repositories in tabs, clone new ones, pin favourites and come back to where you left off.',
   keywords: ['open', 'clone', 'tabs', 'repository', 'repo', 'recent', 'pin', 'session', 'restore', 'folder'],
-  related: ['remotes-prs/publish-repository', 'getting-started/welcome', 'getting-started/the-window', 'getting-started/keyboard-shortcuts'],
+  related: [
+    'remotes-prs/publish-repository',
+    'getting-started/command-line',
+    'getting-started/welcome',
+    'getting-started/the-window',
+    'getting-started/keyboard-shortcuts'
+  ],
   body: `Each repository opens in its own tab in the strip at the very top of the window. SillyGit remembers your open tabs, which one was active and your panel layout, and puts them all back the next time you launch it.
 
 ## Opening and cloning
 
 - **Open a repository:** click the folder button or **+** in the tab bar, or press **Cmd+O** / **Cmd+T**. Pick any folder inside a Git repository.
 - **Clone:** **Actions > Clone repository…** (or **Clone Repository** when nothing is open) takes a URL, or lets you search the repositories of your signed-in accounts. It then asks for the folder to clone into and opens the result in a new tab. See [Clone from your accounts and publish repositories](help:remotes-prs/publish-repository).
+- **From a terminal:** run \`sillygit .\` once you've installed the command. See [Open repositories from the terminal](help:getting-started/command-line).
 - **Recent repositories:** the repository name in the top bar opens a list of recent repos; it replaces the current tab. **Actions > Open recent repository** does the same from the keyboard.
 
 ## Working with tabs
