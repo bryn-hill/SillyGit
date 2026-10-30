@@ -352,6 +352,7 @@ export default function MainArea({
           onRefColumnWidthChange={layout.setRefColumnWidth}
           filter={repo.graphFilter}
           onFilterChange={view.filterHistory}
+          ciPollMinutes={settings.autoFetchMinutes ?? 0}
         />
       </Activity>
       {cover}

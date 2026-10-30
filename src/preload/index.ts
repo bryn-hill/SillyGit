@@ -514,6 +514,11 @@ const api = {
   jiraSites: (): Wrapped<import('../shared/jira').JiraSite[]> => ipcRenderer.invoke('jira:sites'),
   prGetDetail: (repoPath: string, number: number): Wrapped<import('../shared/prReview').PullRequestDetail> =>
     ipcRenderer.invoke('pr:get-detail', repoPath, number),
+  /** CI status of commits (GitHub checks or Azure Pipelines builds), cached in the main process. */
+  ciStatuses: (repoPath: string, shas: string[]): Wrapped<import('../shared/ciStatus').CiStatusMap> =>
+    ipcRenderer.invoke('ci:statuses', repoPath, shas),
+  ciRerun: (repoPath: string, sha: string, targets: import('../shared/ciStatus').CiRerun[]): Wrapped<void> =>
+    ipcRenderer.invoke('ci:rerun', repoPath, sha, targets),
   prSubmitReview: (repoPath: string, number: number, input: import('../shared/prReview').SubmitReviewInput): Wrapped<void> =>
     ipcRenderer.invoke('pr:submit-review', repoPath, number, input),
   prAddComment: (repoPath: string, number: number, body: string): Wrapped<void> =>

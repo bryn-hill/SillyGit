@@ -25,6 +25,16 @@ export class CommitGraph {
     return this.root.locator(`[data-ref="${label}"]`)
   }
 
+  /** A commit row's CI status dot; its data-state is success, failure, pending or neutral. */
+  ciDot(subject: string): Locator {
+    return this.row(subject).getByTestId('ci-dot')
+  }
+
+  /** The list of checks a CI dot opens. */
+  get ciPopover(): Locator {
+    return this.root.page().getByRole('dialog', { name: 'CI checks' })
+  }
+
   /** The "+N" chip on a commit row with more refs than fit. */
   moreRefs(subject: string): Locator {
     return this.row(subject).getByRole('button', { name: /more branches and tags/ })

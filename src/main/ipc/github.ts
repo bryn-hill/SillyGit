@@ -1,4 +1,6 @@
 import { ipcMain } from 'electron'
+import * as ciStatus from '../ciStatus'
+import type { CiRerun } from '../../shared/ciStatus'
 import * as issueWork from '../issueWork'
 import * as jira from '../jira'
 import * as launchpad from '../launchpad'
@@ -50,6 +52,14 @@ export function registerGithubHandlers(): void {
 
   ipcMain.handle('pr:get-detail', (_e, repoPath: string, number: number) =>
     wrap(() => prReview.getPullRequestDetail(repoPath, number))
+  )
+
+  ipcMain.handle('ci:statuses', (_e, repoPath: string, shas: string[]) =>
+    wrap(() => ciStatus.getCiStatuses(repoPath, shas))
+  )
+
+  ipcMain.handle('ci:rerun', (_e, repoPath: string, sha: string, targets: CiRerun[]) =>
+    wrap(() => ciStatus.rerunCi(repoPath, sha, targets))
   )
 
   ipcMain.handle('pr:submit-review', (_e, repoPath: string, number: number, input: SubmitReviewInput) =>

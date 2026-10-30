@@ -13,6 +13,9 @@ import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettin
 import { timeAgo } from '../lib/time'
 import { useMergeBurst } from './commitGraph/useMergeBurst'
 import { useGraphSearch } from './commitGraph/useGraphSearch'
+import { useCiStatus } from './commitGraph/useCiStatus'
+import CiStatusDot from './commitGraph/CiStatusDot'
+import { MAX_CI_COMMITS, RECENT_COMMITS } from '../../../shared/ciStatus'
 import { useBisectState } from '../lib/bisectMenu'
 import { bisectMarks, markLabel } from '../../../shared/bisect'
 import Select from './Select'
@@ -86,6 +89,8 @@ interface Props {
   /** The path filter `rows` were read with, shown as a chip that clears it. */
   filter: GraphFilter | null
   onFilterChange: (filter: GraphFilter | null) => void
+  /** Auto-fetch's interval in minutes (0 = off); CI results are looked at again this often. */
+  ciPollMinutes: number
 }
 
 export default function CommitGraph({
@@ -111,7 +116,8 @@ export default function CommitGraph({
   sprints,
   mergeAnimation,
   filter,
-  onFilterChange
+  onFilterChange,
+  ciPollMinutes
 }: Props): JSX.Element {
   // The WIP node sits above the checked-out commit's lane and a dashed line
   // joins them, even when other branch tips come between.
@@ -139,6 +145,22 @@ export default function CommitGraph({
   )
 
   const selected = useMemo(() => selectedHashes(selection), [selection])
+
+  // CI is shown for every pushed branch tip and the newest commits.
+  const ciCommits = useMemo(
+    () =>
+      rows
+        .filter(
+          (r, i) =>
+            i < RECENT_COMMITS || parseRefs(r.commit.refs, localBranches, remoteBranches).some((b) => b.kind === 'remote')
+        )
+        .slice(0, MAX_CI_COMMITS)
+        .map((r) => r.commit.hash),
+    [rows, localBranches, remoteBranches]
+  )
+  const ci = useCiStatus(repoPath, ciCommits, ciPollMinutes)
+  // Once any commit has a result, every row keeps room for a dot so the labels line up.
+  const showCi = ciCommits.some((h) => ci.statuses[h])
   const drag = useRefDrag()
 
   /** Dragging a row cherry-picks its commit, or the whole selection when the row is part of it. */
@@ -272,6 +294,16 @@ export default function CommitGraph({
     return { kind: index === headIndex ? 'end' : 'pass', lane: topLane, color: topColor }
   }
 
+  const ciDot = (hash: string): JSX.Element | undefined => {
+    if (!showCi) return undefined
+    const status = ci.statuses[hash]
+    return status ? (
+      <CiStatusDot status={status} onRerun={(targets) => ci.rerun(hash, targets)} />
+    ) : (
+      <span className="ci-dot-gap" aria-hidden="true" />
+    )
+  }
+
   const renderRow = (row: GraphRow, index: number): JSX.Element => {
     const badges = parseRefs(row.commit.refs, localBranches, remoteBranches)
     const pills = groupRefs(badges, upstreams)
@@ -316,6 +348,7 @@ export default function CommitGraph({
           width={refColumnWidth}
           handlers={refHandlers(row.commit.hash, isSelected)}
           burst={burstFor(row.commit.hash)}
+          ci={ciDot(row.commit.hash)}
         />
         <GraphCell
           row={row}

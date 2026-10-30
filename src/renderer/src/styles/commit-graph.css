@@ -309,3 +309,153 @@ body.ref-dragging * {
 .ref-drag-ghost-target {
   color: var(--accent);
 }
+
+/* CI status: a dot before the row's refs, and its list of checks. */
+.ci-dot,
+.ci-dot-gap {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.ci-dot {
+  cursor: pointer;
+  background: var(--text-dim);
+  box-shadow: 0 0 0 2px transparent;
+}
+
+.ci-dot:hover,
+.ci-dot[aria-expanded='true'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.ci-dot-success {
+  color: var(--green);
+  background: var(--green);
+}
+
+.ci-dot-failure {
+  color: var(--red);
+  background: var(--red);
+}
+
+.ci-dot-pending {
+  color: var(--yellow);
+  background: var(--yellow);
+  animation: ci-pulse 1.4s ease-in-out infinite;
+}
+
+.ci-dot-neutral {
+  color: var(--text-dim);
+}
+
+@keyframes ci-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ci-dot-pending {
+    animation: none;
+  }
+}
+
+.ci-popover {
+  position: fixed;
+  z-index: 50;
+  width: 320px;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 40%, transparent);
+  font-size: 12px;
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.ci-popover-summary {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ci-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ci-check {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.ci-check-icon {
+  flex-shrink: 0;
+  width: 10px;
+  text-align: center;
+}
+
+.ci-check-name {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+span.ci-check-name {
+  color: var(--text);
+}
+
+.ci-check-desc {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-check-success .ci-check-icon,
+.ci-popover-summary.ci-check-success {
+  color: var(--green);
+}
+
+.ci-check-failure .ci-check-icon,
+.ci-popover-summary.ci-check-failure {
+  color: var(--red);
+}
+
+.ci-check-pending .ci-check-icon,
+.ci-popover-summary.ci-check-pending {
+  color: var(--yellow);
+}
+
+.ci-check-neutral .ci-check-icon,
+.ci-check-skipped .ci-check-icon,
+.ci-popover-summary.ci-check-neutral {
+  color: var(--text-dim);
+}
+
+.ci-popover-error {
+  margin-top: 6px;
+  color: var(--red-soft);
+}
+
+.ci-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}

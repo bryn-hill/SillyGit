@@ -185,7 +185,8 @@ export default function RefCell({
   color,
   width,
   handlers,
-  burst
+  burst,
+  ci
 }: {
   pills: RefPill[]
   color: string
@@ -193,9 +194,12 @@ export default function RefCell({
   handlers: RefHandlers
   /** Set when the row's commit has just arrived: the line grows out to it in step with its animation. */
   burst?: { id: number; delay: number }
+  /** The commit's CI dot (or a gap the same size, so pills line up), before its refs. */
+  ci?: ReactNode
 }): JSX.Element {
   return (
     <div className="ref-cell" data-testid="ref-cell" style={{ width }}>
+      {ci}
       {pills.length > 0 && (
         <>
           <Pill pill={pills[0]} color={color} handlers={handlers} />

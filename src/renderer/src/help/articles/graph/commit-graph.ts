@@ -5,11 +5,12 @@ const article: HelpArticle = {
   title: 'Read the commit graph',
   category: 'graph',
   summary: 'What the graph shows: lanes, branch and tag pills, avatars, the working copy row and how to select commits.',
-  keywords: ['graph', 'history', 'log', 'lanes', 'commits', 'branch tag column', 'avatars', 'wip', 'select'],
+  keywords: ['graph', 'ci', 'history', 'log', 'lanes', 'commits', 'branch tag column', 'avatars', 'wip', 'select'],
   related: ['graph/search-and-filter', 'graph/commit-details', 'graph/drag-and-drop', 'getting-started/the-window'],
   body: `The commit graph is SillyGit's history view. Each row is a commit, newest at the top; coloured lines show how branches fork and merge.
 
 - **Branch / Tag column:** pills for the branches and tags pointing at each commit. Your checked-out branch is highlighted, and a cloud icon shows where the remote branch is. Drag the column's edge to widen it.
+- **CI dots:** green, red or yellow dots before the branch names show whether a pushed commit's checks passed, failed or are running. See [See CI results on the graph](help:graph/ci-status).
 - **Avatars:** each commit shows its author's picture, looked up by email (turn them off in Settings). Claude and Renovate commits get their own logos.
 - **Uncommitted changes:** the top row is your working copy. Select it to stage and commit.
 - **Animations:** new commits, merges and commits arriving from a pull grow into the graph. Turn this off in Settings.
