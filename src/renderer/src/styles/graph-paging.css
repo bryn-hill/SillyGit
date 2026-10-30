@@ -5,9 +5,7 @@
   flex-shrink: 0;
 }
 
-.graph-row.dimmed .graph-row-message,
-.graph-row.dimmed .graph-row-author,
-.graph-row.dimmed .graph-row-date {
+.graph-row.dimmed .graph-row-message {
   opacity: 0.35;
 }
 

@@ -1,21 +1,18 @@
 import type { CSSProperties, JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import Avatar from './Avatar'
-import { graphWidth, LANE_WIDTH as LANE_W } from '../lib/graphColumns'
 
 export const ROW_HEIGHT = 32
+// Wide enough for an author's avatar on each commit, like GitKraken.
+const LANE_W = 24
 const AVATAR_SIZE = 18
-
-/**
- * Cuts off lanes past the right edge of the Graph column, but nothing above,
- * below or to the left, where the merge animation spills over.
- */
-function clipPast(columnWidth: number, drawnWidth: number): string | undefined {
-  return drawnWidth > columnWidth ? 'inset(-100vh 0 -100vh -100vw)' : undefined
-}
 
 function laneX(i: number): number {
   return i * LANE_W + LANE_W / 2 + 4
+}
+
+function graphWidth(maxLanes: number): number {
+  return maxLanes * LANE_W + 8
 }
 
 export default function GraphCell({
@@ -23,13 +20,10 @@ export default function GraphCell({
   repoPath,
   connector = false,
   wipLink,
-  burst,
-  columnWidth
+  burst
 }: {
   row: GraphRow
   repoPath: string
-  /** Width of the Graph column; lanes past it are cut off. */
-  columnWidth: number
   /** Continues the line from the row's branch / tag pill over to the commit. */
   connector?: boolean
   /**
@@ -188,14 +182,8 @@ export default function GraphCell({
   return (
     <div
       className="graph-cell"
-      data-testid="graph-cell"
       // Every part of the animation, in this cell and the overlay, waits this long.
-      style={{
-        width: columnWidth,
-        height: ROW_HEIGHT,
-        clipPath: clipPast(columnWidth, width),
-        ...(burst && ({ '--burst-delay': `${burst.delay}ms` } as CSSProperties))
-      }}
+      style={{ width, height: ROW_HEIGHT, ...(burst && ({ '--burst-delay': `${burst.delay}ms` } as CSSProperties)) }}
     >
       <svg width={width} height={ROW_HEIGHT} className="graph-svg">
         {elements}
@@ -276,40 +264,30 @@ function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
   )
 }
 
-export function WipGraphCell({
-  lane,
-  color,
-  columnWidth
-}: {
-  lane: number
-  color: string
-  columnWidth: number
-}): JSX.Element {
+export function WipGraphCell({ lane, color }: { lane: number; color: string }): JSX.Element {
   const width = graphWidth(lane + 1)
   const cy = ROW_HEIGHT / 2
   return (
-    <div className="graph-cell" data-testid="graph-cell" style={{ width: columnWidth, height: ROW_HEIGHT, clipPath: clipPast(columnWidth, width) }}>
-      <svg width={width} height={ROW_HEIGHT} className="graph-svg">
-        <line
-          data-testid="wip-link"
-          x1={laneX(lane)}
-          y1={cy + 6}
-          x2={laneX(lane)}
-          y2={ROW_HEIGHT}
-          stroke={color}
-          strokeWidth={2}
-          strokeDasharray="3,3"
-        />
-        <circle
-          cx={laneX(lane)}
-          cy={cy}
-          r={5}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          strokeDasharray="2,2"
-        />
-      </svg>
-    </div>
+    <svg width={width} height={ROW_HEIGHT} className="graph-svg">
+      <line
+        data-testid="wip-link"
+        x1={laneX(lane)}
+        y1={cy + 6}
+        x2={laneX(lane)}
+        y2={ROW_HEIGHT}
+        stroke={color}
+        strokeWidth={2}
+        strokeDasharray="3,3"
+      />
+      <circle
+        cx={laneX(lane)}
+        cy={cy}
+        r={5}
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeDasharray="2,2"
+      />
+    </svg>
   )
 }

@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
 import GraphCell, { ROW_HEIGHT, WipGraphCell } from './GraphCell'
 import type { Selection } from '../lib/selection'
-import type { BranchInfo, CommitSearchHit, GraphColumnWidths } from '../../../shared/types'
+import type { BranchInfo, CommitSearchHit } from '../../../shared/types'
 import RefContextMenu, { type RefActions, type RefTarget } from './RefContextMenu'
 import { selectedHashes } from '../lib/selection'
 import { groupRefs, parseRefs, type RefBadge } from '../lib/refs'
@@ -13,8 +13,10 @@ import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettin
 import { timeAgo } from '../lib/time'
 import { useMergeBurst } from './commitGraph/useMergeBurst'
 import { useGraphSearch } from './commitGraph/useGraphSearch'
-import ColumnResizer from './commitGraph/ColumnResizer'
-import { COLUMN_LIMITS, DEFAULT_COLUMN_WIDTHS, fitGraphWidth, type GraphColumn } from '../lib/graphColumns'
+
+export const DEFAULT_REF_COLUMN_WIDTH = 170
+const MIN_REF_COLUMN_WIDTH = 60
+const MAX_REF_COLUMN_WIDTH = 480
 
 function badgeTarget(badge: RefBadge): RefTarget | null {
   if (badge.kind === 'tag') return null
@@ -63,8 +65,8 @@ interface Props {
   onLoadMore: () => void
   /** Bumped to move the keyboard focus into the search box. */
   searchFocusToken: number
-  columnWidths: GraphColumnWidths
-  onColumnWidthChange: (column: GraphColumn, width: number) => void
+  refColumnWidth: number
+  onRefColumnWidthChange: (width: number) => void
   /** Sprint dividers and shading, when turned on in Settings. */
   sprints: SprintSettings
   /** Animate a merge landing on the checked-out branch (Settings). */
@@ -89,8 +91,8 @@ export default function CommitGraph({
   loadingMore,
   onLoadMore,
   searchFocusToken,
-  columnWidths,
-  onColumnWidthChange,
+  refColumnWidth,
+  onRefColumnWidthChange,
   sprints,
   mergeAnimation
 }: Props): JSX.Element {
@@ -216,22 +218,24 @@ export default function CommitGraph({
     }
   })
 
-  // --- Resizable columns --------------------------------------------------
-  const refColumnWidth = columnWidths.refs
-  const fittedGraphWidth = useMemo(() => fitGraphWidth(rows), [rows])
-  const graphColumnWidth = columnWidths.graph || fittedGraphWidth
-  const { author: authorColumnWidth, date: dateColumnWidth } = columnWidths
-
-  const resizer = (column: GraphColumn, label: string, side: 'left' | 'right', width: number): JSX.Element => (
-    <ColumnResizer
-      label={label}
-      side={side}
-      width={width}
-      {...COLUMN_LIMITS[column]}
-      onResize={(next) => onColumnWidthChange(column, next)}
-      onReset={() => onColumnWidthChange(column, DEFAULT_COLUMN_WIDTHS[column])}
-    />
-  )
+  // --- Resizing the Branch / Tag column --------------------------------------
+  const startResize = (e: ReactMouseEvent): void => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = refColumnWidth
+    const onMove = (ev: MouseEvent): void => {
+      const next = startWidth + ev.clientX - startX
+      onRefColumnWidthChange(Math.round(Math.min(MAX_REF_COLUMN_WIDTH, Math.max(MIN_REF_COLUMN_WIDTH, next))))
+    }
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.classList.remove('col-resizing')
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    document.body.classList.add('col-resizing')
+  }
 
   const wipLinkFor = (index: number): { kind: 'pass' | 'end'; lane: number; color: string } | undefined => {
     if (!hasWorkingChanges || headIndex === -1 || index > headIndex) return undefined
@@ -287,23 +291,15 @@ export default function CommitGraph({
           connector={badges.length > 0}
           wipLink={wipLinkFor(index)}
           burst={burstFor(row.commit.hash)}
-          columnWidth={graphColumnWidth}
         />
         <div className="graph-row-message">
           <span className="graph-row-subject" style={{ color: row.color }}>
             {row.commit.subject}
           </span>
+          <span className="graph-row-meta">
+            {row.commit.author} · {timeAgo(row.commit.date)}
+          </span>
         </div>
-        <span className="graph-row-author" data-testid="commit-author" style={{ width: authorColumnWidth }}>
-          {row.commit.author}
-        </span>
-        <span
-          className="graph-row-date"
-          data-testid="commit-date"
-          style={{ width: dateColumnWidth }}
-          title={new Date(row.commit.date).toLocaleString()}>
-          {timeAgo(row.commit.date)}
-        </span>
         {mark?.starts && (
           <div
             className={`sprint-marker ${mark.sprint.index === currentSprint ? 'current' : ''}`}
@@ -329,7 +325,7 @@ export default function CommitGraph({
           onClick={onSelectWorking}
         >
           <div className="ref-cell" style={{ width: refColumnWidth }} />
-          <WipGraphCell lane={topLane} color={topColor} columnWidth={graphColumnWidth} />
+          <WipGraphCell lane={topLane} color={topColor} />
           <div className="graph-row-message">
             <span className="wip-label">// WIP</span>
             {wipConflictLabel ? (
@@ -353,59 +349,54 @@ export default function CommitGraph({
   return (
     <div className="commit-graph">
       <div className="commit-graph-header">
-        <div className="col-head col-refs" style={{ width: refColumnWidth }}>
+        <div className="col-refs" style={{ width: refColumnWidth }}>
           Branch / Tag
-          {resizer('refs', 'Resize branch and tag column', 'right', refColumnWidth)}
+          <div
+            className="col-resize-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize branch and tag column"
+            title="Drag to resize, double-click to reset"
+            onMouseDown={startResize}
+            onDoubleClick={() => onRefColumnWidthChange(DEFAULT_REF_COLUMN_WIDTH)}
+          />
         </div>
-        <div className="col-head col-graph" style={{ width: graphColumnWidth }}>
-          Graph
-          {resizer('graph', 'Resize graph column', 'right', graphColumnWidth)}
-        </div>
-        <div className="col-head col-message">
-          <span className="col-message-label">Commit message</span>
-          <div className="graph-search">
-            <input
-              ref={searchRef}
-              type="search"
-              aria-label="Search commits"
-              placeholder="Search commits"
-              value={query}
-              onChange={(e) => changeQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  stepHit(e.shiftKey ? -1 : 1)
-                } else if (e.key === 'Escape') {
-                  e.preventDefault()
-                  changeQuery('')
-                  e.currentTarget.blur()
-                }
-              }}
-            />
-            {hits && (
-              <span className="graph-search-count" aria-live="polite">
-                {hits.length === 0 ? 'No matches' : `${hitIndex + 1} of ${hits.length}`}
-              </span>
-            )}
-            {hits && hits.length > 1 && (
-              <>
-                <button className="graph-search-step" title="Previous match (Shift+Enter)" onClick={() => stepHit(-1)}>
-                  ↑
-                </button>
-                <button className="graph-search-step" title="Next match (Enter)" onClick={() => stepHit(1)}>
-                  ↓
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="col-head col-author" style={{ width: authorColumnWidth }}>
-          {resizer('author', 'Resize author column', 'left', authorColumnWidth)}
-          Author
-        </div>
-        <div className="col-head col-date" style={{ width: dateColumnWidth }}>
-          {resizer('date', 'Resize date column', 'left', dateColumnWidth)}
-          Date
+        <span className="col-graph">Graph</span>
+        <span className="col-message">Commit message</span>
+        <div className="graph-search">
+          <input
+            ref={searchRef}
+            type="search"
+            aria-label="Search commits"
+            placeholder="Search commits"
+            value={query}
+            onChange={(e) => changeQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                stepHit(e.shiftKey ? -1 : 1)
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                changeQuery('')
+                e.currentTarget.blur()
+              }
+            }}
+          />
+          {hits && (
+            <span className="graph-search-count" aria-live="polite">
+              {hits.length === 0 ? 'No matches' : `${hitIndex + 1} of ${hits.length}`}
+            </span>
+          )}
+          {hits && hits.length > 1 && (
+            <>
+              <button className="graph-search-step" title="Previous match (Shift+Enter)" onClick={() => stepHit(-1)}>
+                ↑
+              </button>
+              <button className="graph-search-step" title="Next match (Enter)" onClick={() => stepHit(1)}>
+                ↓
+              </button>
+            </>
+          )}
         </div>
       </div>
       <div
