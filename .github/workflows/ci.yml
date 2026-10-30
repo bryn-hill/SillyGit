@@ -86,12 +86,29 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
         run: npm run test:e2e
 
+      # Keep the report of a failed run on the runner, outside the workspace
+      # (which the next run wipes): the account's artifact storage quota is
+      # full, so the upload below can't be relied on. The last 10 are kept.
+      # Open one with: npx playwright show-report ~/sillygit-e2e-reports/<run>
+      - name: Keep the report on the runner
+        if: failure()
+        env:
+          RUN: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          [ -d playwright-report ] || exit 0
+          reports="$HOME/sillygit-e2e-reports"
+          mkdir -p "$reports"
+          cp -R playwright-report "$reports/$RUN"
+          ls -1t "$reports" | tail -n +11 | while read -r old; do rm -rf "${reports:?}/$old"; done
+          echo "Report kept on the runner at $reports/$RUN"
+
+      # The HTML report already holds the failed tests' traces, so test-results/
+      # isn't uploaded too. A full quota mustn't hide the real failure.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
+        continue-on-error: true
         with:
           name: playwright-report
-          path: |
-            playwright-report/
-            test-results/
+          path: playwright-report/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3
