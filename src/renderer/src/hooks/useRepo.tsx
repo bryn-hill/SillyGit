@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BranchInfo, GraphCommit, OperationState, RepoRemote, RepoStatus, StashEntry } from '../../../shared/types'
+import type { GraphFilter } from '../../../shared/historySearch'
 import { layoutGraph } from '../lib/graphLayout'
 import type { Selection } from '../lib/selection'
 
@@ -11,6 +12,8 @@ interface TabSnapshot {
   status: RepoStatus | null
   branches: BranchInfo[]
   graphCommits: GraphCommit[]
+  /** The path filter `graphCommits` were read with. */
+  graphFilter: GraphFilter | null
   operation: OperationState | null
   remotes: RepoRemote[]
   stashes: StashEntry[]
@@ -46,12 +49,15 @@ export function useRepo({
   const [undoLabel, setUndoLabel] = useState<string | null>(null)
   const [redoLabel, setRedoLabel] = useState<string | null>(null)
   const [graphLimit, setGraphLimit] = useState(GRAPH_PAGE)
+  // Narrows the graph to the commits touching a path; null shows everything.
+  const [graphFilter, setGraphFilterState] = useState<GraphFilter | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [fetching, setFetching] = useState(false)
 
   // Refreshes can overlap (a watcher event during a commit, say); only the
   // newest one's answers are applied, and never one for a repo that's closed.
   const graphLimitRef = useRef(GRAPH_PAGE)
+  const graphFilterRef = useRef<GraphFilter | null>(null)
   const refreshSeq = useRef(0)
   // The repo showing, for async work to check it's still wanted; show() keeps it current.
   const openRepo = useRef<string | null>(null)
@@ -62,11 +68,12 @@ export function useRepo({
   const refresh = useCallback(
     (path: string): Promise<void> => {
       const seq = ++refreshSeq.current
+      const filter = graphFilterRef.current
       const run = (async (): Promise<void> => {
         const [statusRes, branchesRes, graphRes, operationRes, remotesRes, stashesRes, undoRes, redoRes] = await Promise.all([
           window.api.getStatus(path),
           window.api.branches(path),
-          window.api.graphLog(path, graphLimitRef.current),
+          window.api.graphLog(path, graphLimitRef.current, filter),
           window.api.operationState(path),
           window.api.remotes(path),
           window.api.stashes(path),
@@ -86,7 +93,9 @@ export function useRepo({
           setBranches(branchesRes.data)
           setBranchesListedAt(Date.now())
         }
-        if (graphRes.ok) setGraphCommits(graphRes.data)
+        // The filter changed meanwhile and setGraphFilter is reading the graph again.
+        const graphOk = graphRes.ok && graphFilterRef.current === filter
+        if (graphOk) setGraphCommits(graphRes.data)
         setStashes(stashesRes.ok ? stashesRes.data : [])
         setUndoLabel(undoRes.ok ? undoRes.data : null)
         setRedoLabel(redoRes.ok ? redoRes.data : null)
@@ -94,7 +103,8 @@ export function useRepo({
         tabSnapshots.current.set(path, {
           status: statusRes.ok ? statusRes.data : (previous?.status ?? null),
           branches: branchesRes.ok ? branchesRes.data : (previous?.branches ?? []),
-          graphCommits: graphRes.ok ? graphRes.data : (previous?.graphCommits ?? []),
+          graphCommits: graphOk ? graphRes.data : (previous?.graphCommits ?? []),
+          graphFilter: graphOk ? filter : (previous?.graphFilter ?? null),
           operation: operationRes.ok ? operationRes.data : null,
           remotes: remotesRes.ok ? remotesRes.data : [],
           stashes: stashesRes.ok ? stashesRes.data : [],
@@ -119,10 +129,13 @@ export function useRepo({
     setRepoPath(path)
     graphLimitRef.current = GRAPH_PAGE
     setGraphLimit(GRAPH_PAGE)
+    setLoadingMore(false)
     const snapshot = path ? tabSnapshots.current.get(path) : undefined
     setStatus(snapshot?.status ?? null)
     setBranches(snapshot?.branches ?? [])
     setGraphCommits(snapshot?.graphCommits ?? [])
+    graphFilterRef.current = snapshot?.graphFilter ?? null
+    setGraphFilterState(graphFilterRef.current)
     setOperation(snapshot?.operation ?? null)
     setRemotes(snapshot?.remotes ?? [])
     setStashes(snapshot?.stashes ?? [])
@@ -174,11 +187,39 @@ export function useRepo({
       graphLimitRef.current = limit
       setGraphLimit(limit)
       setLoadingMore(true)
-      const res = await window.api.graphLog(repoPath, limit)
+      const filter = graphFilterRef.current
+      const res = await window.api.graphLog(repoPath, limit, filter)
+      if (openRepo.current !== repoPath || graphLimitRef.current !== limit || graphFilterRef.current !== filter) return
       setLoadingMore(false)
-      if (res.ok && openRepo.current === repoPath && graphLimitRef.current === limit) setGraphCommits(res.data)
+      if (res.ok) setGraphCommits(res.data)
     },
     [repoPath]
+  )
+
+  /**
+   * Narrows the graph to the commits touching a path, or with null shows
+   * everything again, and reads it from the top. Resolves once it shows.
+   */
+  const setGraphFilter = useCallback(
+    async (filter: GraphFilter | null): Promise<void> => {
+      if (!repoPath) return
+      graphFilterRef.current = filter
+      setGraphFilterState(filter)
+      graphLimitRef.current = GRAPH_PAGE
+      setGraphLimit(GRAPH_PAGE)
+      setLoadingMore(true)
+      const res = await window.api.graphLog(repoPath, GRAPH_PAGE, filter)
+      if (openRepo.current !== repoPath || graphFilterRef.current !== filter) return
+      setLoadingMore(false)
+      if (!res.ok) {
+        onError(res.error)
+        return
+      }
+      setGraphCommits(res.data)
+      const snapshot = tabSnapshots.current.get(repoPath)
+      if (snapshot) Object.assign(snapshot, { graphCommits: res.data, graphFilter: filter })
+    },
+    [repoPath, onError]
   )
 
   const loadMore = useCallback(() => {
@@ -262,6 +303,8 @@ export function useRepo({
     headHash,
     headAncestors,
     hasMore: graphCommits.length >= graphLimit,
+    graphFilter,
+    setGraphFilter,
     loadingMore,
     fetching,
     refresh,

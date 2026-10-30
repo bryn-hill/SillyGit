@@ -30,6 +30,8 @@ interface Props {
   /** Opens one of the commit's files full window, scrolled to `line` when given. */
   onOpenFileDiff: (hash: string, path: string, line?: number) => void
   onOpenFileView: OpenFileView
+  /** Narrows the graph to the commits touching a file or folder. */
+  onFilterHistory?: (path: string) => void
   onCopyText: (text: string) => void
   /** AI split the checked-out commit. */
   onSplitApplied: () => void
@@ -85,6 +87,7 @@ function CommitDetailBody({
   activePath,
   onOpenFileDiff,
   onOpenFileView,
+  onFilterHistory,
   onCopyText,
   onSplitApplied
 }: Omit<Props, 'hash'> & {
@@ -202,6 +205,7 @@ function CommitDetailBody({
             onOpenDiff: () => openFile(fileMenu.path),
             onBlame: () => onOpenFileView(fileMenu.path, hash, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.path, hash, 'history'),
+            onFilterHistory,
             onCopyPath: () => onCopyText(fileMenu.path),
             custom: customMenu('file', { file: fileMenu.path, sha: hash })
           })}

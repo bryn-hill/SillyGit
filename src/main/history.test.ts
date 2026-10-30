@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { dirname, join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as git from './git'
 
@@ -212,6 +212,98 @@ describe('searchCommits', () => {
     expect((await git.searchCommits(dir, 'first')).map((h) => h.index)).toEqual([2])
     expect((await git.searchCommits(dir, 'lovelace')).length).toBe(3)
     expect(await git.searchCommits(dir, '  ')).toEqual([])
+  })
+})
+
+describe('searchCommits modes', () => {
+  function commitIn(path: string, content: string, message: string, author?: string): string {
+    mkdirSync(join(dir, dirname(path)), { recursive: true })
+    writeFileSync(join(dir, path), content)
+    run('add', path)
+    run('commit', '-q', ...(author ? ['--author', author] : []), '-m', message)
+    return run('rev-parse', 'HEAD')
+  }
+
+  it('searches the message body, author, path and changes', async () => {
+    const login = commitIn('src/main/login.ts', 'export const token = 1\n', 'Add login\n\nUses a SECRET handshake')
+    const docs = commitIn('docs/guide.md', 'how to\n', 'Write the guide', 'Grace Hopper <grace@navy.mil>')
+    const rename = commitIn('src/main/login.ts', 'export const bearer = 1\n', 'Rename the token')
+
+    const hashes = async (query: Parameters<typeof git.searchCommits>[1]): Promise<string[]> =>
+      (await git.searchCommits(dir, query)).map((h) => h.hash)
+
+    // "All" now reads the body too.
+    expect(await hashes('secret')).toEqual([login])
+    expect(await hashes({ mode: 'message', term: 'handshake' })).toEqual([login])
+    // Message mode doesn't match authors.
+    expect(await hashes({ mode: 'message', term: 'grace' })).toEqual([])
+    expect(await hashes({ mode: 'author', term: 'GRACE' })).toEqual([docs])
+    expect(await hashes({ mode: 'author', term: 'navy.mil' })).toEqual([docs])
+    expect(await hashes({ mode: 'path', term: 'LOGIN' })).toEqual([rename, login])
+    expect(await hashes({ mode: 'path', term: 'src/main' })).toEqual([rename, login])
+    expect(await hashes({ mode: 'path', term: 'guide' })).toEqual([docs])
+    // -S: the commits that add or remove the text.
+    expect(await hashes({ mode: 'change', term: 'token' })).toEqual([rename, login])
+    expect(await hashes({ mode: 'change', term: 'bearer' })).toEqual([rename])
+    // -G: the commits whose changed lines match.
+    expect(await hashes({ mode: 'regex', term: 'export const (bearer|nope)' })).toEqual([rename])
+    expect(await hashes({ mode: 'change', term: '  ' })).toEqual([])
+  })
+
+  it('gives positions in graph order', async () => {
+    commitIn('x.txt', 'x\n', 'Change x')
+    const hits = await git.searchCommits(dir, { mode: 'path', term: 'a.txt' })
+    expect(hits.map((h) => h.index)).toEqual([1, 2])
+  })
+
+  it('throws on a regex git cannot read', async () => {
+    await expect(git.searchCommits(dir, { mode: 'regex', term: '(' })).rejects.toThrow()
+  })
+})
+
+describe('path filter', () => {
+  function commitIn(path: string, content: string, message: string): string {
+    mkdirSync(join(dir, dirname(path)), { recursive: true })
+    writeFileSync(join(dir, path), content)
+    run('add', path)
+    run('commit', '-q', '-m', message)
+    return run('rev-parse', 'HEAD')
+  }
+
+  it('narrows the graph to a folder and joins each commit to the next one touching it', async () => {
+    const first = commitIn('src/main/a.ts', '1\n', 'Main one')
+    commitIn('docs/x.md', 'd\n', 'Docs')
+    run('checkout', '-q', '-b', 'feature')
+    const onFeature = commitIn('src/main/a.ts', '2\n', 'Main on feature')
+    run('checkout', '-q', 'main')
+    commitIn('docs/x.md', 'e\n', 'More docs')
+
+    const graph = await git.getGraphLog(dir, 500, { path: 'src/main' })
+    expect(graph.map((c) => c.subject)).toEqual(['Main on feature', 'Main one'])
+    // Its real parent is "Docs"; rewritten, it's the previous commit touching src/main.
+    expect(graph[0].parents).toEqual([first])
+    expect(graph[1].parents).toEqual([])
+
+    expect((await git.getGraphLog(dir, 500, { path: 'MAIN/A', contains: true })).map((c) => c.hash)).toEqual([
+      onFeature,
+      first
+    ])
+    expect(await git.getGraphLog(dir, 500, { path: 'nowhere' })).toEqual([])
+  })
+
+  it('searches within the filter, counting positions in the filtered graph', async () => {
+    commitIn('src/main/a.ts', '1\n', 'Fix main')
+    commitIn('docs/x.md', 'd\n', 'Fix docs')
+    const later = commitIn('src/main/a.ts', '2\n', 'Fix main again')
+    const filter = { path: 'src/main' }
+    expect(await git.searchCommits(dir, 'fix', 2000, filter)).toEqual([
+      { hash: later, index: 0 },
+      { hash: run('rev-parse', 'HEAD~2'), index: 1 }
+    ])
+    expect(await git.searchCommits(dir, { mode: 'message', term: 'docs' }, 2000, filter)).toEqual([])
+    // A path search inside a path filter finds only commits touching both.
+    expect(await git.searchCommits(dir, { mode: 'path', term: 'x.md' }, 2000, filter)).toEqual([])
+    expect((await git.searchCommits(dir, { mode: 'path', term: 'a.ts' }, 2000, filter)).map((h) => h.index)).toEqual([0, 1])
   })
 })
 

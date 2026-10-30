@@ -7,6 +7,7 @@ import type {
   CommitSearchHit,
   FileHistoryEntry
 } from '../../shared/types'
+import { filterPathspecs, type CommitSearch, type GraphFilter } from '../../shared/historySearch'
 import { runGit } from '../gitExec'
 
 // Reading history: the log and graph, commit details and diffs, file history, blame and search.
@@ -33,20 +34,36 @@ const RS = '\x1e' // record separator, safe commit delimiter
 
 export const GRAPH_PAGE_SIZE = 500
 
-export async function getGraphLog(repoPath: string, limit = GRAPH_PAGE_SIZE): Promise<GraphCommit[]> {
+/**
+ * `git log` of the whole graph, newest first, or with a filter just the
+ * commits touching its path. Parent rewriting joins each of those to the
+ * next one down its line, so the filtered graph still draws as lanes.
+ */
+function graphLogArgs(filter: GraphFilter | null, extra: string[]): string[] {
+  return [
+    'log',
+    // Stashes get their own list; their internal commits only clutter the graph.
+    '--exclude=refs/stash',
+    '--all',
+    '--date-order',
+    ...(filter ? ['--parents'] : []),
+    ...extra,
+    ...(filter ? ['--', ...filterPathspecs(filter)] : [])
+  ]
+}
+
+export async function getGraphLog(
+  repoPath: string,
+  limit = GRAPH_PAGE_SIZE,
+  filter: GraphFilter | null = null
+): Promise<GraphCommit[]> {
   const format = `%x1e%H${US}%P${US}%an${US}%ae${US}%ad${US}%cd${US}%s${US}%D`
   let out: string
   try {
-    out = await runGit(repoPath, [
-      'log',
-      // Stashes get their own list; their internal commits only clutter the graph.
-      '--exclude=refs/stash',
-      '--all',
-      '--date-order',
-      `--max-count=${limit}`,
-      `--format=${format}`,
-      '--date=iso-strict'
-    ])
+    out = await runGit(
+      repoPath,
+      graphLogArgs(filter, [`--max-count=${limit}`, `--format=${format}`, '--date=iso-strict'])
+    )
   } catch {
     return []
   }
@@ -258,36 +275,80 @@ export async function getBlame(repoPath: string, ref: string | null, path: strin
   return result
 }
 
+/** The `git log` options that pick out a search's matches, for the modes git searches itself. */
+function searchArgs({ mode, term }: CommitSearch): string[] {
+  switch (mode) {
+    case 'message':
+      return ['--regexp-ignore-case', '--fixed-strings', `--grep=${term}`]
+    case 'author':
+      return ['--regexp-ignore-case', '--fixed-strings', `--author=${term}`]
+    case 'path':
+      return ['--', ...filterPathspecs({ path: term, contains: true })]
+    case 'change':
+      return [`-S${term}`]
+    case 'regex':
+      return [`-G${term}`]
+    default:
+      return []
+  }
+}
+
 /**
- * Every commit whose subject, author name or email contains `query`, or whose
- * hash starts with it, case-insensitively, with its position in the graph's
- * order. Scans all of history, not just what the graph has loaded, so the
- * graph can load further to reach a match.
+ * The commits matching a search, with each one's position in the graph's
+ * order (within `filter` when the graph is filtered). A plain string, or
+ * mode "all", matches the message (subject and body), author name or email
+ * case-insensitively, or a hash prefix. The other modes are git's own: the
+ * message, the author, a path containing the term, or changes adding or
+ * removing the text (-S) or touching lines matching a regex (-G). Scans all
+ * of history, not just what the graph has loaded, so the graph can load
+ * further to reach a match. An invalid regex throws.
  */
-export async function searchCommits(repoPath: string, query: string, max = 2000): Promise<CommitSearchHit[]> {
-  const needle = query.trim().toLowerCase()
-  if (!needle) return []
+export async function searchCommits(
+  repoPath: string,
+  query: string | CommitSearch,
+  max = 2000,
+  filter: GraphFilter | null = null
+): Promise<CommitSearchHit[]> {
+  const search = typeof query === 'string' ? { mode: 'all' as const, term: query } : query
+  const term = search.term.trim()
+  if (!term) return []
+  if (search.mode === 'all') return searchEverything(repoPath, term.toLowerCase(), max, filter)
+
+  const matchArgs = searchArgs({ ...search, term })
+  const [order, matched] = await Promise.all([
+    runGit(repoPath, graphLogArgs(filter, ['--format=%H'])).catch(() => ''),
+    // A path search's own pathspec takes the filter's place, so commits it
+    // finds outside the filter simply have no row and are left out below.
+    runGit(repoPath, graphLogArgs(search.mode === 'path' ? null : filter, ['--format=%H', ...matchArgs]))
+  ])
+  const index = new Map(order.split('\n').filter(Boolean).map((hash, i) => [hash, i]))
+  const hits: CommitSearchHit[] = []
+  for (const hash of matched.split('\n')) {
+    const i = index.get(hash)
+    if (i !== undefined) hits.push({ hash, index: i })
+  }
+  return hits.sort((a, b) => a.index - b.index).slice(0, max)
+}
+
+async function searchEverything(
+  repoPath: string,
+  needle: string,
+  max: number,
+  filter: GraphFilter | null
+): Promise<CommitSearchHit[]> {
   let out: string
   try {
-    out = await runGit(repoPath, [
-      'log',
-      '--exclude=refs/stash',
-      '--all',
-      '--date-order',
-      `--format=%H${US}%an${US}%ae${US}%s`
-    ])
+    out = await runGit(repoPath, graphLogArgs(filter, [`--format=%x1e%H${US}%an${US}%ae${US}%B`]))
   } catch {
     return []
   }
   const hits: CommitSearchHit[] = []
-  const lines = out.split('\n')
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index]
-    if (!line) continue
-    const [hash, author, email, subject] = line.split(US)
+  const records = out.split(RS).filter((r) => r.trim())
+  for (let index = 0; index < records.length; index++) {
+    const [hash, author, email, message] = records[index].split(US)
     if (
       hash.startsWith(needle) ||
-      subject.toLowerCase().includes(needle) ||
+      message.toLowerCase().includes(needle) ||
       author.toLowerCase().includes(needle) ||
       email.toLowerCase().includes(needle)
     ) {

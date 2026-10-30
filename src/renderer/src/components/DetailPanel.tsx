@@ -31,6 +31,8 @@ interface Props {
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
   onOpenFileView: OpenFileView
+  /** Narrows the graph to the commits touching a file or folder. */
+  onFilterHistory?: (path: string) => void
   onCopyText: (text: string) => void
   onOpenWorkingFile: (file: FileStatus, staged: boolean) => void
   /** The file shown in the main area, if any, to mark in the lists. */
@@ -53,6 +55,7 @@ export default function DetailPanel(props: Props): JSX.Element {
         onOpenFileDiff={props.onOpenCommitFileDiff}
         onSplitApplied={props.onSplitApplied}
         onOpenFileView={props.onOpenFileView}
+        onFilterHistory={props.onFilterHistory}
         onCopyText={props.onCopyText}
       />
     )
@@ -74,6 +77,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       conflictActions={props.conflictActions}
       onEditFile={props.onEditFile}
       onOpenFileView={props.onOpenFileView}
+      onFilterHistory={props.onFilterHistory}
       onCopyText={props.onCopyText}
       onOpenFile={props.onOpenWorkingFile}
       activeFile={props.activeFile}

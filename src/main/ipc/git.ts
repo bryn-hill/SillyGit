@@ -7,6 +7,7 @@ import { activityLog } from '../gitExec'
 import { watchRepo, stopWatching } from '../watcher'
 import type { PartialAction } from '../../shared/lineStaging'
 import type { PullMode } from '../../shared/types'
+import type { CommitSearch, GraphFilter } from '../../shared/historySearch'
 import { wrap } from './wrap'
 
 /** Working tree, commits, history, stashes, remotes sync, tags and patches. */
@@ -92,8 +93,10 @@ export function registerGitHandlers(): void {
     })
   )
 
-  ipcMain.handle('git:search-commits', (_e, repoPath: string, query: string) =>
-    wrap(() => git.searchCommits(repoPath, query))
+  ipcMain.handle(
+    'git:search-commits',
+    (_e, repoPath: string, query: string | CommitSearch, filter?: GraphFilter | null) =>
+      wrap(() => git.searchCommits(repoPath, query, undefined, filter ?? null))
   )
 
   ipcMain.handle('repo:watch', (e, repoPath: string | null) => {
@@ -149,8 +152,8 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:log', (_e, repoPath: string) => wrap(() => git.getLog(repoPath)))
 
-  ipcMain.handle('git:graph-log', (_e, repoPath: string, limit?: number) =>
-    wrap(() => git.getGraphLog(repoPath, limit))
+  ipcMain.handle('git:graph-log', (_e, repoPath: string, limit?: number, filter?: GraphFilter | null) =>
+    wrap(() => git.getGraphLog(repoPath, limit, filter ?? null))
   )
 
   ipcMain.handle('git:commit-detail', (_e, repoPath: string, hash: string) =>

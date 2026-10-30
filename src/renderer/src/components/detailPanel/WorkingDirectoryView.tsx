@@ -25,6 +25,8 @@ export interface WorkingProps {
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
   onOpenFileView: OpenFileView
+  /** Narrows the graph to the commits touching a file or folder. */
+  onFilterHistory?: (path: string) => void
   onCopyText: (text: string) => void
   onOpenFile: (file: FileStatus, staged: boolean) => void
   activeFile: ActiveFile | null
@@ -47,6 +49,7 @@ export default function WorkingDirectoryView({
   conflictActions,
   onEditFile,
   onOpenFileView,
+  onFilterHistory,
   onCopyText,
   onOpenFile,
   activeFile
@@ -56,7 +59,17 @@ export default function WorkingDirectoryView({
   const conflicted = status?.conflicted ?? []
   const totalChanges = staged.length + unstaged.length + conflicted.length
   const operationName = operation ? OPERATION_NAMES[operation.kind] : null
-  const listProps = { activeFile, onOpenFile, onEditFile, onDiscard, onStage, onUnstage, onOpenFileView, onCopyText }
+  const listProps = {
+    activeFile,
+    onOpenFile,
+    onEditFile,
+    onDiscard,
+    onStage,
+    onUnstage,
+    onOpenFileView,
+    onFilterHistory,
+    onCopyText
+  }
 
   return (
     <div className="detail-panel-content" onKeyDown={onFileListKeyDown}>

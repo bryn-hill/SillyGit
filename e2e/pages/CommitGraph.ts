@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { dragOnto } from '../support/drag'
+import { chooseOption } from './Select'
 
 export class CommitGraph {
   readonly root: Locator
@@ -31,6 +32,45 @@ export class CommitGraph {
 
   get searchBox(): Locator {
     return this.root.page().getByRole('searchbox', { name: 'Search commits' })
+  }
+
+  /** The dropdown beside the search box picking what to search: All, Message, Author, File path... */
+  get searchMode(): Locator {
+    return this.root.page().getByRole('combobox', { name: 'Search in' })
+  }
+
+  /** "1 of 3", "No matches", "Invalid regex"... */
+  get searchCount(): Locator {
+    return this.root.page().locator('.graph-search-count')
+  }
+
+  /** The rows the current search matched (the others are dimmed). */
+  get matchedRows(): Locator {
+    return this.root.locator('[data-search-match="true"]')
+  }
+
+  /** Searches with the dropdown set to `mode`, e.g. "Author" or "Changes". */
+  async search(text: string, mode?: string): Promise<void> {
+    if (mode) await chooseOption(this.searchMode, mode)
+    await this.searchBox.fill(text)
+  }
+
+  async expectMatches(subjects: readonly string[]): Promise<void> {
+    await expect(this.matchedRows.locator('.graph-row-subject')).toHaveText([...subjects])
+  }
+
+  /** Turns a File path search into a filter on the graph. */
+  get filterButton(): Locator {
+    return this.root.page().getByRole('button', { name: 'Filter', exact: true })
+  }
+
+  /** The chip naming the path the graph is narrowed to. */
+  get filterChip(): Locator {
+    return this.root.page().getByTestId('graph-filter-chip')
+  }
+
+  get clearFilterButton(): Locator {
+    return this.root.page().getByRole('button', { name: 'Clear filter' })
   }
 
   /** The Branch / Tag cell of a commit's row. */
