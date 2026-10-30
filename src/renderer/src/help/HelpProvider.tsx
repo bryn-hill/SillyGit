@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react'
-import { openHelp } from './index'
+import { openHelp } from './openHelp'
 import { startTour } from './tourBus'
 import { HelpContext } from './useHelp'
 

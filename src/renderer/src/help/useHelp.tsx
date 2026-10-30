@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import { openHelp } from './index'
+import { openHelp } from './openHelp'
 import { startTour } from './tourBus'
 
 export interface Help {
