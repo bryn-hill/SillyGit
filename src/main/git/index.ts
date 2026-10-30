@@ -2,6 +2,7 @@
 // conflicts live in ../conflicts/ and branch housekeeping in ../branches.ts.
 export { clone, initRepo, isGitRepo } from './repo'
 export {
+  applyPartial,
   commit,
   discardFile,
   getDiff,

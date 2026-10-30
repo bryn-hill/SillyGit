@@ -433,3 +433,58 @@
 .token.variable {
   color: var(--orange);
 }
+
+/* -- picking lines to stage, unstage or discard -- */
+
+.hunk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hunk-clear-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  color: var(--accent);
+  background: transparent;
+  border-color: transparent;
+}
+
+.hunk-clear-btn:hover {
+  border-color: var(--accent);
+}
+
+/* Wraps a changed line's gutter so it can be clicked or focused to pick the line. */
+.diff-line-select {
+  display: flex;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.diff-line-select:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.selectable .diff-row-add .gutter-num,
+.selectable .diff-row-remove .gutter-num,
+.selectable .diff-row-add .gutter-marker,
+.selectable .diff-row-remove .gutter-marker {
+  cursor: pointer;
+}
+
+.selectable .diff-row-add:hover .gutter-num,
+.selectable .diff-row-remove:hover .gutter-num {
+  color: var(--text);
+}
+
+.diff-row-selected .gutter-num,
+.diff-row-selected .gutter-marker {
+  background: var(--accent);
+  color: var(--bg) !important;
+}
+
+.diff-row-selected {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}

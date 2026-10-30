@@ -67,6 +67,14 @@ const api = {
   },
   diff: (repoPath: string, path: string, staged: boolean, untracked: boolean, ignoreWhitespace?: boolean): Wrapped<string> =>
     ipcRenderer.invoke('git:diff', repoPath, path, staged, untracked, ignoreWhitespace),
+  /** Stages, unstages or discards one hunk of `diffText`, or just the given lines of it. */
+  applyPartial: (
+    repoPath: string,
+    diffText: string,
+    unitId: string,
+    lines: number[] | null,
+    action: import('../shared/lineStaging').PartialAction
+  ): Wrapped<void> => ipcRenderer.invoke('git:apply-partial', repoPath, diffText, unitId, lines, action),
   branches: (repoPath: string): Wrapped<import('../shared/types').BranchInfo[]> =>
     ipcRenderer.invoke('git:branches', repoPath),
   checkout: (repoPath: string, branch: string): Wrapped<void> =>

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { pairForSplit, renderFileDiff, type RenderedHunk } from '../lib/diffRender'
+import type { PartialAction } from '../../../shared/lineStaging'
+import { pairForSplit, renderFileDiff, type RenderedDiffLine, type RenderedHunk } from '../lib/diffRender'
+import { selectDiffLine, type PickedLines } from '../lib/lineSelection'
 import { highlightLine, languageForPath } from '../lib/highlight'
 
 type Mode = 'file' | 'diff'
@@ -77,41 +79,120 @@ interface HunkListProps {
   showWhitespace: boolean
   activeHunkIndex: number
   hunkRefs: React.RefObject<Array<HTMLDivElement | null>>
-  reverting: string | null
-  /** Undefined hides the per-hunk revert button. */
-  revert?: HunkRevert
+  /** The hunk an action is running on. */
+  busy: string | null
+  /** The buttons on each hunk's bar; empty hides them. */
+  actions: HunkAction[]
+  selection: LineSelection | null
+  /** Undefined means lines can't be picked (a commit's diff). */
+  onSelectLine?: (hunkId: string, index: number, extend: boolean) => void
+  onClearSelection: () => void
   highlightLine?: number
 }
 
-interface HunkRevert {
-  label: string
+interface HunkAction {
+  /** Verb on the button: "Stage", "Discard"… followed by "Hunk" or the selected line count. */
+  verb: string
+  busyLabel: string
   title: string
-  onRevert: (unitId: string) => void
+  icon: string
+  /** Whether the action can take only the selected lines. */
+  lines: boolean
+  run: (hunkId: string, lines: number[] | null) => void
+}
+
+/** Lines picked in one hunk, for the diff text they were picked from. */
+interface LineSelection extends PickedLines {
+  diffText: string
 }
 
 function HunkBar({
   hunk,
-  reverting,
-  revert
+  busy,
+  actions,
+  selected,
+  onClearSelection
 }: {
   hunk: RenderedHunk
-  reverting: string | null
-  revert?: HunkRevert
+  busy: string | null
+  actions: HunkAction[]
+  selected: number[] | null
+  onClearSelection: () => void
 }): JSX.Element {
+  const count = selected?.length ?? 0
   return (
     <div className="diff-hunk-bar">
       <span className="diff-hunk-header-text">{hunk.header}</span>
-      {revert && (
-        <button
-          className="hunk-revert-btn"
-          disabled={reverting === hunk.id}
-          onClick={() => revert.onRevert(hunk.id)}
-          title={revert.title}
-        >
-          ↺ {reverting === hunk.id ? 'Reverting…' : revert.label}
-        </button>
+      {actions.length > 0 && (
+        <span className="hunk-actions">
+          {count > 0 && (
+            <button className="hunk-clear-btn" onClick={onClearSelection} title="Clear the line selection">
+              {count} selected ✕
+            </button>
+          )}
+          {actions.map((action) => {
+            const partial = count > 0 && action.lines
+            return (
+              <button
+                key={action.verb}
+                className="hunk-revert-btn"
+                disabled={busy === hunk.id}
+                onClick={() => action.run(hunk.id, partial ? selected : null)}
+                title={action.title}
+              >
+                {action.icon}{' '}
+                {busy === hunk.id
+                  ? action.busyLabel
+                  : `${action.verb} ${partial ? `${count} ${count === 1 ? 'Line' : 'Lines'}` : 'Hunk'}`}
+              </button>
+            )
+          })}
+        </span>
       )}
     </div>
+  )
+}
+
+/** The click target over a changed line's gutter that picks it for a line action. */
+function LineGutter({
+  hunkId,
+  index,
+  line,
+  checked,
+  onSelectLine,
+  children
+}: {
+  hunkId: string
+  index: number
+  line: RenderedDiffLine
+  checked: boolean
+  onSelectLine?: (hunkId: string, index: number, extend: boolean) => void
+  children: React.ReactNode
+}): JSX.Element {
+  if (!onSelectLine || line.type === 'context') return <>{children}</>
+  const lineNo = line.newLine ?? line.oldLine
+  return (
+    <span
+      className="diff-line-select"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={`Select ${line.type === 'add' ? 'added' : 'removed'} line ${lineNo}`}
+      tabIndex={0}
+      title="Click to select this line, Shift-click to select a range"
+      onMouseDown={(e) => {
+        // Shift-click would otherwise select the text in between.
+        if (e.shiftKey) e.preventDefault()
+      }}
+      onClick={(e) => onSelectLine(hunkId, index, e.shiftKey)}
+      onKeyDown={(e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault()
+          onSelectLine(hunkId, index, e.shiftKey)
+        }
+      }}
+    >
+      {children}
+    </span>
   )
 }
 
@@ -121,8 +202,11 @@ function UnifiedDiff({
   showWhitespace,
   activeHunkIndex,
   hunkRefs,
-  reverting,
-  revert,
+  busy,
+  actions,
+  selection,
+  onSelectLine,
+  onClearSelection,
   highlightLine
 }: HunkListProps): JSX.Element {
   const highlightRef = useRef<HTMLDivElement | null>(null)
@@ -134,38 +218,83 @@ function UnifiedDiff({
 
   if (hunks.length === 0) return <div className="diff-empty">No changes.</div>
   return (
-    <div className="diff-unified">
-      {hunks.map((hunk, hi) => (
-        <div
-          key={hunk.id}
-          ref={(el) => {
-            hunkRefs.current[hi] = el
-          }}
-          className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
-        >
-          <HunkBar hunk={hunk} reverting={reverting} revert={revert} />
-          {hunk.lines.map((line, li) => {
-            const isHighlighted = highlightLine != null && line.newLine === highlightLine
-            return (
-              <div
-                key={li}
-                ref={isHighlighted ? highlightRef : undefined}
-                className={`diff-row diff-row-${line.type} ${isHighlighted ? 'diff-row-highlight' : ''}`}
-              >
-                <span className="gutter-num gutter-old">{line.oldLine ?? ''}</span>
-                <span className="gutter-num gutter-new">{line.newLine ?? ''}</span>
-                <span className="gutter-marker">
-                  {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ''}
-                </span>
-                <span
-                  className="line-code"
-                  dangerouslySetInnerHTML={{ __html: renderLineHtml(line.text, lang, showWhitespace) }}
-                />
-              </div>
-            )
-          })}
-        </div>
-      ))}
+    <div className={`diff-unified ${onSelectLine ? 'selectable' : ''}`}>
+      {hunks.map((hunk, hi) => {
+        const selected = selection?.hunkId === hunk.id ? selection.lines : null
+        return (
+          <div
+            key={hunk.id}
+            ref={(el) => {
+              hunkRefs.current[hi] = el
+            }}
+            className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
+          >
+            <HunkBar hunk={hunk} busy={busy} actions={actions} selected={selected} onClearSelection={onClearSelection} />
+            {hunk.lines.map((line, li) => {
+              const isHighlighted = highlightLine != null && line.newLine === highlightLine
+              const checked = selected?.includes(li) ?? false
+              return (
+                <div
+                  key={li}
+                  ref={isHighlighted ? highlightRef : undefined}
+                  className={`diff-row diff-row-${line.type} ${isHighlighted ? 'diff-row-highlight' : ''} ${checked ? 'diff-row-selected' : ''}`}
+                >
+                  <LineGutter hunkId={hunk.id} index={li} line={line} checked={checked} onSelectLine={onSelectLine}>
+                    <span className="gutter-num gutter-old">{line.oldLine ?? ''}</span>
+                    <span className="gutter-num gutter-new">{line.newLine ?? ''}</span>
+                    <span className="gutter-marker">
+                      {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ''}
+                    </span>
+                  </LineGutter>
+                  <span
+                    className="line-code"
+                    dangerouslySetInnerHTML={{ __html: renderLineHtml(line.text, lang, showWhitespace) }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SplitCell({
+  hunkId,
+  lines,
+  line,
+  selected,
+  onSelectLine,
+  lang,
+  showWhitespace,
+  side
+}: {
+  hunkId: string
+  lines: RenderedDiffLine[]
+  line: RenderedDiffLine | null
+  selected: number[] | null
+  onSelectLine?: (hunkId: string, index: number, extend: boolean) => void
+  lang: string | null
+  showWhitespace: boolean
+  side: 'old' | 'new'
+}): JSX.Element {
+  const index = line ? lines.indexOf(line) : -1
+  const checked = line != null && line.type !== 'context' && (selected?.includes(index) ?? false)
+  const num = <span className="gutter-num">{(side === 'old' ? line?.oldLine : line?.newLine) ?? ''}</span>
+  return (
+    <div className={`diff-split-cell diff-row-${line?.type ?? 'blank'} ${checked ? 'diff-row-selected' : ''}`}>
+      {line ? (
+        <LineGutter hunkId={hunkId} index={index} line={line} checked={checked} onSelectLine={onSelectLine}>
+          {num}
+        </LineGutter>
+      ) : (
+        num
+      )}
+      <span
+        className="line-code"
+        dangerouslySetInnerHTML={{ __html: line ? renderLineHtml(line.text, lang, showWhitespace) : '' }}
+      />
     </div>
   )
 }
@@ -176,14 +305,18 @@ function SplitDiff({
   showWhitespace,
   activeHunkIndex,
   hunkRefs,
-  reverting,
-  revert
+  busy,
+  actions,
+  selection,
+  onSelectLine,
+  onClearSelection
 }: HunkListProps): JSX.Element {
   if (hunks.length === 0) return <div className="diff-empty">No changes.</div>
   return (
-    <div className="diff-split">
+    <div className={`diff-split ${onSelectLine ? 'selectable' : ''}`}>
       {hunks.map((hunk, hi) => {
         const rows = pairForSplit(hunk.lines)
+        const selected = selection?.hunkId === hunk.id ? selection.lines : null
         return (
           <div
             key={hunk.id}
@@ -192,28 +325,23 @@ function SplitDiff({
             }}
             className={`diff-hunk-block ${hi === activeHunkIndex ? 'active' : ''}`}
           >
-            <HunkBar hunk={hunk} reverting={reverting} revert={revert} />
+            <HunkBar hunk={hunk} busy={busy} actions={actions} selected={selected} onClearSelection={onClearSelection} />
             <div className="diff-split-rows">
               {rows.map((row, ri) => (
                 <div key={ri} className="diff-split-row">
-                  <div className={`diff-split-cell diff-row-${row.left?.type ?? 'blank'}`}>
-                    <span className="gutter-num">{row.left?.oldLine ?? ''}</span>
-                    <span
-                      className="line-code"
-                      dangerouslySetInnerHTML={{
-                        __html: row.left ? renderLineHtml(row.left.text, lang, showWhitespace) : ''
-                      }}
+                  {(['old', 'new'] as const).map((side) => (
+                    <SplitCell
+                      key={side}
+                      hunkId={hunk.id}
+                      lines={hunk.lines}
+                      line={side === 'old' ? row.left : row.right}
+                      selected={selected}
+                      onSelectLine={onSelectLine}
+                      lang={lang}
+                      showWhitespace={showWhitespace}
+                      side={side}
                     />
-                  </div>
-                  <div className={`diff-split-cell diff-row-${row.right?.type ?? 'blank'}`}>
-                    <span className="gutter-num">{row.right?.newLine ?? ''}</span>
-                    <span
-                      className="line-code"
-                      dangerouslySetInnerHTML={{
-                        __html: row.right ? renderLineHtml(row.right.text, lang, showWhitespace) : ''
-                      }}
-                    />
-                  </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -254,7 +382,8 @@ export default function FileDiffViewer({
   const fileLoaded = file?.request === fileRequest && file.diffText === diffText
 
   const [activeHunkIndex, setActiveHunkIndex] = useState(0)
-  const [reverting, setReverting] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [picked, setPicked] = useState<LineSelection | null>(null)
   const [revertStatus, setRevertStatus] = useState<{ ok: boolean; message: string } | null>(null)
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([])
 
@@ -325,6 +454,8 @@ export default function FileDiffViewer({
   }, [revertStatus])
 
   const hunks = renderFileDiff(effectiveDiffText)
+  // A selection only holds for the diff it was made in; a refresh or another file drops it.
+  const selection = picked?.diffText === effectiveDiffText ? picked : null
 
   const gotoHunk = (index: number): void => {
     if (hunks.length === 0) return
@@ -339,27 +470,62 @@ export default function FileDiffViewer({
     if (!res.ok) setRevertStatus({ ok: false, message: res.error })
   }
 
-  const handleRevertHunk = async (unitId: string): Promise<void> => {
-    setReverting(unitId)
+  const runHunkAction = async (action: PartialAction | 'revert', hunkId: string, lines: number[] | null): Promise<void> => {
+    setBusy(hunkId)
     setRevertStatus(null)
-    const res = await window.api.revertHunk(repoPath, effectiveDiffText, unitId)
-    setReverting(null)
+    const res =
+      action === 'revert'
+        ? await window.api.revertHunk(repoPath, effectiveDiffText, hunkId)
+        : await window.api.applyPartial(repoPath, effectiveDiffText, hunkId, lines, action)
+    setBusy(null)
     if (res.ok) {
-      setRevertStatus({ ok: true, message: hash == null ? 'Discarded that change.' : 'Reverted into your working directory.' })
+      setPicked(null)
+      if (action === 'revert') setRevertStatus({ ok: true, message: 'Reverted into your working directory.' })
       onWorkingTreeChanged?.()
     } else {
       setRevertStatus({ ok: false, message: res.error })
     }
   }
 
-  // A commit's hunk is undone in the working tree; an unstaged one is simply discarded.
-  // Staged and untracked changes have no working-tree hunk to undo this way.
-  const revert: HunkRevert | undefined =
+  const hunkAction = (
+    action: PartialAction | 'revert',
+    verb: string,
+    busyLabel: string,
+    icon: string,
+    title: string
+  ): HunkAction => ({
+    verb,
+    busyLabel,
+    icon,
+    title,
+    lines: action !== 'revert',
+    run: (hunkId, lines) => void runHunkAction(action, hunkId, lines)
+  })
+
+  // A commit's hunk is undone in the working tree. An uncommitted change can be staged or
+  // unstaged a hunk or a few lines at a time, and an unstaged one discarded. A diff that
+  // ignores whitespace isn't the file's real change, so it can't be applied.
+  const actions: HunkAction[] =
     hash != null
-      ? { label: 'Revert Hunk', title: 'Revert this change in your working directory', onRevert: handleRevertHunk }
-      : !staged && !untracked
-        ? { label: 'Discard Hunk', title: 'Discard this change from your working directory', onRevert: handleRevertHunk }
-        : undefined
+      ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory')]
+      : ignoreWhitespace
+        ? []
+        : staged
+          ? [hunkAction('unstage', 'Unstage', 'Unstaging…', '−', 'Take this change out of the next commit')]
+          : [
+              ...(untracked
+                ? []
+                : [hunkAction('discard', 'Discard', 'Discarding…', '↺', 'Throw this change away from your working directory')]),
+              hunkAction('stage', 'Stage', 'Staging…', '+', 'Add this change to the next commit')
+            ]
+  const canPickLines = hash == null && actions.length > 0
+
+  const selectLine = (hunkId: string, index: number, extend: boolean): void => {
+    const hunk = hunks.find((h) => h.id === hunkId)
+    if (!hunk) return
+    const next = selectDiffLine(selection, hunkId, hunk.lines, index, extend)
+    setPicked(next && { ...next, diffText: effectiveDiffText })
+  }
 
   return (
     <div className="file-diff-viewer">
@@ -472,8 +638,11 @@ export default function FileDiffViewer({
             showWhitespace={showWhitespace}
             activeHunkIndex={activeHunkIndex}
             hunkRefs={hunkRefs}
-            reverting={reverting}
-            revert={revert}
+            busy={busy}
+            actions={actions}
+            selection={selection}
+            onSelectLine={canPickLines ? selectLine : undefined}
+            onClearSelection={() => setPicked(null)}
             highlightLine={highlightLine}
           />
         ) : (
@@ -483,8 +652,11 @@ export default function FileDiffViewer({
             showWhitespace={showWhitespace}
             activeHunkIndex={activeHunkIndex}
             hunkRefs={hunkRefs}
-            reverting={reverting}
-            revert={revert}
+            busy={busy}
+            actions={actions}
+            selection={selection}
+            onSelectLine={canPickLines ? selectLine : undefined}
+            onClearSelection={() => setPicked(null)}
           />
         )}
       </div>

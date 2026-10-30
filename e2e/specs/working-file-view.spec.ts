@@ -73,6 +73,42 @@ test.describe('a changed file in the working directory', () => {
   })
 })
 
+test.describe('staging part of a file', () => {
+  test.beforeEach(async ({ sillygit, repo }) => {
+    repo.writeFile('hello.txt', 'hello\nworld\none\ntwo\nthree\n')
+    await sillygit.openRepository(repo.path)
+    await sillygit.details.listedFile('Unstaged', 'hello.txt').click()
+  })
+
+  test('stages only the picked lines and leaves the rest unstaged', async ({ sillygit, repo }) => {
+    const view = sillygit.workingFile
+    await view.line('added', 3).click()
+    await view.line('added', 5).click({ modifiers: ['Shift'] })
+    await expect(view.line('added', 4)).toHaveAttribute('aria-checked', 'true')
+    await view.line('added', 4).click()
+
+    await view.hunkButton(/Stage 2 Lines/).click()
+    await expect.poll(() => repo.git('show', ':hello.txt')).toBe('hello\nworld\none\nthree\n')
+    await expect(view.diff).toContainText('two')
+    await expect(sillygit.details.listedFile('Staged', 'hello.txt')).toBeVisible()
+  })
+
+  test('staging the last hunk follows the file to the staged side, where lines unstage', async ({ sillygit, repo }) => {
+    await sillygit.workingFile.hunkButton(/Stage Hunk/).click()
+    await expect(sillygit.workingFile.side).toHaveText('Staged changes')
+
+    await sillygit.workingFile.line('added', 4).click()
+    await sillygit.workingFile.hunkButton(/Unstage 1 Line/).click()
+    await expect.poll(() => repo.git('show', ':hello.txt')).toBe('hello\nworld\none\nthree\n')
+  })
+
+  test('discards picked lines from the file', async ({ sillygit, repo }) => {
+    await sillygit.workingFile.line('added', 4).click()
+    await sillygit.workingFile.hunkButton(/Discard 1 Line/).click()
+    await expect.poll(() => repo.readFileIfPresent('hello.txt')).toBe('hello\nworld\none\nthree\n')
+  })
+})
+
 test("a commit's files sit right of its diff, and its history keeps them there", async ({ sillygit, repo }) => {
   repo.writeFile('hello.txt', 'hello\nthere\n')
   repo.writeFile('notes.txt', 'some notes\n')

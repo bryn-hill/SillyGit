@@ -1,5 +1,8 @@
+import { randomUUID } from 'crypto'
 import { promises as fsp } from 'fs'
+import { tmpdir } from 'os'
 import { join } from 'path'
+import { buildPartialPatch, isReverse, type PartialAction } from '../../shared/lineStaging'
 import type { FileStatus, RepoStatus } from '../../shared/types'
 import { GitError, runGit } from '../gitExec'
 
@@ -110,6 +113,36 @@ export async function discardFile(repoPath: string, path: string, untracked: boo
     await runGit(repoPath, ['clean', '-f', '--', path])
   } else {
     await runGit(repoPath, ['checkout', '--', path])
+  }
+}
+
+/**
+ * Stages, unstages or discards one hunk of a file's diff, or only the lines
+ * of it at `lines` (see `buildPartialPatch`). `diffText` is the diff the user
+ * picked from: the unstaged one for stage and discard, the staged one for unstage.
+ */
+export async function applyPartial(
+  repoPath: string,
+  diffText: string,
+  unitId: string,
+  lines: number[] | null,
+  action: PartialAction
+): Promise<void> {
+  const reverse = isReverse(action)
+  const patch = buildPartialPatch(diffText, unitId, lines && new Set(lines), reverse)
+  if (patch == null) throw new GitError('Select at least one added or removed line.')
+  const patchFile = join(tmpdir(), `sillygit-partial-${randomUUID()}.patch`)
+  await fsp.writeFile(patchFile, patch, 'utf-8')
+  const args = ['apply', '--recount', '--whitespace=nowarn']
+  if (action !== 'discard') args.push('--cached')
+  if (reverse) args.push('-R')
+  try {
+    await runGit(repoPath, [...args, patchFile])
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new GitError(`The file changed since this diff was shown. Look again and retry. (${message})`)
+  } finally {
+    await fsp.unlink(patchFile).catch(() => {})
   }
 }
 

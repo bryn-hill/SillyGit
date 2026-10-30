@@ -5,6 +5,7 @@ import * as git from '../git'
 import * as editFile from '../editFile'
 import { activityLog } from '../gitExec'
 import { watchRepo, stopWatching } from '../watcher'
+import type { PartialAction } from '../../shared/lineStaging'
 import type { PullMode } from '../../shared/types'
 import { wrap } from './wrap'
 
@@ -104,6 +105,12 @@ export function registerGitHandlers(): void {
     'git:diff',
     (_e, repoPath: string, path: string, staged: boolean, untracked: boolean, ignoreWhitespace?: boolean) =>
       wrap(() => git.getDiff(repoPath, path, staged, untracked, ignoreWhitespace))
+  )
+
+  ipcMain.handle(
+    'git:apply-partial',
+    (_e, repoPath: string, diffText: string, unitId: string, lines: number[] | null, action: PartialAction) =>
+      wrap(() => git.applyPartial(repoPath, diffText, unitId, lines, action))
   )
 
   ipcMain.handle('git:branches', (_e, repoPath: string) => wrap(() => git.listBranches(repoPath)))
