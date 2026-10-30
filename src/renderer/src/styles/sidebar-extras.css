@@ -88,6 +88,7 @@ button.link-button.danger {
 }
 
 .side-list-name {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -95,7 +96,8 @@ button.link-button.danger {
 
 .side-list-note {
   margin-left: auto;
-  flex-shrink: 1;
+  /* The path or state gives way before the name does. */
+  flex: 0 100 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

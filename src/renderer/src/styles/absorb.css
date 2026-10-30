@@ -1,6 +1,6 @@
 /* ---------- absorb dialog ---------- */
 
-.absorb-modal {
+.modal.absorb-modal {
   width: 640px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 80px);
