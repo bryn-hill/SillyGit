@@ -4,7 +4,7 @@ import * as scenario from '../support/mergeScenarios'
 import { numbered } from '../support/mergeScenarios'
 
 // The hard merges from support/mergeScenarios.ts, driven through the UI.
-// src/main/conflicts.scenarios.test.ts covers the same situations below the UI.
+// src/main/conflicts.scenarios.*.test.ts cover the same situations below the UI.
 
 async function mergeFeature(sillygit: SillyGitApp, files: string[]): Promise<void> {
   await sillygit.sidebar.branchMenu('feature', 'Merge feature into main')

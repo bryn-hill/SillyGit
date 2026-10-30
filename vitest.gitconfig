@@ -1,0 +1,19 @@
+# Git config for unit tests (vitest.config.ts points GIT_CONFIG_GLOBAL here).
+# Tests must not pick up the developer's ~/.gitconfig: commit signing there
+# runs a signing program on every fixture commit, which made the git-backed
+# tests several times slower, and hooks or prompts could break them.
+[user]
+	name = Vitest
+	email = vitest@example.com
+[init]
+	defaultBranch = main
+[commit]
+	gpgsign = false
+[tag]
+	gpgsign = false
+[gc]
+	auto = 0
+[maintenance]
+	auto = false
+[advice]
+	detachedHead = false
