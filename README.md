@@ -36,6 +36,19 @@ You can switch to a terminal at any point. The graph and file list update when t
 repository changes on disk, and **Undo** works from Git's reflog, which means it can take back
 a commit, checkout, merge, rebase or reset even if you ran it in the terminal.
 
+## Try a pull request without leaving your branch
+
+Select any commit in the graph, such as the newest commit on a pull request you're reviewing,
+and choose **Run in isolation** from the Run menu. SillyGit checks that commit out into a
+private copy of the repository, installs dependencies when they've changed, and runs your
+project's command there (`npm run dev`, `./gradlew bootRun`, `dotnet run` or whatever you've
+set).
+
+Your branch and your uncommitted changes stay exactly as they were. You don't stash anything or
+check anything out, and you can keep your own working copy running alongside to compare the
+two. Files a project needs but never commits, like `.env` and `local.properties`, are copied
+into the private copy for you.
+
 ## Download
 
 The latest build is on **[GitHub Releases](https://github.com/bryn-hill/sillygit/releases/latest)**. This is an early release.
