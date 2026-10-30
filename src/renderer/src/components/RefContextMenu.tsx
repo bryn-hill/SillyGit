@@ -2,6 +2,8 @@ import { useEffect, type JSX } from 'react'
 import { canOpenPullRequests } from '../../../shared/createPullRequest'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import type { StackActions } from '../hooks/useBranchActions'
+import type { GitFlowActions } from '../hooks/useGitFlow'
+import { classifyGitFlowBranch, GIT_FLOW_KINDS, gitFlowBase } from '../../../shared/gitflow'
 import { useCustomCommandMenu } from '../lib/customCommandMenu'
 import { useBisectMenu } from '../lib/bisectMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
@@ -28,7 +30,7 @@ export interface RefTarget {
 }
 
 /** Everything the branch/commit right-click menu can do; App supplies these. */
-export interface RefActions extends StackActions {
+export interface RefActions extends StackActions, GitFlowActions {
   checkout: (refOrHash: string) => void
   checkoutRemote: (name: string) => void
   merge: (branch: string) => void
@@ -249,6 +251,19 @@ export default function RefContextMenu({
       stackItems.push({ id: 'stack-on', label: `Stack ${name} on…`, onSelect: () => actions.chooseStackParent(target.name) })
     }
     sections.push(stackItems)
+  }
+
+  const flowConfig = actions.gitFlowConfig
+  if (target && !target.remote && flowConfig) {
+    const flow = classifyGitFlowBranch(flowConfig, target.name)
+    const flowItems: ContextMenuItem[] = flow
+      ? [{ id: 'gitflow-finish', label: `Finish ${flow.kind} ${shortRef(flow.name)}…`, onSelect: () => actions.finishGitFlow(target.name) }]
+      : GIT_FLOW_KINDS.filter((kind) => gitFlowBase(flowConfig, kind) === target.name).map((kind) => ({
+          id: `gitflow-start-${kind}`,
+          label: `Start ${kind} from ${name}…`,
+          onSelect: () => actions.startGitFlow(kind)
+        }))
+    if (flowItems.length > 0) sections.push(flowItems)
   }
 
   if (target && !target.current) {

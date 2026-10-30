@@ -14,12 +14,13 @@ import type { MainView } from './useMainView'
 import type { Repo } from './useRepo'
 import { useRepoValue } from './useRepoValue'
 import { useStacks } from './useStacks'
+import { useGitFlow } from './useGitFlow'
 
 const NO_FAVOURITES: string[] = []
 
 /**
  * Branches, tags and worktrees: creating, renaming, deleting and pulling
- * them, starring favourites, and everything the branch and commit right-click
+ * them, starring favourites, stacks and git-flow, and everything the branch and commit right-click
  * menu offers (`refActions`).
  */
 export function useBranchActions({
@@ -79,6 +80,7 @@ export function useBranchActions({
     if (pr.reviewersError) showError(pr.reviewersError)
     else setNotice(`Opened pull request #${pr.number}.`)
   }
+  const gitFlow = useGitFlow({ repoPath, branches, git, view, askText, setNotice })
 
   const createBranch = (branch: string): void => runGit((path) => window.api.createBranch(path, branch))
 
@@ -285,7 +287,8 @@ export function useBranchActions({
     isFavourite: (name) => favourites.includes(name),
     toggleFavourite: toggleFavouriteBranch,
     revalidate: revalidatePullRequests,
-    ...stackActions
+    ...stackActions,
+    ...gitFlow.actions
   }
 
   return {
@@ -304,7 +307,8 @@ export function useBranchActions({
     refActions,
     listActions,
     stacks,
-    stackActions
+    stackActions,
+    gitFlow
   }
 }
 

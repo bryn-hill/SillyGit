@@ -2,10 +2,12 @@ import { ipcMain, dialog } from 'electron'
 import { basename, dirname, join } from 'path'
 import * as branches from '../branches'
 import * as stacks from '../stacks'
+import * as gitflow from '../gitflow'
 import type { DeletedBranch } from '../../shared/branchCleanup'
+import type { GitFlowConfig, GitFlowKind } from '../../shared/gitflow'
 import { wrap } from './wrap'
 
-/** Remotes, remote branches, open pull requests, branch cleanup and worktrees. */
+/** Remotes, remote branches, open pull requests, branch cleanup, stacks, git-flow and worktrees. */
 export function registerBranchHandlers(): void {
   ipcMain.handle('git:remotes', (_e, repoPath: string) => wrap(() => branches.listRepoRemotes(repoPath)))
 
@@ -58,6 +60,20 @@ export function registerBranchHandlers(): void {
   ipcMain.handle('git:restack', (_e, repoPath: string, branch: string) => wrap(() => stacks.restack(repoPath, branch)))
 
   ipcMain.handle('git:push-stack', (_e, repoPath: string, branch: string) => wrap(() => stacks.pushStack(repoPath, branch)))
+
+  ipcMain.handle('gitflow:config', (_e, repoPath: string) => wrap(() => gitflow.getGitFlowConfig(repoPath)))
+
+  ipcMain.handle('gitflow:init', (_e, repoPath: string, config: GitFlowConfig) =>
+    wrap(() => gitflow.initGitFlow(repoPath, config))
+  )
+
+  ipcMain.handle('gitflow:start', (_e, repoPath: string, kind: GitFlowKind, name: string) =>
+    wrap(() => gitflow.startGitFlowBranch(repoPath, kind, name))
+  )
+
+  ipcMain.handle('gitflow:finish', (_e, repoPath: string, branch: string, tagMessage?: string) =>
+    wrap(() => gitflow.finishGitFlowBranch(repoPath, branch, tagMessage))
+  )
 
   // Asks where to put the worktree (next to the repo by default), then adds it.
   // Resolves to the new worktree's path, or null when the dialog is cancelled.

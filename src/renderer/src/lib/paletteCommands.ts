@@ -1,5 +1,6 @@
 import type { Command } from '../components/CommandPalette'
 import type { FileViewMode } from '../components/FileHistoryView'
+import { classifyGitFlowBranch, GIT_FLOW_KINDS, type GitFlowConfig, type GitFlowKind } from '../../../shared/gitflow'
 import type { BranchInfo, OpenPullRequest, OperationState, PullMode, RepoStatus, StashEntry } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
 import { foldersOf, graphFilterLabel, type GraphFilter } from '../../../shared/historySearch'
@@ -23,6 +24,8 @@ export interface PaletteContext {
   hasWorkingChanges: boolean
   /** The checked-out branch's stack, if it's in one: its bottom branch and whether anything in it is behind. */
   currentStack?: { id: string; needsRestack: boolean } | null
+  /** The repo's git-flow settings, or null when git-flow isn't set up. */
+  gitFlow?: GitFlowConfig | null
   /** A single commit is selected that Run can act on. */
   canRunCommit: boolean
   /** The checked-out branch is on a GitHub remote with no open pull request yet. */
@@ -62,6 +65,9 @@ export interface PaletteContext {
     stackCurrentBranch: (branch: string) => void
     restack: (branch: string) => void
     pushStack: (branch: string) => void
+    setUpGitFlow: () => void
+    startGitFlow: (kind: GitFlowKind) => void
+    finishGitFlow: (branch: string) => void
     cleanUpBranches: () => void
     createPullRequest: () => void
     checkout: (branch: string) => void
@@ -167,6 +173,21 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       } else add('stack-on', `Stack ${branch} on another branch…`, () => a.stackCurrentBranch(branch))
     }
     add('cleanup-branches', 'Clean up branches…', a.cleanUpBranches)
+    const flow = ctx.gitFlow
+    if (flow) {
+      for (const kind of GIT_FLOW_KINDS) add(`gitflow-start-${kind}`, `Git flow: Start ${kind}…`, () => a.startGitFlow(kind))
+      addList(
+        'gitflow-finish',
+        'Git flow: Finish',
+        branches
+          .filter((b) => !b.remote && classifyGitFlowBranch(flow, b.name))
+          .map((b) => {
+            const { kind, name } = classifyGitFlowBranch(flow, b.name)!
+            return { id: b.name, label: `Finish ${kind} ${name}`, run: () => a.finishGitFlow(b.name) }
+          })
+      )
+      add('gitflow-setup', 'Git flow: Settings…', a.setUpGitFlow)
+    } else add('gitflow-setup', 'Git flow: Set up…', a.setUpGitFlow)
     const checkouts: Command[] = []
     for (const b of branches) {
       if (b.current) continue

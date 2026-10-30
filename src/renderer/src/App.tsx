@@ -15,6 +15,7 @@ import { BisectContext } from './lib/bisectMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import CreatePullRequestDialog from './components/CreatePullRequestDialog'
+import GitFlowSetupDialog from './components/GitFlowSetupDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
@@ -132,7 +133,7 @@ export default function App(): JSX.Element {
   const checkoutPullRequest = usePullRequestCheckout({ repo, git, view, tabs, showError, setNotice })
 
   useAppShortcuts({
-    blocked: !!promptDialog || dialogs.showSettings || dialogs.showActivity,
+    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity,
     paletteOpen: dialogs.palette !== null,
     repoOpen: !!repoPath,
     busy: git.busy,
@@ -308,6 +309,13 @@ export default function App(): JSX.Element {
           onCreated={branches.pullRequestCreated}
           onOpenUrl={actions.openUrl}
           onClose={branches.closeCreatePullRequest}
+        />
+      )}
+      {branches.gitFlow.setup && (
+        <GitFlowSetupDialog
+          initial={branches.gitFlow.setup}
+          onSave={branches.gitFlow.saveSetup}
+          onCancel={branches.gitFlow.closeSetup}
         />
       )}
       {dialogs.showSettings && (
