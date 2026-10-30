@@ -51,3 +51,30 @@ test.describe('a file with a line wider than the diff', () => {
     })
   }
 })
+
+test.describe('a commit with a long file', () => {
+  test.beforeEach(async ({ sillygit, repo }) => {
+    repo.commitFile('long.txt', Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n') + '\n', 'Add long.txt')
+    await sillygit.openRepository(repo.path)
+    await sillygit.details.openFile('long.txt')
+    await sillygit.commitView.expectShowing('long.txt', 'line 0')
+  })
+
+  for (const view of ['Diff View', 'File View'] as const) {
+    test(`the ${view} scrolls with the wheel and the page keys`, async ({ sillygit }) => {
+      const { commitView, page } = sillygit
+      await commitView.show(view)
+      const scrollTop = (): Promise<number> => commitView.scroller.evaluate((el) => el.scrollTop)
+
+      const box = (await commitView.scroller.boundingBox())!
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.wheel(0, 400)
+      await expect.poll(scrollTop).toBeGreaterThan(0)
+
+      await commitView.file('long.txt').focus()
+      await page.keyboard.press('End')
+      await expect(commitView.diff).toContainText('line 299')
+      await expect.poll(scrollTop).toBeGreaterThan(box.height)
+    })
+  }
+})

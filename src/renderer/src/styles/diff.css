@@ -87,6 +87,9 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  /* the diff viewer fills it, so its body (not this clipped box) is what scrolls */
+  display: flex;
+  flex-direction: column;
 }
 
 .commit-fullview-empty {
@@ -101,11 +104,6 @@
  */
 .main-layout.file-focus > .commit-fullview {
   border-right: 1px solid var(--border);
-}
-
-.working-file-view .commit-fullview-diff {
-  display: flex;
-  flex-direction: column;
 }
 
 .working-file-side {
