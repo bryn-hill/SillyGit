@@ -117,6 +117,7 @@ export function appCommands(app: {
       absorb: app.commitBox.openAbsorb,
       run: (mode) => void run.run(mode),
       editRunCommand: () => void run.editCommand(),
+      editRunCopyFiles: () => void run.editCopyFiles(),
       openFileView: (path, mode) => view.openFileView(path, null, mode),
       filterHistory: view.filterHistory,
       applyPatch: git.applyPatch,

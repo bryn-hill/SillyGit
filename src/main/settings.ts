@@ -42,6 +42,8 @@ interface StoredSettings {
   customCommands?: CustomCommand[]
   /** The Run button's command, per repo path. */
   runCommands?: Record<string, string>
+  /** Extra untracked files to copy into an isolated run's checkout, per repo path. */
+  runCopyFiles?: Record<string, string[]>
   /** Stale tags in the branch list. */
   branchList?: Partial<BranchListSettings>
   /** Starred branches, per repo path, in the order they were starred. */
@@ -224,6 +226,20 @@ export async function setRunCommand(repoPath: string, command: string): Promise<
     if (command.trim()) commands[repoPath] = command.trim()
     else delete commands[repoPath]
     current.runCommands = commands
+  })
+}
+
+export async function getRunCopyFiles(repoPath: string): Promise<string[]> {
+  const files = (await readSettings()).runCopyFiles?.[repoPath]
+  return Array.isArray(files) ? files.filter((f): f is string => typeof f === 'string') : []
+}
+
+export async function setRunCopyFiles(repoPath: string, files: string[]): Promise<void> {
+  await updateSettings((current) => {
+    const all = { ...current.runCopyFiles }
+    if (files.length) all[repoPath] = files
+    else delete all[repoPath]
+    current.runCopyFiles = all
   })
 }
 

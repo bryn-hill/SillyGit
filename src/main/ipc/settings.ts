@@ -84,10 +84,18 @@ export function registerSettingsHandlers(): void {
     wrap(() => settings.setCustomCommands(next))
   )
 
-  ipcMain.handle('run:get-command', async (_e, repoPath: string) => ({
-    command: await settings.getRunCommand(repoPath),
-    suggestion: await run.suggestCommand(repoPath)
-  }))
+  ipcMain.handle('run:get-command', async (_e, repoPath: string) => {
+    const suggestions = await run.suggestCommands(repoPath)
+    return {
+      command: await settings.getRunCommand(repoPath),
+      suggestion: suggestions[0]?.command ?? '',
+      suggestions
+    }
+  })
+  ipcMain.handle('run:get-copy-files', (_e, repoPath: string) => settings.getRunCopyFiles(repoPath))
+  ipcMain.handle('run:set-copy-files', (_e, repoPath: string, files: string[]) =>
+    wrap(() => settings.setRunCopyFiles(repoPath, files))
+  )
   ipcMain.handle('run:set-command', (_e, repoPath: string, command: string) =>
     wrap(() => settings.setRunCommand(repoPath, command))
   )

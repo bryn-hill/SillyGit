@@ -3,6 +3,7 @@ import type { RunMode } from '../../../shared/run'
 import { expandCommand, type CommandTarget, type CustomCommand } from '../../../shared/customCommands'
 import type { TerminalPanelHandle } from '../components/TerminalPanel'
 import type { PromptRequest } from '../components/PromptDialog'
+import { parseCopyPatterns } from '../../../shared/runDetect'
 import { repoDisplayName } from '../lib/repoName'
 import { loadRunMode, saveRunMode } from '../lib/preferences'
 import type { Selection } from '../lib/selection'
@@ -55,13 +56,15 @@ export function useRun({
   /** Asks for the repo's run command (prefilled with the current one or a guess) and saves it. */
   const editCommand = async (): Promise<string | null> => {
     if (!repoPath) return null
-    const { command: current, suggestion } = await window.api.getRunCommand(repoPath)
+    const { command: current, suggestion, suggestions } = await window.api.getRunCommand(repoPath)
     const next = await askText({
       title: 'Run command',
       label: `Command to run in ${repoDisplayName(repoPath)}`,
       defaultValue: current ?? suggestion,
-      placeholder: 'npm run dev',
-      submitLabel: 'Save'
+      placeholder: 'npm run dev, ./gradlew bootRun, dotnet run',
+      submitLabel: 'Save',
+      suggestions: suggestions.map((s) => ({ value: s.command, label: s.label })),
+      hint: 'Runs in your login shell, so tools set up in your shell profile (JAVA_HOME, ANDROID_HOME, dotnet, nvm) are found.'
     })
     if (next == null) return null
     const res = await window.api.setRunCommand(repoPath, next)
@@ -71,6 +74,27 @@ export function useRun({
     }
     setCommand(repoPath, next)
     return next
+  }
+
+  /**
+   * Asks which extra untracked files (beyond .env*, local.properties and
+   * appsettings.*.json) an isolated run copies into its checkout, and saves them.
+   */
+  const editCopyFiles = async (): Promise<void> => {
+    if (!repoPath) return
+    const current = await window.api.getRunCopyFiles(repoPath)
+    const next = await askText({
+      title: 'Files to copy into isolated runs',
+      label: 'Untracked files, comma separated, relative to the repository',
+      defaultValue: current.join(', '),
+      placeholder: 'app/google-services.json, config/*.local.yml',
+      submitLabel: 'Save',
+      hint: 'Always copied when untracked: .env*, local.properties, keystore.properties and appsettings.*.json, in the run folder and the folder the command changes into. Use * in a file name to match several.',
+      allowEmpty: true
+    })
+    if (next == null) return
+    const res = await window.api.setRunCopyFiles(repoPath, parseCopyPatterns(next))
+    if (!res.ok) showError(res.error)
   }
 
   /**
@@ -143,7 +167,7 @@ export function useRun({
     if (repoPath) terminalRef.current?.stopRun(runKey(repoPath, isolated))
   }
 
-  return { setRunningKeys, command, commit, mode, running, preparing, editCommand, run, runCustom, stop }
+  return { setRunningKeys, command, commit, mode, running, preparing, editCommand, editCopyFiles, run, runCustom, stop }
 }
 
 export type Run = ReturnType<typeof useRun>

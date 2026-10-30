@@ -59,6 +59,7 @@ export interface PaletteContext {
     absorb: () => void
     run: (mode?: RunMode) => void
     editRunCommand: () => void
+    editRunCopyFiles: () => void
     openFileView: (path: string, mode: FileViewMode) => void
     filterHistory: (filter: GraphFilter | null) => void
     applyPatch: () => void
@@ -145,6 +146,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       add('run-checkout', 'Check out selected commit and run', () => a.run('checkout'))
     }
     add('run-command', 'Edit run command…', a.editRunCommand)
+    add('run-copy-files', 'Files to copy into isolated runs…', a.editRunCopyFiles)
     addList(
       'blame',
       'Blame file',

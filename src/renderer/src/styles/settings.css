@@ -57,6 +57,48 @@
   color: var(--text-dim);
 }
 
+.prompt-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.prompt-suggestion {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 8px;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.prompt-suggestion:hover {
+  background: var(--bg-hover);
+}
+
+.prompt-suggestion.selected {
+  border-color: var(--accent);
+}
+
+.prompt-suggestion-label {
+  flex: none;
+  min-width: 110px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.prompt-suggestion code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .modal-error {
   font-size: 12px;
   color: var(--red);

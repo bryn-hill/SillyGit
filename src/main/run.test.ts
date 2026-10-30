@@ -5,11 +5,13 @@ import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const runCommands = vi.hoisted(() => new Map<string, string>())
+const copyFiles = vi.hoisted(() => new Map<string, string[]>())
 vi.mock('./settings', () => ({
-  getRunCommand: async (repoPath: string) => runCommands.get(repoPath) ?? null
+  getRunCommand: async (repoPath: string) => runCommands.get(repoPath) ?? null,
+  getRunCopyFiles: async (repoPath: string) => copyFiles.get(repoPath) ?? []
 }))
 
-import { planRun, runCheckoutPath, suggestCommand } from './run'
+import { planRun, runCheckoutPath, suggestCommand, suggestCommands } from './run'
 
 let root: string
 let dir: string
@@ -31,6 +33,7 @@ beforeEach(() => {
   git(dir, 'config', 'user.name', 'Ada')
   git(dir, 'config', 'user.email', 'ada@example.com')
   runCommands.clear()
+  copyFiles.clear()
   runCommands.set(dir, 'npm run dev')
 })
 
@@ -181,5 +184,50 @@ describe('suggestCommand', () => {
     expect(await suggestCommand(dir)).toBe('npm run dev')
     expect(existsSync(join(dir, 'nope'))).toBe(false)
     expect(await suggestCommand(join(dir, 'nope'))).toBe('')
+  })
+})
+
+describe('suggestCommands', () => {
+  it('finds a Gradle app at the root and a .NET API in a subfolder', async () => {
+    writeFileSync(join(dir, 'gradlew'), '')
+    writeFileSync(join(dir, 'build.gradle'), "plugins { id 'org.springframework.boot' }")
+    mkdirSync(join(dir, 'api'))
+    writeFileSync(join(dir, 'api', 'Api.csproj'), '<Project Sdk="Microsoft.NET.Sdk.Web">')
+    const expected = process.platform === 'win32' ? 'gradlew bootRun' : './gradlew bootRun'
+    expect(await suggestCommands(dir)).toEqual([
+      { command: expected, label: 'Spring Boot (Gradle)' },
+      { command: 'cd api && dotnet run', label: '.NET in api' }
+    ])
+    expect(await suggestCommand(dir)).toBe(expected)
+  })
+})
+
+describe('files copied into an isolated run', () => {
+  it('copies Android and .NET local files, in the folder the command changes into too', async () => {
+    mkdirSync(join(dir, 'api'))
+    commit('api/appsettings.json', '{}', 'Settings')
+    const head = git(dir, 'rev-parse', 'HEAD')
+    writeFileSync(join(dir, 'local.properties'), 'sdk.dir=/sdk\n')
+    writeFileSync(join(dir, 'api', 'appsettings.Development.json'), '{"dev":1}')
+    runCommands.set(dir, 'cd api && dotnet run')
+
+    const plan = await planRun(dir, head, runRoot)
+
+    expect(readFileSync(join(plan.cwd, 'local.properties'), 'utf8')).toBe('sdk.dir=/sdk\n')
+    expect(readFileSync(join(plan.cwd, 'api', 'appsettings.Development.json'), 'utf8')).toBe('{"dev":1}')
+  })
+
+  it('copies the files the repo lists, but not ones the commit tracks', async () => {
+    mkdirSync(join(dir, 'app'))
+    commit('app/tracked.json', 'committed\n', 'Tracked')
+    const head = git(dir, 'rev-parse', 'HEAD')
+    writeFileSync(join(dir, 'app', 'google-services.json'), '{"key":1}')
+    writeFileSync(join(dir, 'app', 'tracked.json'), 'changed\n')
+    copyFiles.set(dir, ['app/google-services.json', 'app/*.json'])
+
+    const plan = await planRun(dir, head, runRoot)
+
+    expect(readFileSync(join(plan.cwd, 'app', 'google-services.json'), 'utf8')).toBe('{"key":1}')
+    expect(readFileSync(join(plan.cwd, 'app', 'tracked.json'), 'utf8')).toBe('committed\n')
   })
 })

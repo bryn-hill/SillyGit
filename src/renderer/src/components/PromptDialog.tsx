@@ -9,6 +9,12 @@ export interface PromptRequest {
   submitLabel?: string
   /** Pick one of these instead of typing. */
   options?: string[]
+  /** Values to fill the field with in one click, shown under it; the label is the button's tooltip. */
+  suggestions?: { value: string; label: string }[]
+  /** A line of help under the field. */
+  hint?: string
+  /** Lets the field be saved empty, to clear a value. */
+  allowEmpty?: boolean
 }
 
 interface Props extends PromptRequest {
@@ -24,12 +30,15 @@ export default function PromptDialog({
   placeholder,
   submitLabel = 'OK',
   options,
+  suggestions,
+  hint,
+  allowEmpty = false,
   onSubmit,
   onCancel
 }: Props): JSX.Element {
   const [value, setValue] = useState(options && !options.includes(defaultValue) ? (options[0] ?? '') : defaultValue)
   const submit = (): void => {
-    if (value.trim()) onSubmit(value.trim())
+    if (value.trim() || allowEmpty) onSubmit(value.trim())
   }
 
   return (
@@ -59,12 +68,30 @@ export default function PromptDialog({
               }}
             />
           )}
+          {suggestions && suggestions.length > 0 && !options && (
+            <div className="prompt-suggestions" role="group" aria-label="Suggestions">
+              {suggestions.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  className={`prompt-suggestion${s.value === value ? ' selected' : ''}`}
+                  title={s.label}
+                  aria-pressed={s.value === value}
+                  onClick={() => setValue(s.value)}
+                >
+                  <span className="prompt-suggestion-label">{s.label}</span>
+                  <code>{s.value}</code>
+                </button>
+              ))}
+            </div>
+          )}
+          {hint && <div className="modal-hint">{hint}</div>}
         </div>
         <div className="modal-footer">
           <button className="subtle" onClick={onCancel}>
             Cancel
           </button>
-          <button className="commit-button" disabled={!value.trim()} onClick={submit}>
+          <button className="commit-button" disabled={!value.trim() && !allowEmpty} onClick={submit}>
             {submitLabel}
           </button>
         </div>

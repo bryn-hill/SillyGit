@@ -511,8 +511,17 @@ const api = {
     ipcRenderer.invoke('session:save-layout', layout),
   getAutoFetchMinutes: (): Promise<number> => ipcRenderer.invoke('settings:get-auto-fetch'),
   setAutoFetchMinutes: (minutes: number): Wrapped<void> => ipcRenderer.invoke('settings:set-auto-fetch', minutes),
-  getRunCommand: (repoPath: string): Promise<{ command: string | null; suggestion: string }> =>
-    ipcRenderer.invoke('run:get-command', repoPath),
+  getRunCommand: (
+    repoPath: string
+  ): Promise<{
+    command: string | null
+    suggestion: string
+    suggestions: import('../shared/runDetect').RunSuggestion[]
+  }> => ipcRenderer.invoke('run:get-command', repoPath),
+  /** The extra untracked files a repo copies into an isolated run's checkout. */
+  getRunCopyFiles: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('run:get-copy-files', repoPath),
+  setRunCopyFiles: (repoPath: string, files: string[]): Wrapped<void> =>
+    ipcRenderer.invoke('run:set-copy-files', repoPath, files),
   setRunCommand: (repoPath: string, command: string): Wrapped<void> =>
     ipcRenderer.invoke('run:set-command', repoPath, command),
   /** Gets a Run ready: checks out `commit` in the run checkout when it isn't a clean HEAD. */

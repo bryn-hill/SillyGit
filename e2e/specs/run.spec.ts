@@ -109,3 +109,20 @@ test('an isolated run keeps going while the working tree runs too', async ({ sil
   await expect(sillygit.terminal.runTabs.filter({ hasText: '(isolated)' })).toHaveCount(1)
   await expect(sillygit.toolbarButton('Stop')).toBeVisible()
 })
+
+test('the run command prompt offers what it found, such as a Gradle app and a .NET API', async ({ sillygit, repo }) => {
+  repo.writeFile('gradlew', '')
+  repo.writeFile('build.gradle', "plugins { id 'org.springframework.boot' }\n")
+  repo.writeFile('api/Api.csproj', '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>\n')
+  await sillygit.openRepository(repo.path)
+
+  await sillygit.runMenu('Edit run command…')
+  const prompt = sillygit.page.getByRole('dialog', { name: 'Run command' })
+  await expect(prompt.getByRole('textbox')).toHaveValue('./gradlew bootRun')
+  await prompt.getByRole('button', { name: /cd api && dotnet run/ }).click()
+  await expect(prompt.getByRole('textbox')).toHaveValue('cd api && dotnet run')
+  await prompt.getByRole('button', { name: 'Save' }).click()
+
+  await sillygit.toolbarButton('Run options').click()
+  await expect(sillygit.page.getByRole('menu', { name: 'Run options' })).toContainText('cd api && dotnet run')
+})

@@ -224,6 +224,7 @@ export default function App(): JSX.Element {
           onRun={(mode) => void run.run(mode)}
           onStopRun={run.stop}
           onEditRunCommand={() => void run.editCommand()}
+          onEditRunCopyFiles={() => void run.editCopyFiles()}
           terminalVisible={showTerminal}
           onToggleTerminal={() => setShowTerminal((v) => !v)}
           editor={editor.current}

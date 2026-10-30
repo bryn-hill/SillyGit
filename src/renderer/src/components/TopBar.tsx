@@ -74,6 +74,7 @@ interface Props {
   onRun: (mode?: RunMode) => void
   onStopRun: () => void
   onEditRunCommand: () => void
+  onEditRunCopyFiles: () => void
   terminalVisible: boolean
   onToggleTerminal: () => void
   /** The editor the Open in button uses, or null when none was found. */
@@ -126,6 +127,7 @@ export default function TopBar({
   onRun,
   onStopRun,
   onEditRunCommand,
+  onEditRunCopyFiles,
   terminalVisible,
   onToggleTerminal,
   editor,
@@ -449,6 +451,18 @@ export default function TopBar({
                   >
                     <span className="tool-menu-check" />
                     Edit run command…
+                  </div>
+                  <div
+                    role="menuitem"
+                    className="branch-dropdown-item"
+                    title="Untracked files such as local.properties or appsettings.Development.json that an isolated run needs"
+                    onClick={() => {
+                      setShowRunMenu(false)
+                      onEditRunCopyFiles()
+                    }}
+                  >
+                    <span className="tool-menu-check" />
+                    Files to copy into isolated runs…
                   </div>
                   <div className="dropdown-separator" />
                   <div className="tool-menu-hint">
