@@ -1,8 +1,10 @@
-import type { JSX } from 'react'
+import type { ComponentProps, JSX } from 'react'
+import BisectBanner from './BisectBanner'
 
 /**
  * The error and notice banners under the toolbar (click to dismiss), the Undo
- * offer after a bulk conflict action, and the Restore offer after a branch cleanup.
+ * offer after a bulk conflict action, the Restore offer after a branch cleanup,
+ * and the bisect bar while a bisect is going.
  */
 export default function StatusBanners({
   error,
@@ -14,7 +16,8 @@ export default function StatusBanners({
   onDismissUndo,
   restoreMessage,
   onRestore,
-  onDismissRestore
+  onDismissRestore,
+  bisect
 }: {
   error: string | null
   onDismissError: () => void
@@ -28,9 +31,12 @@ export default function StatusBanners({
   restoreMessage: string | null
   onRestore: () => void
   onDismissRestore: () => void
+  /** The bisect in progress and its actions, or null when there is none. */
+  bisect: ComponentProps<typeof BisectBanner> | null
 }): JSX.Element {
   return (
     <>
+      {bisect && <BisectBanner {...bisect} />}
       {error && (
         <div className="error-banner" role="alert" onClick={onDismissError}>
           {error}

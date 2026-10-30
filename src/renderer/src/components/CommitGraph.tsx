@@ -13,6 +13,8 @@ import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettin
 import { timeAgo } from '../lib/time'
 import { useMergeBurst } from './commitGraph/useMergeBurst'
 import { useGraphSearch } from './commitGraph/useGraphSearch'
+import { useBisectState } from '../lib/bisectMenu'
+import { bisectMarks, markLabel } from '../../../shared/bisect'
 
 export const DEFAULT_REF_COLUMN_WIDTH = 170
 const MIN_REF_COLUMN_WIDTH = 60
@@ -133,6 +135,8 @@ export default function CommitGraph({
     [rows, sprints]
   )
   const burst = useMergeBurst(rows, mergeAnimation)
+  const bisect = useBisectState()
+  const bisectMarkOf = useMemo(() => bisectMarks(bisect), [bisect])
 
   const burstFor = (hash: string): { id: number; delay: number } | undefined => {
     const delay = burst?.delays.get(hash)
@@ -249,6 +253,7 @@ export default function CommitGraph({
     const isContextTarget = menu?.hash === row.commit.hash
     const dimmed = hitSet !== null && !hitSet.has(row.commit.hash)
     const mark = marks?.[index]
+    const bisectMark = bisectMarkOf.get(row.commit.hash)
     const sprintClass = mark
       ? `sprint-band-${Math.abs(mark.sprint.index) % 2 ? 'odd' : 'even'} ${mark.starts ? 'sprint-start' : ''} ${
           mark.starts && index + wipOffset === 0 ? 'sprint-first' : ''
@@ -293,6 +298,11 @@ export default function CommitGraph({
           burst={burstFor(row.commit.hash)}
         />
         <div className="graph-row-message">
+          {bisectMark && bisect && (
+            <span className={`bisect-mark bisect-mark-${bisectMark}`} data-testid="bisect-mark" data-mark={bisectMark}>
+              {markLabel(bisectMark, bisect.terms)}
+            </span>
+          )}
           <span className="graph-row-subject" style={{ color: row.color }}>
             {row.commit.subject}
           </span>

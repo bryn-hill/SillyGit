@@ -1,0 +1,83 @@
+/* Guided bisect: the bar under the toolbar and the markers in the graph. */
+
+.bisect-banner {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 6px 14px;
+  font-size: 12px;
+  background: rgba(139, 233, 253, 0.08);
+  color: var(--cyan);
+  border-bottom: 1px solid var(--border);
+}
+
+.bisect-banner.finished {
+  background: rgba(255, 121, 198, 0.1);
+  color: var(--pink);
+}
+
+.bisect-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bisect-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.bisect-actions button {
+  padding: 3px 10px;
+}
+
+.bisect-actions button.bisect-good {
+  border-color: rgba(80, 250, 123, 0.5);
+  color: var(--green);
+}
+
+.bisect-actions button.bisect-bad {
+  border-color: rgba(255, 85, 85, 0.5);
+  color: var(--red);
+}
+
+.bisect-mark {
+  flex: none;
+  align-self: center;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid currentColor;
+}
+
+.bisect-mark-good {
+  color: var(--green);
+}
+
+.bisect-mark-bad {
+  color: var(--red);
+}
+
+.bisect-mark-first-bad {
+  color: var(--bg);
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.bisect-mark-skip {
+  color: var(--text-dim);
+}
+
+.bisect-mark-current {
+  color: var(--cyan);
+  border-style: dashed;
+}

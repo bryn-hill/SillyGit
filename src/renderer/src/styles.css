@@ -33,5 +33,6 @@
 @import './styles/conflict-extras.css';
 @import './styles/blame-history.css';
 @import './styles/interactive-rebase.css';
+@import './styles/bisect.css';
 @import './styles/misc.css';
 @import './styles/merge-animation.css';

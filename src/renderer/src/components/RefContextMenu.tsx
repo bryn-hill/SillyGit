@@ -3,6 +3,7 @@ import { canOpenPullRequests } from '../../../shared/createPullRequest'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import type { StackActions } from '../hooks/useBranchActions'
 import { useCustomCommandMenu } from '../lib/customCommandMenu'
+import { useBisectMenu } from '../lib/bisectMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 const MAX_REF_LENGTH = 36
@@ -94,6 +95,7 @@ export default function RefContextMenu({
 }: Props): JSX.Element {
   const info = target ? actions.remoteInfo(target) : null
   const customMenu = useCustomCommandMenu()
+  const bisectMenu = useBisectMenu()
   const { revalidate } = actions
   useEffect(() => {
     if (target) revalidate()
@@ -195,6 +197,9 @@ export default function RefContextMenu({
     })
   }
   if (rewriteItems.length > 0) sections.push(rewriteItems)
+
+  const bisectItems = bisectMenu(hash)
+  if (bisectItems.length > 0) sections.push(bisectItems)
 
   if (target) {
     const prItems: ContextMenuItem[] = []

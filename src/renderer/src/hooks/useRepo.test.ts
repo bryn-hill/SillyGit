@@ -17,6 +17,7 @@ function fakeApi() {
     branches: () => ok([]),
     graphLog: () => ok([]),
     operationState: () => ok(null),
+    bisectState: () => ok(null),
     remotes: () => ok([]),
     stashes: () => ok([]),
     undoLabel: () => ok(null),

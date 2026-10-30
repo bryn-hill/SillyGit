@@ -1,6 +1,7 @@
 import { promises as fsp } from 'fs'
 import { join } from 'path'
 import type { ConflictableResult, OperationState } from '../../shared/types'
+import { parseBisectRefs, parseTerms, summarizeBisect, type BisectState } from '../../shared/bisect'
 import { GitError, runGit } from '../gitExec'
 
 // The merge, rebase, cherry-pick or revert in progress: reading its state
@@ -120,6 +121,36 @@ export async function getOperationState(repoPath: string): Promise<OperationStat
   }
 
   return null
+}
+
+/**
+ * The bisect in progress, or null. Bisect runs alongside everything else
+ * (a merge can happen mid-bisect), so it's read apart from getOperationState.
+ */
+export async function getBisectState(repoPath: string): Promise<BisectState | null> {
+  const dir = await gitDir(repoPath)
+  const startedFrom = await readTrimmed(join(dir, 'BISECT_START'))
+  if (startedFrom === null) return null
+  const terms = parseTerms(await readTrimmed(join(dir, 'BISECT_TERMS')))
+  const refs = await runGit(repoPath, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/bisect/'])
+  const { bad, good, skipped } = parseBisectRefs(refs, terms)
+  const candidates =
+    bad && good.length > 0
+      ? (await runGit(repoPath, ['rev-list', bad, '--not', ...good])).split('\n').filter(Boolean)
+      : []
+  const summary = summarizeBisect({ bad, good, skipped, candidates })
+  const current = (await runGit(repoPath, ['rev-parse', '-q', '--verify', 'HEAD']).catch(() => '')).trim() || null
+  return {
+    terms,
+    startedFrom: startedFrom.length === 40 ? startedFrom.slice(0, 7) : startedFrom,
+    bad,
+    good,
+    skipped,
+    current,
+    currentLabel: current ? await describeCommit(repoPath, current) : null,
+    ...summary,
+    firstBadLabel: summary.firstBad ? await describeCommit(repoPath, summary.firstBad) : null
+  }
 }
 
 export async function hasUnmergedPaths(repoPath: string): Promise<boolean> {

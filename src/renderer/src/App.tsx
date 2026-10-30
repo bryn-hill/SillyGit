@@ -11,6 +11,7 @@ import UpdateDialog from './components/UpdateDialog'
 import StatusBanners from './components/StatusBanners'
 import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
+import { BisectContext } from './lib/bisectMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import CreatePullRequestDialog from './components/CreatePullRequestDialog'
@@ -31,6 +32,7 @@ import { useBranchActions } from './hooks/useBranchActions'
 import { useBranchCleanup } from './hooks/useBranchCleanup'
 import { useConflicts } from './hooks/useConflicts'
 import { useRun } from './hooks/useRun'
+import { useBisect } from './hooks/useBisect'
 import { useTabs } from './hooks/useTabs'
 import { usePullRequestCheckout } from './hooks/usePullRequestCheckout'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
@@ -99,6 +101,18 @@ export default function App(): JSX.Element {
     hasWorkingChanges,
     askText,
     showError,
+    showTerminal: () => layout.setShowTerminal(true),
+    terminalRef
+  })
+
+  const bisect = useBisect({
+    repo,
+    git,
+    selectCommit: view.showCommitInGraph,
+    askText,
+    showError,
+    runCommand: run.command,
+    customCommands: settings.customCommands,
     showTerminal: () => layout.setShowTerminal(true),
     terminalRef
   })
@@ -204,11 +218,25 @@ export default function App(): JSX.Element {
         restoreMessage={cleanup.restoreMessage}
         onRestore={cleanup.restoreBranches}
         onDismissRestore={cleanup.dismissRestore}
+        bisect={
+          bisect.state && {
+            state: bisect.state,
+            busy: git.busy,
+            running: bisect.running,
+            onMark: (verdict) => bisect.mark(verdict),
+            onReset: bisect.reset,
+            commandChoices: bisect.commandChoices,
+            onRunWith: (command) => void bisect.runWith(command),
+            onStopRun: bisect.stopRun,
+            onShowCommit: view.showCommitInGraph
+          }
+        }
       />
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
             <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
+              <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
               <MainArea
                 repo={repo}
                 view={view}
@@ -226,6 +254,7 @@ export default function App(): JSX.Element {
                 showError={showError}
                 setNotice={setNotice}
               />
+              </BisectContext>
             </CustomCommandsContext>
           </div>
           <TerminalPanel

@@ -159,6 +159,18 @@ const api = {
 
   operationState: (repoPath: string): Wrapped<import('../shared/types').OperationState | null> =>
     ipcRenderer.invoke('git:operation-state', repoPath),
+  bisectState: (repoPath: string): Wrapped<import('../shared/bisect').BisectState | null> =>
+    ipcRenderer.invoke('git:bisect-state', repoPath),
+  /** Starts a bisect with `hash` marked bad or good (or marks it, if one is going). */
+  bisectStart: (repoPath: string, hash: string, verdict: 'bad' | 'good'): Wrapped<import('../shared/bisect').BisectState | null> =>
+    ipcRenderer.invoke('git:bisect-start', repoPath, hash, verdict),
+  /** Marks `hash`, or the checked-out commit, good, bad or skipped. */
+  bisectMark: (
+    repoPath: string,
+    verdict: import('../shared/bisect').BisectVerdict,
+    hash?: string
+  ): Wrapped<import('../shared/bisect').BisectState | null> => ipcRenderer.invoke('git:bisect-mark', repoPath, verdict, hash),
+  bisectReset: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:bisect-reset', repoPath),
   mergeBranch: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:merge-branch', repoPath, branch),
   rebaseOnto: (repoPath: string, branch: string): Wrapped<import('../shared/types').ConflictableResult> =>

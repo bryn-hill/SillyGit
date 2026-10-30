@@ -4,17 +4,31 @@ import * as mergeTool from '../mergeTool'
 import { parseConflictMarkers } from '../../shared/conflicts'
 import * as fixup from '../fixup'
 import * as rebase from '../rebase'
+import * as bisect from '../bisect'
+import type { BisectVerdict } from '../../shared/bisect'
 import * as refDrop from '../refDrop'
 import * as ai from '../ai'
 import type { RebaseStep } from '../../shared/rebase'
 import type { ConflictSnapshot, RenameKeep } from '../../shared/types'
 import { wrap } from './wrap'
 
-/** Merges, rebases (plain and interactive), cherry-picks, drag-and-drop onto branches, and resolving their conflicts. */
+/** Merges, rebases (plain and interactive), cherry-picks, bisects, drag-and-drop onto branches, and resolving their conflicts. */
 export function registerMergeHandlers(): void {
   ipcMain.handle('git:operation-state', (_e, repoPath: string) =>
     wrap(() => conflicts.getOperationState(repoPath))
   )
+
+  ipcMain.handle('git:bisect-state', (_e, repoPath: string) => wrap(() => conflicts.getBisectState(repoPath)))
+
+  ipcMain.handle('git:bisect-start', (_e, repoPath: string, hash: string, verdict: 'bad' | 'good') =>
+    wrap(() => bisect.startBisect(repoPath, hash, verdict))
+  )
+
+  ipcMain.handle('git:bisect-mark', (_e, repoPath: string, verdict: BisectVerdict, hash?: string) =>
+    wrap(() => bisect.markBisect(repoPath, verdict, hash))
+  )
+
+  ipcMain.handle('git:bisect-reset', (_e, repoPath: string) => wrap(() => bisect.resetBisect(repoPath)))
 
   ipcMain.handle('git:merge-branch', (_e, repoPath: string, branch: string) =>
     wrap(() => conflicts.mergeBranch(repoPath, branch))

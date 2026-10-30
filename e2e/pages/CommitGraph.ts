@@ -53,6 +53,11 @@ export class CommitGraph {
     return this.row(subject).getByTestId('sprint-marker')
   }
 
+  /** The bisect marker on a commit's row ("good", "bad", "testing", "first bad"...). */
+  bisectMark(subject: string): Locator {
+    return this.row(subject).getByTestId('bisect-mark')
+  }
+
   /** The merge animation drawn over a new merge commit's row while it plays. */
   get mergeBurst(): Locator {
     return this.root.getByTestId('merge-burst')
