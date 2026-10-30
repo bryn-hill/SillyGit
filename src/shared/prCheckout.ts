@@ -9,6 +9,10 @@ export interface PullRequestHead {
   headRepo: { owner: string; name: string } | null
   /** The branch's name on the head repository. */
   headRefName: string
+  /** The remote to fetch from, when the host already knows it (Azure DevOps); else matched by host and repo. */
+  remote?: string
+  /** What to fetch; refs/pull/<number>/head when left out (Azure DevOps has no such ref). */
+  fetchRef?: string
 }
 
 /** What checking out a pull request did. */

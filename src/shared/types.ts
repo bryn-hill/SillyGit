@@ -215,6 +215,8 @@ export interface LaunchpadPullRequest {
   bucket: LaunchpadBucketId
   repoPath: string
   repoName: string
+  /** Where it's hosted; GitHub when left out. Azure DevOps doesn't report additions and deletions. */
+  provider?: import('./accounts').GitProvider
 }
 
 export type LaunchpadUnavailableReason = 'gh-not-installed' | 'not-authenticated' | 'not-github' | 'error'

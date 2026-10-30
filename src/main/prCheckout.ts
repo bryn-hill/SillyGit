@@ -71,6 +71,7 @@ export async function checkoutPullRequestHead(repoPath: string, head: PullReques
   const locations = await remoteLocations(repoPath)
   const remotes = (await runGit(repoPath, ['remote'])).split('\n').map((r) => r.trim()).filter(Boolean)
   const baseRemote =
+    head.remote ??
     remoteFor(locations, head.host, head.baseRepo) ??
     (remotes.includes('origin') ? 'origin' : remotes.length === 1 ? remotes[0] : null)
   if (!baseRemote) {
@@ -83,12 +84,13 @@ export async function checkoutPullRequestHead(repoPath: string, head: PullReques
       : baseRemote
 
   const env = await remoteEnv()
+  const fetchRef = head.fetchRef ?? `refs/pull/${head.number}/head`
   try {
-    await runGit(repoPath, ['fetch', baseRemote, `refs/pull/${head.number}/head`], env)
+    await runGit(repoPath, ['fetch', baseRemote, fetchRef], env)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (/couldn't find remote ref/i.test(message)) {
-      throw new GitError(`${baseRemote} has no refs/pull/${head.number}/head. Is ${baseRemote} the repository #${head.number} was opened against?`)
+      throw new GitError(`${baseRemote} has no ${fetchRef}. Is ${baseRemote} the repository #${head.number} was opened against?`)
     }
     throw err
   }

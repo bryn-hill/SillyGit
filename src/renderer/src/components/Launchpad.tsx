@@ -99,8 +99,8 @@ function UnavailableNotice({
   if (data.reason === 'not-github') {
     return (
       <div className="launchpad-notice">
-        <p>This repository's remote isn't on GitHub.</p>
-        <p className="launchpad-notice-hint">Launchpad currently supports GitHub repositories only.</p>
+        <p>This repository's remote isn't on GitHub or Azure DevOps.</p>
+        <p className="launchpad-notice-hint">Launchpad supports GitHub and Azure DevOps repositories.</p>
       </div>
     )
   }
@@ -404,9 +404,14 @@ export default function Launchpad({
                         {timeAgo(pr.updatedAt)}
                       </div>
                     </div>
+                    {/* Azure DevOps doesn't say how big a pull request is until it's opened. */}
                     <div className="launchpad-card-stats">
-                      <span className="launchpad-stat-add">+{pr.additions}</span>
-                      <span className="launchpad-stat-del">-{pr.deletions}</span>
+                      {pr.provider !== 'azure' && (
+                        <>
+                          <span className="launchpad-stat-add">+{pr.additions}</span>
+                          <span className="launchpad-stat-del">-{pr.deletions}</span>
+                        </>
+                      )}
                     </div>
                     <div className="launchpad-card-actions">
                       {bucket === 'readyToMerge' && pr.isMine && (
@@ -424,7 +429,7 @@ export default function Launchpad({
                       >
                         {checkingOut === `${pr.repoPath}#${pr.number}` ? 'Checking out…' : 'Check out'}
                       </button>
-                      <button className="subtle" onClick={() => window.api.openExternal(pr.url)} title="Open on GitHub">
+                      <button className="subtle" onClick={() => window.api.openExternal(pr.url)} title={`Open on ${pr.provider === 'azure' ? 'Azure DevOps' : 'GitHub'}`}>
                         Open
                       </button>
                     </div>

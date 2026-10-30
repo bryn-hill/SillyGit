@@ -1,5 +1,5 @@
 import { useEffect, type JSX } from 'react'
-import { canOpenPullRequests } from '../../../shared/createPullRequest'
+import { canOpenPullRequests, pullRequestHostLabel } from '../../../shared/createPullRequest'
 import type { BranchRemoteInfo } from '../../../shared/types'
 import type { StackActions } from '../hooks/useBranchActions'
 import type { GitFlowActions } from '../hooks/useGitFlow'
@@ -212,7 +212,7 @@ export default function RefContextMenu({
     if (info?.pullRequest) {
       const pr = info.pullRequest
       prItems.push(
-        { id: 'pr-view', label: `View pull request #${pr.number} on GitHub`, onSelect: () => actions.openUrl(pr.url) },
+        { id: 'pr-view', label: `View pull request #${pr.number} on ${pullRequestHostLabel(info.webUrl)}`, onSelect: () => actions.openUrl(pr.url) },
         { id: 'pr-copy', label: `Copy link for pull request #${pr.number}`, onSelect: () => actions.copyText(pr.url) }
       )
     } else if (info?.remote && canOpenPullRequests(info.webUrl)) {

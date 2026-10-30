@@ -8,9 +8,12 @@ import {
   headRemoteBranch,
   parseReviewers,
   type CreatedPullRequest,
-  type HeadChoice
+  type HeadChoice,
+  newPullRequestWebUrl,
+  pullRequestHostLabel
 } from '../../../shared/createPullRequest'
 import { withPullRequestText } from '../../../shared/quickActions'
+import { isAzureWebUrl } from '../../../shared/azure'
 import type { BranchInfo, RepoRemote } from '../../../shared/types'
 import Select from './Select'
 
@@ -161,8 +164,12 @@ export default function CreatePullRequestDialog({
 
   const openOnGithub = (): void => {
     if (!webUrl || !base || !headBranch) return
-    const compare = `${webUrl}/compare/${encodeURI(base)}...${encodeURI(headBranch)}?expand=1`
-    onOpenUrl(withPullRequestText(compare, { title, body }))
+    // Azure DevOps' form can't be prefilled with a title and description.
+    onOpenUrl(
+      isAzureWebUrl(webUrl)
+        ? newPullRequestWebUrl(webUrl, base, headBranch)
+        : withPullRequestText(newPullRequestWebUrl(webUrl, base, headBranch), { title, body })
+    )
     onClose()
   }
 
@@ -264,7 +271,11 @@ export default function CreatePullRequestDialog({
             ref={reviewersInput}
             value={reviewersText}
             disabled={busy}
-            placeholder="GitHub usernames, separated by commas (optional)"
+            placeholder={
+              isAzureWebUrl(webUrl)
+                ? 'Email addresses, separated by commas (optional)'
+                : 'GitHub usernames, separated by commas (optional)'
+            }
             onChange={(e) => setReviewersText(e.target.value)}
           />
           {shownSuggestions.length > 0 && (
@@ -289,7 +300,7 @@ export default function CreatePullRequestDialog({
         <div className="modal-footer">
           {webUrl && (
             <button className="subtle create-pr-web" disabled={busy || !base || !headBranch} onClick={openOnGithub}>
-              Open on GitHub instead
+              Open on {pullRequestHostLabel(webUrl)} instead
             </button>
           )}
           <button className="subtle" onClick={onClose} disabled={busy}>

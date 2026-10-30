@@ -1,5 +1,7 @@
+import { AZURE_HOST, isAzureHost } from './azure'
+
 /** Services SillyGit can sign in to with a personal access token: git hosts, and Jira for issues. */
-export type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'gitea' | 'jira'
+export type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'gitea' | 'azure' | 'jira'
 
 /** A signed-in account. The token itself never leaves the main process. */
 export interface ProviderAccount {
@@ -9,6 +11,8 @@ export interface ProviderAccount {
   host: string
   /** The account's login on the service. */
   username: string
+  /** Azure DevOps only: the organization the token was added for (dev.azure.com/{organization}). */
+  organization?: string
   displayName: string
   /** The account's own avatar as a data: URL, saved when it was added. */
   avatar: string | null
@@ -23,6 +27,8 @@ export interface NewAccountInput {
   host: string
   /** Bitbucket and Jira Cloud: the Atlassian account email the API token belongs to. */
   username?: string
+  /** Azure DevOps only: the organization, e.g. "contoso" from dev.azure.com/contoso. */
+  organization?: string
   token: string
 }
 
@@ -39,8 +45,10 @@ export interface ProviderInfo {
   issueTracker?: boolean
   /** Placeholder for the Server field. */
   hostPlaceholder?: string
+  /** Azure DevOps tokens belong to an organization, which the form asks for. */
+  needsOrganization?: boolean
   /** The page where the user creates a token, with the right scopes picked where the service allows it. */
-  tokenUrl: (host: string) => string
+  tokenUrl: (host: string, organization?: string) => string
   /** Which permissions the token needs, shown under the form. */
   scopesHint: string
 }
@@ -94,14 +102,33 @@ export const PROVIDERS: Record<GitProvider, ProviderInfo> = {
         : `https://${host}/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens`,
     scopesHint:
       'Jira Cloud: your Atlassian email and an API token (a classic one, or one with read:jira-work and read:jira-user). Jira Data Center: leave the email empty and use a personal access token.'
+  },
+  azure: {
+    label: 'Azure DevOps',
+    defaultHost: AZURE_HOST,
+    hostEditable: false,
+    needsUsername: false,
+    needsOrganization: true,
+    tokenUrl: (_host, organization) =>
+      organization ? `https://${AZURE_HOST}/${encodeURIComponent(organization)}/_usersSettings/tokens` : `https://${AZURE_HOST}/`,
+    scopesHint: 'Scopes: Code (read and write), and Work Items (read) to see your work items in Launchpad.'
   }
 }
 
-export const PROVIDER_ORDER: GitProvider[] = ['github', 'gitlab', 'bitbucket', 'gitea', 'jira']
+export const PROVIDER_ORDER: GitProvider[] = ['github', 'gitlab', 'bitbucket', 'azure', 'gitea', 'jira']
 
 /** Jira Cloud sites live on atlassian.net; anything else is Jira Data Center or Server. */
 export function isJiraCloud(host: string): boolean {
   return host === 'atlassian.net' || host.endsWith('.atlassian.net')
+}
+
+/** "contoso" from "contoso", "https://dev.azure.com/contoso/Web" or "contoso.visualstudio.com". */
+export function normalizeOrganization(input: string): string {
+  const text = input.trim().replace(/^[a-z]+:\/\//i, '').replace(/^[^@/]*@/, '')
+  const vs = /^([^./]+)\.visualstudio\.com/i.exec(text)
+  if (vs) return vs[1]
+  const parts = text.split('/').filter(Boolean)
+  return (parts[0]?.toLowerCase() === AZURE_HOST ? parts[1] : parts[0]) ?? ''
 }
 
 /**
@@ -132,5 +159,6 @@ export function guessProvider(host: string): GitProvider | null {
   if (host === 'github.com' || host.startsWith('github.')) return 'github'
   if (host === 'gitlab.com' || host.startsWith('gitlab.')) return 'gitlab'
   if (host === 'bitbucket.org') return 'bitbucket'
+  if (isAzureHost(host)) return 'azure'
   return null
 }

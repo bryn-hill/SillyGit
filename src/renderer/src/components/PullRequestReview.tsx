@@ -202,7 +202,7 @@ export default function PullRequestReview({ repoPath, number, title, onCheckout,
           {checkingOut ? 'Checking out…' : 'Check out'}
         </button>
         <button className="subtle" onClick={() => detail && window.api.openExternal(detail.url)} disabled={!detail}>
-          Open on GitHub
+          Open on {detail?.provider === 'azure' ? 'Azure DevOps' : 'GitHub'}
         </button>
         <button className="subtle" onClick={() => void load()} disabled={loading}>
           {loading ? 'Loading…' : 'Refresh'}

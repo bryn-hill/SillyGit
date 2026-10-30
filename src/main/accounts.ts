@@ -2,7 +2,7 @@ import { app, safeStorage } from 'electron'
 import { randomUUID } from 'crypto'
 import { join } from 'path'
 import { promises as fs } from 'fs'
-import { PROVIDERS, normalizeHost, type GitProvider, type NewAccountInput, type ProviderAccount } from '../shared/accounts'
+import { PROVIDERS, normalizeHost, normalizeOrganization, type GitProvider, type NewAccountInput, type ProviderAccount } from '../shared/accounts'
 import { gitAuthHeader, gitUsername, verifyAccount, type Credentials } from './providerApi'
 import { downloadAsDataUrl } from './avatars'
 import { gitConfigEnv } from './gitExec'
@@ -18,6 +18,7 @@ interface StoredAccount extends ProviderAccount {
   gitUsername: string
   /** Bitbucket: the email or username the token was added with. */
   enteredUsername?: string
+  organization?: string
   /** safeStorage-encrypted token, base64. */
   encryptedToken: string
 }
@@ -65,9 +66,22 @@ export function encryptionProblem(): string | null {
 }
 
 function toPublic(account: StoredAccount): ProviderAccount {
-  const { id, provider, host, username, displayName, avatar, emails, addedAt } = account
-  return { id, provider, host, username, displayName, avatar, emails, addedAt }
+  const { id, provider, host, username, organization, displayName, avatar, emails, addedAt } = account
+  return { id, provider, host, username, ...(organization ? { organization } : {}), displayName, avatar, emails, addedAt }
 }
+
+function credentialsOf(account: StoredAccount, token: string): Credentials {
+  return {
+    provider: account.provider,
+    host: account.host,
+    token,
+    username: account.enteredUsername,
+    ...(account.organization ? { organization: account.organization } : {})
+  }
+}
+
+const sameOrganization = (a: string | undefined, b: string | undefined): boolean =>
+  (a ?? '').toLowerCase() === (b ?? '').toLowerCase()
 
 export async function listAccounts(): Promise<ProviderAccount[]> {
   return (await readAccounts()).map(toPublic)
@@ -87,21 +101,26 @@ export async function addAccount(input: NewAccountInput): Promise<ProviderAccoun
   if (!token) throw new Error('Paste a token first.')
   const enteredUsername = input.username?.trim() || undefined
   if (info.needsUsername && !enteredUsername) throw new Error(`Enter the email of your ${info.label} account.`)
+  const organization = info.needsOrganization ? normalizeOrganization(input.organization ?? '') : undefined
+  if (info.needsOrganization && !organization) throw new Error(`Enter your ${info.label} organization.`)
 
   let verified
   try {
-    verified = await verifyAccount({ provider, host, token, username: enteredUsername })
+    verified = await verifyAccount({ provider, host, token, username: enteredUsername, organization })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(`${info.label} didn't accept the token (${message}).`)
   }
 
-  const avatar = verified.avatarUrl ? await downloadAsDataUrl(verified.avatarUrl).catch(() => null) : null
+  const avatar = verified.avatarUrl
+    ? await downloadAsDataUrl(verified.avatarUrl, verified.avatarHeaders).catch(() => null)
+    : null
   const account: StoredAccount = {
     id: randomUUID(),
     provider,
     host,
     username: verified.username,
+    ...(organization ? { organization } : {}),
     displayName: verified.displayName,
     avatar,
     emails: verified.emails,
@@ -112,7 +131,13 @@ export async function addAccount(input: NewAccountInput): Promise<ProviderAccoun
   }
 
   const others = (await readAccounts()).filter(
-    (a) => !(a.provider === provider && a.host === host && a.username === account.username)
+    (a) =>
+      !(
+        a.provider === provider &&
+        a.host === host &&
+        a.username === account.username &&
+        sameOrganization(a.organization, organization)
+      )
   )
   await writeAccounts([...others, account])
   return toPublic(account)
@@ -142,10 +167,19 @@ export async function credentialsFor(
   if (!account) return null
   const token = decrypt(account)
   if (!token) return null
-  return {
-    account: toPublic(account),
-    creds: { provider: account.provider, host: account.host, token, username: account.enteredUsername }
-  }
+  return { account: toPublic(account), creds: credentialsOf(account, token) }
+}
+
+/** The Azure DevOps account and token for an organization, when one is signed in. */
+export async function azureCredentialsFor(
+  organization: string
+): Promise<{ account: ProviderAccount; creds: Credentials } | null> {
+  const account = (await readAccounts()).find(
+    (a) => a.provider === 'azure' && sameOrganization(a.organization, organization)
+  )
+  if (!account) return null
+  const token = decrypt(account)
+  return token ? { account: toPublic(account), creds: credentialsOf(account, token) } : null
 }
 
 /** Every signed-in account for a service, with its token. Accounts whose token can't be read are left out. */
@@ -157,10 +191,7 @@ export async function accountsWithCredentials(
     if (account.provider !== provider) continue
     const token = decrypt(account)
     if (!token) continue
-    found.push({
-      account: toPublic(account),
-      creds: { provider: account.provider, host: account.host, token, username: account.enteredUsername }
-    })
+    found.push({ account: toPublic(account), creds: credentialsOf(account, token) })
   }
   return found
 }
@@ -174,11 +205,26 @@ export async function gitAuthEnv(): Promise<Record<string, string>> {
   const entries: { key: string; value: string }[] = []
   const seen = new Set<string>()
   for (const account of await readAccounts()) {
-    if (seen.has(account.host) || PROVIDERS[account.provider]?.issueTracker) continue
+    if (PROVIDERS[account.provider]?.issueTracker) continue
+    // Azure DevOps hosts every organization on one host, so its tokens go by organization (git
+    // matches http.<url> settings by path prefix), on dev.azure.com and the older visualstudio.com.
+    const urls =
+      account.provider === 'azure' && account.organization
+        ? [
+            ...[...new Set([account.organization, account.organization.toLowerCase()])].map(
+              (org) => `https://${account.host}/${encodeURIComponent(org)}/`
+            ),
+            `https://${account.organization.toLowerCase()}.visualstudio.com/`
+          ]
+        : [`https://${account.host}/`]
+    const fresh = urls.filter((url) => !seen.has(url))
+    if (fresh.length === 0) continue
     const token = decrypt(account)
     if (!token) continue
-    seen.add(account.host)
-    entries.push({ key: `http.https://${account.host}/.extraHeader`, value: gitAuthHeader(account.gitUsername, token) })
+    for (const url of fresh) {
+      seen.add(url)
+      entries.push({ key: `http.${url}.extraHeader`, value: gitAuthHeader(account.gitUsername, token) })
+    }
   }
   return gitConfigEnv(entries)
 }

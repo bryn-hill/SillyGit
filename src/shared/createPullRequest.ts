@@ -1,4 +1,5 @@
 import { guessProvider } from './accounts'
+import { azureNewPullRequestUrl, isAzureWebUrl } from './azure'
 import { splitRemoteRef } from './branchRemote'
 import type { BranchInfo, RepoRemote } from './types'
 
@@ -112,13 +113,28 @@ export function createProblem(input: { base: string | null; head: HeadChoice | n
   return null
 }
 
-/** Whether a remote's web address could be GitHub (github.com, or a host that isn't known to be GitLab or Bitbucket). */
+/**
+ * Whether the app can open pull requests for a remote's web address: Azure
+ * DevOps, or anything that could be GitHub (github.com, or a host that
+ * isn't known to be GitLab or Bitbucket).
+ */
 export function canOpenPullRequests(webUrl: string | null): boolean {
   if (!webUrl) return false
   try {
     const provider = guessProvider(new URL(webUrl).hostname.toLowerCase())
-    return provider === null || provider === 'github'
+    return provider === null || provider === 'github' || provider === 'azure'
   } catch {
     return false
   }
+}
+
+/** The service's name for links like "Open on GitHub". */
+export function pullRequestHostLabel(webUrl: string | null): string {
+  return isAzureWebUrl(webUrl) ? 'Azure DevOps' : 'GitHub'
+}
+
+/** The service's own new pull request form, with the branches picked. */
+export function newPullRequestWebUrl(webUrl: string, base: string, head: string): string {
+  if (isAzureWebUrl(webUrl)) return azureNewPullRequestUrl(webUrl, head, base)
+  return `${webUrl}/compare/${encodeURI(base)}...${encodeURI(head)}?expand=1`
 }

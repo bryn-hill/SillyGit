@@ -1,4 +1,4 @@
-// Types for reviewing a GitHub pull request inside the app (Launchpad → PR).
+// Types for reviewing a pull request (GitHub or Azure DevOps) inside the app (Launchpad → PR).
 
 export type PrCheckState = 'success' | 'failure' | 'pending' | 'neutral' | 'skipped'
 
@@ -80,6 +80,8 @@ export interface PullRequestDetail {
   comments: PrComment[]
   threads: PrReviewThread[]
   files: PrFile[]
+  /** Where it's hosted; GitHub when left out. */
+  provider?: import('./accounts').GitProvider
 }
 
 /** A line comment written in the app and not sent yet; it goes out with the review. */

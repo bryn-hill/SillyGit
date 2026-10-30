@@ -194,4 +194,45 @@ describe('gitAuthEnv', () => {
     // The first account for a host wins, and Bitbucket API tokens use Atlassian's fixed username.
     expect(decoded).toEqual(['ada:ada-t', 'x-bitbucket-api-token-auth:bb-t'])
   })
+
+  it('sends Azure DevOps tokens by organization, on both of its hosts', async () => {
+    await accounts.addAccount({ provider: 'azure', host: '', organization: 'https://dev.azure.com/Contoso/Web', token: 'ada-t' })
+    await accounts.addAccount({ provider: 'azure', host: '', organization: 'fabrikam', token: 'grace-t' })
+    const env = await accounts.gitAuthEnv()
+    const keys = Object.entries(env).filter(([k]) => k.startsWith('GIT_CONFIG_KEY_')).map(([, v]) => v)
+    expect(keys).toEqual([
+      'http.https://dev.azure.com/Contoso/.extraHeader',
+      'http.https://dev.azure.com/contoso/.extraHeader',
+      'http.https://contoso.visualstudio.com/.extraHeader',
+      'http.https://dev.azure.com/fabrikam/.extraHeader',
+      'http.https://fabrikam.visualstudio.com/.extraHeader'
+    ])
+  })
+})
+
+describe('Azure DevOps accounts', () => {
+  it('needs an organization, keeps it, and finds the account by it', async () => {
+    await expect(accounts.addAccount({ provider: 'azure', host: '', token: 'ada-t' })).rejects.toThrow(
+      'Enter your Azure DevOps organization.'
+    )
+    const seen: unknown[] = []
+    env.verify = async (creds) => {
+      seen.push(creds)
+      return verified('ada')
+    }
+    const added = await accounts.addAccount({ provider: 'azure', host: 'evil.example.com', organization: 'Contoso', token: 'ada-t' })
+    expect(added).toMatchObject({ provider: 'azure', host: 'dev.azure.com', organization: 'Contoso' })
+    expect(seen).toEqual([{ provider: 'azure', host: 'dev.azure.com', token: 'ada-t', username: undefined, organization: 'Contoso' }])
+    expect((await accounts.azureCredentialsFor('contoso'))?.creds).toMatchObject({ token: 'ada-t', organization: 'Contoso' })
+    expect(await accounts.azureCredentialsFor('fabrikam')).toBeNull()
+  })
+
+  it('keeps one account per login in each organization', async () => {
+    await accounts.addAccount({ provider: 'azure', host: '', organization: 'contoso', token: 'ada-1' })
+    await accounts.addAccount({ provider: 'azure', host: '', organization: 'fabrikam', token: 'ada-2' })
+    await accounts.addAccount({ provider: 'azure', host: '', organization: 'contoso', token: 'ada-3' })
+    const list = await accounts.listAccounts()
+    expect(list.map((a) => a.organization)).toEqual(['fabrikam', 'contoso'])
+    expect((await accounts.azureCredentialsFor('contoso'))?.creds.token).toBe('ada-3')
+  })
 })

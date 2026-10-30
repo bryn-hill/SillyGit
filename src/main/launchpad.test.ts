@@ -10,7 +10,9 @@ const fake = vi.hoisted(() => ({
     repo: string
   ) => Promise<{ authored: GhStylePullRequest[]; reviewRequested: GhStylePullRequest[] }>,
   apiIssues: (async () => []) as (repo: string) => Promise<GhStyleIssue[]>,
-  merged: [] as string[]
+    merged: [] as string[],
+  // Azure DevOps repos: their access, or the error for one with no account.
+  azure: new Map<string, unknown>()
 }))
 
 vi.mock('child_process', () => ({
@@ -29,7 +31,19 @@ vi.mock('child_process', () => ({
 }))
 
 vi.mock('./hosting', () => ({
-  githubAccess: async (repoPath: string) => fake.access.get(repoPath) ?? null
+  githubAccess: async (repoPath: string) => fake.access.get(repoPath) ?? null,
+  azureAccess: async (repoPath: string) => {
+    const found = fake.azure.get(repoPath)
+    if (found instanceof Error) throw found
+    return found ?? null
+  }
+}))
+
+vi.mock('./azure', () => ({
+  azureLaunchpad: async (_access: unknown, repoPath: string) => [
+    { number: 70, title: 'Azure PR', repoPath, repoName: 'web', bucket: 'needsMyReview', provider: 'azure' }
+  ],
+  azureMergePullRequest: async (_access: unknown, n: number) => void fake.merged.push(`azure#${n}`)
 }))
 
 vi.mock('./github', () => ({
@@ -91,6 +105,7 @@ const issue = (number: number, extra: Partial<GhStyleIssue> = {}): GhStyleIssue 
 
 beforeEach(() => {
   fake.access.clear()
+  fake.azure.clear()
   fake.merged = []
   fake.api = async () => ({ authored: [], reviewRequested: [] })
   fake.apiIssues = async () => []
@@ -276,6 +291,43 @@ describe('getLaunchpadData through the API', () => {
     expect(data.skippedRepos).toEqual([
       expect.objectContaining({ repoPath: '/repos/cli', reason: 'error', message: expect.stringMatching(/Add a GitHub token/) })
     ])
+  })
+})
+
+describe('Azure DevOps repos', () => {
+  const azureAccess = { account: { username: 'ada@contoso.com' } }
+
+  it('go through Azure DevOps alongside GitHub ones, without asking gh about them', async () => {
+    fake.azure.set('/repos/web', azureAccess)
+    ghAnswers([pr(6)])
+    const gh = vi.spyOn(fake, 'gh')
+    const data = await getLaunchpadData(['/repos/web', '/repos/cli'])
+    expect(data.pullRequests.map((p) => p.number)).toEqual([70, 6])
+    expect(gh.mock.calls.every(([cwd]) => cwd === '/repos/cli')).toBe(true)
+  })
+
+  it('needs no gh when every repo is on Azure DevOps', async () => {
+    fake.azure.set('/repos/web', azureAccess)
+    fake.gh = async () => {
+      throw ghError('', 'ENOENT')
+    }
+    const data = await getLaunchpadData(['/repos/web'])
+    expect(data).toMatchObject({ connected: true, login: 'ada@contoso.com' })
+  })
+
+  it('say how to sign in when no account covers their organization', async () => {
+    fake.azure.set('/repos/web', new Error('Add a token for the contoso organization in Settings → Accounts.'))
+    expect(await getLaunchpadData(['/repos/web'])).toMatchObject({ connected: false, reason: 'error', message: expect.stringMatching(/contoso/) })
+    ghAnswers([pr(6)])
+    const mixed = await getLaunchpadData(['/repos/web', '/repos/cli'])
+    expect(mixed.pullRequests.map((p) => p.number)).toEqual([6])
+    expect(mixed.skippedRepos).toEqual([expect.objectContaining({ repoPath: '/repos/web', message: expect.stringMatching(/contoso/) })])
+  })
+
+  it('merge through Azure DevOps', async () => {
+    fake.azure.set('/repos/web', azureAccess)
+    await mergePullRequest('/repos/web', 70)
+    expect(fake.merged).toEqual(['azure#70'])
   })
 })
 

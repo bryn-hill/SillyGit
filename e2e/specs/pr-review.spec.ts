@@ -143,7 +143,7 @@ test('line comments are drafted on the diff and sent with the review', async ({ 
 
   // A binary file has no diff to comment on.
   await pr.file('logo.png').click()
-  await expect(pr.diff).toContainText('GitHub has no diff for this file')
+  await expect(pr.diff).toContainText('No diff for this file')
   await pr.file('src/login.ts').click()
 
   await pr.verdict('Request changes').click()

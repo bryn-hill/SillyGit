@@ -9,8 +9,11 @@ const MAX_IMAGE_BYTES = 512 * 1024
 const AVATAR_SIZE = 64
 
 /** Downloads an image; null when the server has none (404), throws on other failures. */
-export async function downloadImage(url: string): Promise<{ type: string; data: Buffer } | null> {
-  const res = await httpFetch(url, { headers: { 'User-Agent': 'SillyGit' } })
+export async function downloadImage(
+  url: string,
+  headers: Record<string, string> = {}
+): Promise<{ type: string; data: Buffer } | null> {
+  const res = await httpFetch(url, { headers: { 'User-Agent': 'SillyGit', ...headers } })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`${res.status} fetching ${url}`)
   const type = (res.headers.get('content-type') ?? '').split(';')[0].trim()
@@ -20,8 +23,8 @@ export async function downloadImage(url: string): Promise<{ type: string; data: 
   return { type, data }
 }
 
-export async function downloadAsDataUrl(url: string): Promise<string | null> {
-  const image = await downloadImage(url)
+export async function downloadAsDataUrl(url: string, headers?: Record<string, string>): Promise<string | null> {
+  const image = await downloadImage(url, headers)
   return image ? toDataUrl(image.type, image.data) : null
 }
 
@@ -78,8 +81,13 @@ export interface AvatarSources {
   githubLookup?: (commits: Required<AvatarRequest>[]) => Promise<Map<string, string>>
   /** GitLab hosts to ask for an email's avatar, from the repo's remotes. */
   gitlabLookup?: (email: string) => Promise<string | null>
-  /** Ask Gravatar last. */
+  /** Ask Gravatar. */
   gravatar: boolean
+  /**
+   * The Azure DevOps organization's picture for an email, asked after
+   * Gravatar because it draws initials for everyone without a photo.
+   */
+  azureLookup?: (email: string) => Promise<{ url: string; headers: Record<string, string> } | null>
 }
 
 interface CacheEntry {
@@ -221,7 +229,7 @@ export class AvatarResolver {
 
     await runLimited(todo, DOWNLOAD_CONCURRENCY, async (req) => {
       let failed = lookupFailed
-      const candidates: string[] = []
+      const candidates: (string | { url: string; headers: Record<string, string> })[] = []
       const known = urls.get(req.email)
       if (known) candidates.push(known)
       else {
@@ -233,10 +241,15 @@ export class AvatarResolver {
           if (url) candidates.push(url)
         }
         if (sources.gravatar) candidates.push(gravatarUrl(req.email))
+        if (sources.azureLookup) candidates.push({ url: '', headers: {} })
       }
-      for (const url of candidates) {
+      for (const candidate of candidates) {
         try {
-          const image = await downloadImage(url)
+          // The Azure DevOps lookup is only made once Gravatar has nothing.
+          const found =
+            typeof candidate === 'string' ? { url: candidate, headers: {} } : await sources.azureLookup?.(req.email)
+          if (!found) continue
+          const image = await downloadImage(found.url, found.headers)
           if (image) {
             result[req.email] = await this.store(req.email, image)
             return

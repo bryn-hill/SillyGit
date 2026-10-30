@@ -6,7 +6,9 @@ import {
   defaultBase,
   headChoices,
   headRemoteBranch,
-  parseReviewers
+  newPullRequestWebUrl,
+  parseReviewers,
+  pullRequestHostLabel
 } from './createPullRequest'
 import type { BranchInfo, RepoRemote } from './types'
 
@@ -102,5 +104,22 @@ describe('canOpenPullRequests', () => {
     expect(canOpenPullRequests('https://gitlab.com/bryn/app')).toBe(false)
     expect(canOpenPullRequests('https://bitbucket.org/bryn/app')).toBe(false)
     expect(canOpenPullRequests(null)).toBe(false)
+  })
+})
+
+describe('Azure DevOps remotes', () => {
+  const azure = 'https://dev.azure.com/contoso/Web/_git/site'
+
+  it('can open pull requests there too', () => {
+    expect(canOpenPullRequests(azure)).toBe(true)
+    expect(pullRequestHostLabel(azure)).toBe('Azure DevOps')
+    expect(pullRequestHostLabel('https://github.com/bryn/app')).toBe('GitHub')
+  })
+
+  it("links each service's own new pull request form", () => {
+    expect(newPullRequestWebUrl(azure, 'main', 'feature')).toBe(`${azure}/pullrequestcreate?sourceRef=feature&targetRef=main`)
+    expect(newPullRequestWebUrl('https://github.com/bryn/app', 'main', 'feature')).toBe(
+      'https://github.com/bryn/app/compare/main...feature?expand=1'
+    )
   })
 })

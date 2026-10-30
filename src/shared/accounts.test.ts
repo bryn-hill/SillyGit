@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PROVIDERS, PROVIDER_ORDER, guessProvider, normalizeHost, parseRemoteUrl } from './accounts'
+import { PROVIDERS, PROVIDER_ORDER, guessProvider, normalizeHost, normalizeOrganization, parseRemoteUrl } from './accounts'
 
 describe('normalizeHost', () => {
   it('drops the scheme, user, path, trailing slash and case', () => {
@@ -53,6 +53,12 @@ describe('guessProvider', () => {
     expect(guessProvider('bitbucket.org')).toBe('bitbucket')
   })
 
+  it('knows Azure DevOps hosts, old and new', () => {
+    expect(guessProvider('dev.azure.com')).toBe('azure')
+    expect(guessProvider('ssh.dev.azure.com')).toBe('azure')
+    expect(guessProvider('contoso.visualstudio.com')).toBe('azure')
+  })
+
   it("doesn't guess for anything else", () => {
     expect(guessProvider('git.example.com')).toBeNull()
     expect(guessProvider('mygithub.com')).toBeNull()
@@ -75,6 +81,22 @@ describe('PROVIDERS', () => {
 
   it('only asks for a username where the token needs one', () => {
     expect(PROVIDER_ORDER.filter((p) => PROVIDERS[p].needsUsername)).toEqual(['bitbucket'])
-    expect(PROVIDER_ORDER.filter((p) => !PROVIDERS[p].hostEditable)).toEqual(['bitbucket'])
+    expect(PROVIDER_ORDER.filter((p) => !PROVIDERS[p].hostEditable)).toEqual(['bitbucket', 'azure'])
+    expect(PROVIDER_ORDER.filter((p) => PROVIDERS[p].needsOrganization)).toEqual(['azure'])
+  })
+
+  it('opens the organization’s token page for Azure DevOps', () => {
+    expect(PROVIDERS.azure.tokenUrl('dev.azure.com', 'contoso')).toBe('https://dev.azure.com/contoso/_usersSettings/tokens')
+    expect(PROVIDERS.azure.tokenUrl('dev.azure.com')).toBe('https://dev.azure.com/')
+  })
+})
+
+describe('normalizeOrganization', () => {
+  it('takes the organization from a name or any of its addresses', () => {
+    expect(normalizeOrganization(' contoso ')).toBe('contoso')
+    expect(normalizeOrganization('https://dev.azure.com/contoso/Web/_git/site')).toBe('contoso')
+    expect(normalizeOrganization('dev.azure.com/contoso')).toBe('contoso')
+    expect(normalizeOrganization('https://contoso.visualstudio.com/')).toBe('contoso')
+    expect(normalizeOrganization('')).toBe('')
   })
 })

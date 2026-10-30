@@ -6,7 +6,8 @@ import * as github from '../github'
 import { forgetJiraSites } from '../jira'
 import * as settings from '../settings'
 import { AvatarResolver, type AvatarSources } from '../avatars'
-import { githubAccess, remoteLocations } from '../hosting'
+import { azureAccess, githubAccess, remoteLocations } from '../hosting'
+import { azureAvatarFor } from '../azure'
 import { gitlabAvatarUrl } from '../providerApi'
 import { guessProvider, type NewAccountInput } from '../../shared/accounts'
 import type { AvatarRequest } from '../../shared/types'
@@ -32,6 +33,7 @@ function loadBotLogos(): Promise<AvatarSources['bots']> {
 async function avatarSources(repoPath: string): Promise<AvatarSources> {
   const signedIn = await accounts.listAccounts()
   const access = await githubAccess(repoPath).catch(() => null)
+  const azure = await azureAccess(repoPath).catch(() => null)
   // A host counts as GitLab when its signed-in account says so, or by name when none is.
   const isGitlab = (host: string): boolean => {
     const account = signedIn.find((a) => a.host === host)
@@ -53,7 +55,11 @@ async function avatarSources(repoPath: string): Promise<AvatarSources> {
             return null
           }
         : undefined,
-    gravatar: true
+    gravatar: true,
+    // A token that can't search the directory just means no Azure DevOps pictures.
+    azureLookup: azure
+      ? (email) => azureAvatarFor(azure.creds, azure.repo.organization, email).catch(() => null)
+      : undefined
   }
 }
 

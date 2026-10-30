@@ -83,7 +83,7 @@ export default function FileDiff({
       )}
       {hunks.length === 0 ? (
         <div className="diff-empty">
-          {file.patch == null ? 'GitHub has no diff for this file (binary or too large).' : 'No changes.'}
+          {file.patch == null ? 'No diff for this file (binary or too large).' : 'No changes.'}
         </div>
       ) : (
         <div className="diff-unified pr-diff">

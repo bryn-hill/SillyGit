@@ -4,7 +4,10 @@ import type { OpenPullRequest, RepoRemote } from '../shared/types'
 import { prNumber, type CleanupCandidate, type DeletedBranch, type MergeLanding } from '../shared/branchCleanup'
 import { GitError, remoteEnv, runGit } from './gitExec'
 import * as github from './github'
-import { githubAccess } from './hosting'
+import { azureAccess, githubAccess } from './hosting'
+import { azureOpenPullRequests } from './azure'
+import { parseRemoteUrl } from '../shared/accounts'
+import { azureWebUrl, parseAzureRemote } from '../shared/azure'
 import { renameParent, reparentChildren, stackParents } from './stacks'
 
 const execFileAsync = promisify(execFile)
@@ -39,6 +42,9 @@ async function localBranchExists(repoPath: string, name: string): Promise<boolea
  * git@github.com:owner/repo.git -> https://github.com/owner/repo.
  */
 export function remoteWebUrl(url: string): string | null {
+  const location = parseRemoteUrl(url)
+  const azure = location && parseAzureRemote(location.host, location.path)
+  if (azure) return azureWebUrl(azure)
   const trimmed = url.trim().replace(/\/$/, '').replace(/\.git$/, '')
   const scp = /^(?:[^@/]+@)?([^:/]+):(?!\/)(.+)$/.exec(trimmed)
   if (scp) return `https://${scp[1]}/${scp[2]}`
@@ -66,6 +72,13 @@ export async function listRepoRemotes(repoPath: string): Promise<RepoRemote[]> {
  * neither works.
  */
 export async function listOpenPullRequests(repoPath: string): Promise<OpenPullRequest[]> {
+  try {
+    const az = await azureAccess(repoPath)
+    if (az) return await azureOpenPullRequests(az)
+  } catch {
+    // On Azure DevOps but not signed in: there's nothing gh could add.
+    return []
+  }
   try {
     const access = await githubAccess(repoPath)
     if (access) return await github.listOpenPullRequests(access.creds, access.repo)

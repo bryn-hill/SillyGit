@@ -1,5 +1,6 @@
 import { fetchJson } from './http'
 import { isJiraCloud, type GitProvider } from '../shared/accounts'
+import { verifyAzureAccount } from './azure'
 
 /** A token and what the service needs alongside it. */
 export interface Credentials {
@@ -8,6 +9,8 @@ export interface Credentials {
   token: string
   /** Bitbucket and Jira Cloud: the Atlassian account email (or username) the token belongs to. */
   username?: string
+  /** Azure DevOps: the organization the token was made in. */
+  organization?: string
 }
 
 /** The REST API root for a host, e.g. github.com -> https://api.github.com. */
@@ -24,6 +27,8 @@ export function apiBase(provider: GitProvider, host: string): string {
     case 'jira':
       // Data Center has no v3; v2 has everything SillyGit asks for.
       return `https://${host}/rest/api/${isJiraCloud(host) ? 3 : 2}`
+    case 'azure':
+      return `https://${host}`
   }
 }
 
@@ -49,6 +54,9 @@ export function authHeaders(creds: Credentials): Record<string, string> {
     case 'jira':
       // Cloud API tokens go with the account email; Data Center tokens are bearer tokens.
       return creds.username ? { Authorization: basic(creds.username, creds.token) } : { Authorization: `Bearer ${creds.token}` }
+    case 'azure':
+      // Azure DevOps takes a PAT as the password of Basic auth, with any (here no) user name.
+      return { Authorization: basic('', creds.token) }
   }
 }
 
@@ -71,6 +79,8 @@ export interface VerifiedAccount {
   username: string
   displayName: string
   avatarUrl: string | null
+  /** Headers the avatar needs, for a service that only shows it to signed-in users (Azure DevOps). */
+  avatarHeaders?: Record<string, string>
   emails: string[]
 }
 
@@ -141,6 +151,8 @@ export async function verifyAccount(creds: Credentials): Promise<VerifiedAccount
         ])
       }
     }
+    case 'azure':
+      return verifyAzureAccount(creds)
     case 'gitea': {
       const user = await fetchJson<{ login: string; full_name?: string; avatar_url?: string; email?: string }>(
         `${base}/user`,

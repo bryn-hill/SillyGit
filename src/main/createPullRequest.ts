@@ -1,5 +1,7 @@
 import { remoteEnv, runGit } from './gitExec'
+import * as azure from './azure'
 import { transportFor } from './githubTransport'
+import { azureAccess } from './hosting'
 import { HttpError } from './http'
 import type { CreatedPullRequest, CreatePullRequestInput } from '../shared/createPullRequest'
 
@@ -45,6 +47,8 @@ function explainCreateError(err: unknown, input: CreatePullRequestInput): never 
  * undo the pull request; it comes back as `reviewersError`.
  */
 export async function createPullRequest(repoPath: string, input: CreatePullRequestInput): Promise<CreatedPullRequest> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azureCreatePullRequest(az, input)
   const t = await transportFor(repoPath)
   const path = `repos/${t.repo.owner}/${t.repo.name}/pulls`
   const pr = await t
@@ -70,6 +74,8 @@ export async function createPullRequest(repoPath: string, input: CreatePullReque
 
 /** People who can be asked for a review (the repo's assignable users), minus whoever is signed in. */
 export async function suggestedReviewers(repoPath: string): Promise<string[]> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azureSuggestedReviewers(az)
   const t = await transportFor(repoPath)
   const [assignees, me] = await Promise.all([
     t.rest<{ login: string }[]>('GET', `repos/${t.repo.owner}/${t.repo.name}/assignees?per_page=100`),

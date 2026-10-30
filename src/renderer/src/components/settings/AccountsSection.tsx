@@ -3,6 +3,7 @@ import {
   PROVIDERS,
   PROVIDER_ORDER,
   normalizeHost,
+  normalizeOrganization,
   type GitProvider,
   type ProviderAccount
 } from '../../../../shared/accounts'
@@ -14,12 +15,18 @@ function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAcco
   const [provider, setProvider] = useState<GitProvider>('github')
   const [host, setHost] = useState(PROVIDERS.github.defaultHost)
   const [username, setUsername] = useState('')
+  const [organization, setOrganization] = useState('')
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const info = PROVIDERS[provider]
   const cleanHost = info.hostEditable ? normalizeHost(host) : info.defaultHost
-  const ready = !!token.trim() && !!cleanHost && (!info.needsUsername || !!username.trim())
+  const cleanOrganization = info.needsOrganization ? normalizeOrganization(organization) : ''
+  const ready =
+    !!token.trim() &&
+    !!cleanHost &&
+    (!info.needsUsername || !!username.trim()) &&
+    (!info.needsOrganization || !!cleanOrganization)
 
   const choose = (next: GitProvider): void => {
     setProvider(next)
@@ -31,7 +38,13 @@ function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAcco
     if (!ready) return
     setBusy(true)
     setError(null)
-    const res = await window.api.addAccount({ provider, host: cleanHost, username: username.trim(), token: token.trim() })
+    const res = await window.api.addAccount({
+      provider,
+      host: cleanHost,
+      username: username.trim(),
+      ...(info.needsOrganization ? { organization: cleanOrganization } : {}),
+      token: token.trim()
+    })
     setBusy(false)
     if (!res.ok) {
       setError(res.error)
@@ -91,6 +104,20 @@ function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAcco
           />
         </>
       )}
+      {info.needsOrganization && (
+        <>
+          <label className="modal-label" htmlFor="account-organization">
+            Organization
+          </label>
+          <input
+            id="account-organization"
+            placeholder="contoso, or https://dev.azure.com/contoso"
+            spellCheck={false}
+            value={organization}
+            onChange={(e) => setOrganization(e.target.value)}
+          />
+        </>
+      )}
       <label className="modal-label" htmlFor="account-token">
         {info.issueTracker ? 'API token' : 'Personal access token'}
       </label>
@@ -108,7 +135,7 @@ function AddAccountForm({ onAdded, onCancel }: { onAdded: (account: ProviderAcco
           type="button"
           className="link-button"
           disabled={!cleanHost}
-          onClick={() => void window.api.openExternal(info.tokenUrl(cleanHost))}
+          onClick={() => void window.api.openExternal(info.tokenUrl(cleanHost, cleanOrganization || undefined))}
         >
           Create a token
         </button>
@@ -141,7 +168,8 @@ export default function AccountsSection(): JSX.Element {
   }, [])
 
   const remove = async (account: ProviderAccount): Promise<void> => {
-    const ok = window.confirm(`Remove ${account.username} on ${account.host}? Its token is deleted from this computer.`)
+    const where = account.organization ? `${account.host}/${account.organization}` : account.host
+    const ok = window.confirm(`Remove ${account.username} on ${where}? Its token is deleted from this computer.`)
     if (!ok) return
     const res = await window.api.removeAccount(account.id)
     if (res.ok) setAccounts(res.data)
@@ -172,6 +200,7 @@ export default function AccountsSection(): JSX.Element {
                 <div className="account-row-name">{a.displayName}</div>
                 <div className="commit-meta-dim">
                   {PROVIDERS[a.provider].label} · {a.username}
+                  {a.organization && ` · ${a.organization}`}
                   {a.host !== PROVIDERS[a.provider].defaultHost && ` · ${a.host}`}
                 </div>
               </div>

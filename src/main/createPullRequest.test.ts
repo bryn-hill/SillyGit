@@ -10,6 +10,7 @@ const fake = vi.hoisted(() => ({ access: null as GithubAccess | null }))
 
 vi.mock('./hosting', () => ({
   githubAccess: async () => fake.access,
+  azureAccess: async () => null,
   remoteLocations: async () => []
 }))
 

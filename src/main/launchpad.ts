@@ -3,7 +3,8 @@ import { basename } from 'path'
 import { promisify } from 'util'
 import { LAUNCHPAD_BUCKET_ORDER } from '../shared/launchpad'
 import * as github from './github'
-import { githubAccess, type GithubAccess } from './hosting'
+import { azureAccess, githubAccess, type GithubAccess } from './hosting'
+import { azureLaunchpad, azureMergePullRequest, type AzureAccess } from './azure'
 import { HttpError } from './http'
 import type {
   LaunchpadBucketId,
@@ -231,6 +232,16 @@ async function getRepoPullRequestsByApi(repoPath: string, access: GithubAccess):
   }
 }
 
+async function getRepoPullRequestsByAzure(repoPath: string, access: AzureAccess): Promise<RepoResult> {
+  try {
+    return { pullRequests: await azureLaunchpad(access, repoPath), issues: [] }
+  } catch (err) {
+    return { skipped: { repoPath, repoName: basename(repoPath), reason: 'error', message: errorMessage(err) } }
+  }
+}
+
+type AzureLookup = { access: AzureAccess } | { error: string } | null
+
 type GhLogin = { login: string } | { unavailable: LaunchpadData }
 
 async function ghLogin(repoPath: string): Promise<GhLogin> {
@@ -256,19 +267,36 @@ export async function getLaunchpadData(repoPaths: string[]): Promise<LaunchpadDa
   const paths = [...new Set(repoPaths)]
   if (paths.length === 0) return { connected: true, pullRequests: [], issues: [] }
 
-  const access = await Promise.all(paths.map((p) => githubAccess(p).catch(() => null)))
-  const viaGh = paths.filter((_, i) => !access[i])
+  // A repo on Azure DevOps goes through its API, or is skipped when no account can reach it.
+  const azure = await Promise.all(
+    paths.map(
+      (p): Promise<AzureLookup> =>
+        azureAccess(p).then(
+          (a) => (a ? { access: a } : null),
+          (err: unknown) => ({ error: errorMessage(err) })
+        )
+    )
+  )
+  const azureErrors = azure.flatMap((a) => (a && 'error' in a ? [a.error] : []))
+  if (azureErrors.length === paths.length) return { connected: false, reason: 'error', message: azureErrors[0], pullRequests: [] }
+  const access = await Promise.all(paths.map((p, i) => (azure[i] ? null : githubAccess(p).catch(() => null))))
+  const viaGh = paths.filter((_, i) => !access[i] && !azure[i])
 
   // gh is only needed (and only asked who's signed in, once) for repos without an account.
   const gh: { login?: Promise<GhLogin> } = {}
   const getGh = (): Promise<GhLogin> => (gh.login ??= ghLogin(viaGh[0]))
-  if (viaGh.length === paths.length) {
+  if (viaGh.length > 0 && viaGh.length === paths.length) {
     const result = await getGh()
     if ('unavailable' in result) return result.unavailable
   }
 
   const perRepo = await Promise.all(
     paths.map(async (repoPath, i) => {
+      const onAzure = azure[i]
+      if (onAzure && 'access' in onAzure) return getRepoPullRequestsByAzure(repoPath, onAzure.access)
+      if (onAzure) {
+        return { skipped: { repoPath, repoName: basename(repoPath), reason: 'error' as const, message: onAzure.error } }
+      }
       const repoAccess = access[i]
       if (repoAccess) return getRepoPullRequestsByApi(repoPath, repoAccess)
       const result = await getGh()
@@ -293,12 +321,18 @@ export async function getLaunchpadData(repoPaths: string[]): Promise<LaunchpadDa
   const skippedRepos = perRepo.flatMap((r) => ('skipped' in r ? [r.skipped] : []))
   const firstAccess = access.find((a) => a)
   const ghResult = gh.login ? await gh.login : null
-  const login = firstAccess?.account.username ?? (ghResult && 'login' in ghResult ? ghResult.login : undefined)
+  const firstAzure = azure.find((a): a is { access: AzureAccess } => !!a && 'access' in a)
+  const login =
+    firstAccess?.account.username ??
+    (ghResult && 'login' in ghResult ? ghResult.login : undefined) ??
+    firstAzure?.access.account.username
 
   return { connected: true, login, pullRequests, issues, skippedRepos }
 }
 
 export async function mergePullRequest(repoPath: string, number: number): Promise<void> {
+  const az = await azureAccess(repoPath)
+  if (az) return azureMergePullRequest(az, number)
   const access = await githubAccess(repoPath)
   if (access) await github.mergePullRequest(access.creds, access.repo, number)
   else await execFileAsync('gh', ['pr', 'merge', String(number), '--merge'], { cwd: repoPath })

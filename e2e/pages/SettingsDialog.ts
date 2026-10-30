@@ -8,6 +8,7 @@ export class SettingsDialog {
   readonly accounts: Locator
   readonly addAccountButton: Locator
   readonly addAccountForm: Locator
+  readonly organizationInput: Locator
   readonly tokenInput: Locator
   readonly hostInput: Locator
   readonly emailInput: Locator
@@ -36,6 +37,7 @@ export class SettingsDialog {
     this.tokenInput = this.addAccountForm.getByLabel(/^(Personal access|API) token$/)
     this.hostInput = this.addAccountForm.getByLabel('Server')
     this.emailInput = this.addAccountForm.getByLabel('Atlassian account email')
+    this.organizationInput = this.addAccountForm.getByLabel('Organization')
     this.showAvatars = this.root.getByRole('checkbox', { name: 'Show author avatars' })
     this.mergeAnimation = this.root.getByRole('checkbox', { name: 'Animate new commits and merges on the graph' })
     this.notifications = this.root.getByRole('region', { name: 'Notifications' })

@@ -1,4 +1,6 @@
+import * as azure from './azure'
 import { transportFor, type GithubTransport } from './githubTransport'
+import { azureAccess } from './hosting'
 import type {
   PrCheck,
   PrCheckState,
@@ -139,6 +141,8 @@ async function listFiles(t: GithubTransport, number: number): Promise<PrFile[]> 
 
 /** Everything the review screen shows for one pull request. */
 export async function getPullRequestDetail(repoPath: string, number: number): Promise<PullRequestDetail> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azurePullRequestDetail(az, repoPath, number)
   const t = await transportFor(repoPath)
   const [data, files] = await Promise.all([
     t.graphql<{ viewer: { login: string }; repository: { pullRequest: GqlPullRequest | null } | null }>(DETAIL_QUERY, {
@@ -200,6 +204,8 @@ export async function getPullRequestDetail(repoPath: string, number: number): Pr
 
 /** Sends a review: its verdict, summary and every drafted line comment, in one go. */
 export async function submitReview(repoPath: string, number: number, input: SubmitReviewInput): Promise<void> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azureSubmitReview(az, number, input)
   const t = await transportFor(repoPath)
   await t.rest('POST', `repos/${t.repo.owner}/${t.repo.name}/pulls/${number}/reviews`, {
     commit_id: input.headSha,
@@ -217,11 +223,15 @@ export async function submitReview(repoPath: string, number: number, input: Subm
 
 /** Adds a comment to the pull request's conversation. */
 export async function addComment(repoPath: string, number: number, body: string): Promise<void> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azureAddComment(az, number, body)
   const t = await transportFor(repoPath)
   await t.rest('POST', `repos/${t.repo.owner}/${t.repo.name}/issues/${number}/comments`, { body })
 }
 
 export async function replyToThread(repoPath: string, threadId: string, body: string): Promise<void> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azureReplyToThread(az, threadId, body)
   const t = await transportFor(repoPath)
   await t.graphql(
     `mutation($id: ID!, $body: String!) {
@@ -232,6 +242,8 @@ export async function replyToThread(repoPath: string, threadId: string, body: st
 }
 
 export async function setThreadResolved(repoPath: string, threadId: string, resolved: boolean): Promise<void> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azureSetThreadResolved(az, threadId, resolved)
   const t = await transportFor(repoPath)
   const mutation = resolved ? 'resolveReviewThread' : 'unresolveReviewThread'
   await t.graphql(`mutation($id: ID!) { ${mutation}(input: { threadId: $id }) { thread { id } } }`, { id: threadId })
@@ -244,6 +256,8 @@ interface RestPullRepo {
 
 /** Where the pull request's commits live, for checking it out (see prCheckout.ts). */
 export async function getPullRequestHead(repoPath: string, number: number): Promise<PullRequestHead> {
+  const az = await azureAccess(repoPath)
+  if (az) return azure.azurePullRequestHead(az, number)
   const t = await transportFor(repoPath)
   const pr = await t.rest<{ head: { ref: string; repo: RestPullRepo | null }; base: { repo: RestPullRepo } }>(
     'GET',
