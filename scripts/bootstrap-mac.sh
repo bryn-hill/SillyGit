@@ -20,6 +20,8 @@
 #   --skip-runner         don't register any runners
 #   --runner-repo O/R     register a runner for this repo (repeatable); turns
 #                         off the self-hosted detection, so list them all
+#   --with-wine           install Rosetta and Wine, so release builds on this
+#                         runner can make the Windows installer
 #   --runner-labels L     extra labels, comma-separated (default: mini).
 #                         self-hosted, macOS and ARM64 are always added by
 #                         GitHub, which is what ci.yml asks for.
@@ -40,6 +42,7 @@ SKIP_RUNNER=0
 RUNNER_REPOS=""
 RUNNER_LABELS="mini"
 NODE_MAJOR=22
+WITH_WINE=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -49,6 +52,7 @@ while [ $# -gt 0 ]; do
     --skip-clone) SKIP_CLONE=1 ;;
     --skip-npm) SKIP_NPM=1 ;;
     --skip-runner) SKIP_RUNNER=1 ;;
+    --with-wine) WITH_WINE=1 ;;
     --runner-repo) RUNNER_REPOS="$RUNNER_REPOS $2"; shift ;;
     --runner-labels) RUNNER_LABELS="$2"; shift ;;
     -h|--help) sed -n '2,/^$/s/^# \{0,1\}//p' "$0"; exit 0 ;;
@@ -114,6 +118,20 @@ fi
 note "node $(node --version), npm $(npm --version)"
 git lfs install --skip-repo >/dev/null
 note "git-lfs hooks installed"
+
+if [ "$WITH_WINE" = 1 ]; then
+  step "Rosetta and Wine"
+  if /usr/bin/pgrep -q oahd; then
+    note "Rosetta already installed"
+  else
+    softwareupdate --install-rosetta --agree-to-license
+  fi
+  if brew list --cask wine-stable >/dev/null 2>&1; then
+    note "wine-stable already installed"
+  else
+    brew install --cask wine-stable
+  fi
+fi
 
 step "GitHub sign-in"
 if ! gh auth status >/dev/null 2>&1; then
