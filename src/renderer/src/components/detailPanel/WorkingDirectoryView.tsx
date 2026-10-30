@@ -39,6 +39,8 @@ export interface WorkingProps {
   activeFile: ActiveFile | null
   /** Lanes, which replace the staged/unstaged lists and commit box while they're on. */
   lanes: Lanes
+  /** Opens "Stash…" with these files picked, or every change when null. */
+  onStashFiles: (paths: string[] | null) => void
 }
 
 /** The side bar for the WIP row: conflicted, unstaged and staged files, and the commit box. */
@@ -64,7 +66,8 @@ export default function WorkingDirectoryView({
   onCopyText,
   onOpenFile,
   activeFile,
-  lanes
+  lanes,
+  onStashFiles
 }: WorkingProps): JSX.Element {
   const staged = status?.staged ?? []
   const unstaged = status?.unstaged ?? []
@@ -81,7 +84,8 @@ export default function WorkingDirectoryView({
     onUnstage,
     onOpenFileView,
     onFilterHistory,
-    onCopyText
+    onCopyText,
+    onStash: (path: string) => onStashFiles([path])
   }
 
   if (lanes.lanes && !operation) {
@@ -109,6 +113,14 @@ export default function WorkingDirectoryView({
           <span>
             {totalChanges} file change{totalChanges === 1 ? '' : 's'} in working directory
           </span>
+          <button
+            className="link-button stash-some"
+            disabled={totalChanges === conflicted.length}
+            onClick={() => onStashFiles(null)}
+            title="Pick which changes to stash, and whether to keep the staged ones"
+          >
+            Stash…
+          </button>
           <button
             className="link-button lanes-start"
             onClick={() => void lanes.start()}

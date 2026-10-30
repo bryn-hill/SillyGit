@@ -168,6 +168,10 @@ const api = {
   ): Wrapped<string> =>
     ipcRenderer.invoke('git:compare-file-diff', repoPath, fromHash, toHash, path, ignoreWhitespace, oldPath),
   stash: (repoPath: string, message?: string): Wrapped<void> => ipcRenderer.invoke('git:stash', repoPath, message),
+  stashPush: (repoPath: string, options: import('../shared/types').StashPushOptions): Wrapped<void> =>
+    ipcRenderer.invoke('git:stash-push', repoPath, options),
+  stashFiles: (repoPath: string, hash: string): Wrapped<import('../shared/types').StashFile[]> =>
+    ipcRenderer.invoke('git:stash-files', repoPath, hash),
   stashPop: (repoPath: string, ref?: string): Wrapped<void> => ipcRenderer.invoke('git:stash-pop', repoPath, ref),
   stashApply: (repoPath: string, ref: string): Wrapped<void> => ipcRenderer.invoke('git:stash-apply', repoPath, ref),
   stashDrop: (repoPath: string, ref: string): Wrapped<void> => ipcRenderer.invoke('git:stash-drop', repoPath, ref),

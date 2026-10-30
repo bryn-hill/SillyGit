@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ConflictableResult, FileStatus, FixupResult, PullMode, StashEntry } from '../../../shared/types'
+import type { ConflictableResult, FileStatus, FixupResult, PullMode, StashEntry, StashPushOptions } from '../../../shared/types'
 import type { RebasePlan, RebaseStep } from '../../../shared/rebase'
 import type { MergeResult, MergeStrategy } from '../../../shared/mergeOptions'
 import type { DragSource, DropOption } from '../lib/refDrag'
@@ -36,6 +36,8 @@ export function useGitActions({
   const { repoPath, undoLabel, redoLabel, refresh } = repo
   const { runGit, runGitThen, withBusy } = git
   const [pullMode, setPullMode] = useState<PullMode>(loadPullMode)
+  // "Stash…" while it's open, with the files it opened with picked (every change when null).
+  const [stashPicker, setStashPicker] = useState<{ paths: string[] | null } | null>(null)
 
   /**
    * Runs a git command that may stop on conflicts. When it does, the working
@@ -222,6 +224,12 @@ export function useGitActions({
     if (message !== null) runGit((path) => window.api.stash(path, message.trim() || undefined))
   }
 
+  /** Stashes what "Stash…" picked. */
+  const stashPush = (options: StashPushOptions): void => {
+    setStashPicker(null)
+    runGit((path) => window.api.stashPush(path, options))
+  }
+
   /** Pops the newest stash. */
   const stashPop = (): void => runGit((path) => window.api.stashPop(path))
 
@@ -278,6 +286,10 @@ export function useGitActions({
     stashWithMessage,
     stashPop,
     stashActions,
+    stashPicker,
+    openStashPicker: (paths: string[] | null = null): void => setStashPicker({ paths }),
+    closeStashPicker: (): void => setStashPicker(null),
+    stashPush,
     copyText,
     openUrl,
     revealRepo

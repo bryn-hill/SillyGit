@@ -1,10 +1,12 @@
 import type { JSX } from 'react'
-import type { FileStatus, GraphCommit, OperationState, RepoStatus } from '../../../shared/types'
+import type { FileStatus, GraphCommit, OperationState, RepoStatus, StashEntry, StashFile } from '../../../shared/types'
 import type { Selection } from '../lib/selection'
 import type { ActiveFile, ConflictActions, MultiCommitActions, OpenFileView } from './detailPanel/types'
 import WorkingDirectoryView from './detailPanel/WorkingDirectoryView'
 import CommitDetailView from './detailPanel/CommitDetailView'
 import MultiCommitView from './detailPanel/MultiCommitView'
+import StashDetailView from './detailPanel/StashDetailView'
+import type { StashActions } from './Sidebar'
 import type { Lanes } from '../hooks/useLanes'
 import type { CommitHints } from '../../../shared/commitHints'
 
@@ -43,12 +45,33 @@ interface Props {
   /** The file shown in the main area, if any, to mark in the lists. */
   activeFile: ActiveFile | null
   lanes: Lanes
+  stashes: StashEntry[]
+  stashActions: StashActions
+  onOpenStashFile: (hash: string, file: StashFile) => void
+  /** Opens "Stash…" with these files picked, or every change when null. */
+  onStashFiles: (paths: string[] | null) => void
 }
 
-/** The side bar beside the graph: the working changes, one commit, or several selected commits. */
+/** The side bar beside the graph: the working changes, one commit, several selected commits, or a stash. */
 export default function DetailPanel(props: Props): JSX.Element {
   if (props.selection.type === 'commits') {
     return <MultiCommitView hashes={props.selection.hashes} lookup={props.lookupCommit} actions={props.multiActions} />
+  }
+  if (props.selection.type === 'stash') {
+    const { hash } = props.selection
+    const stash = props.stashes.find((s) => s.hash === hash)
+    if (!stash) return <div className="detail-panel-content">Loading…</div>
+    return (
+      <StashDetailView
+        // A fresh file list for each stash.
+        key={hash}
+        repoPath={props.repoPath}
+        stash={stash}
+        activePath={props.activeFile?.path ?? null}
+        onOpenFile={(file) => props.onOpenStashFile(hash, file)}
+        actions={props.stashActions}
+      />
+    )
   }
   if (props.selection.type === 'commit') {
     const { hash } = props.selection
@@ -90,6 +113,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       onOpenFile={props.onOpenWorkingFile}
       activeFile={props.activeFile}
       lanes={props.lanes}
+      onStashFiles={props.onStashFiles}
     />
   )
 }

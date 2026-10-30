@@ -1,5 +1,5 @@
 import { useRef, useState, type SetStateAction } from 'react'
-import type { CommitSearchHit, FileStatus } from '../../../shared/types'
+import type { CommitSearchHit, FileStatus, StashFile } from '../../../shared/types'
 import type { GraphFilter } from '../../../shared/historySearch'
 import type { CompareTarget } from '../../../shared/compare'
 import type { ClickModifiers } from '../components/CommitGraph'
@@ -14,8 +14,8 @@ import { useArrowKeySelection } from './useArrowKeySelection'
  * What the main area shows and how you move around it: the selection in the
  * graph, and what can take the graph's place (Launchpad, the merge resolver,
  * the interactive rebase editor, a comparison of two commits or branches, a
- * file's history or blame, the file editor, a working file's diff, or a commit
- * full window).
+ * file's history or blame, the file editor, a working file's diff, a commit
+ * full window, or a stashed file's diff).
  */
 export function useMainView({
   repo,
@@ -27,7 +27,7 @@ export function useMainView({
   /** A dialog is open, so the arrow keys are left alone. */
   keysBlocked: boolean
 }) {
-  const { repoPath, status, commitByHash, graphRows, graphOrder } = repo
+  const { repoPath, status, commitByHash, graphRows, graphOrder, stashes } = repo
   const [selection, setSelection] = useState<Selection>({ type: 'working' })
   // Launchpad and the repository overview take the same place: `showLaunchpad`
   // is whether one of them is up, `overview` which.
@@ -56,6 +56,8 @@ export function useMainView({
   const [fileViewOpens, setFileViewOpens] = useState(0)
   // An uncommitted file's diff shown in place of the graph, from the unstaged or staged list.
   const [workingDiff, setWorkingDiff] = useState<{ path: string; staged: boolean } | null>(null)
+  // A stashed file's diff shown in place of the graph, from the stash's file list.
+  const [openStashFile, setOpenStashFile] = useState<{ hash: string; file: StashFile } | null>(null)
   // History or Blame as last picked in the open file view, kept when another file is picked beside it.
   const fileViewMode = useRef<FileViewMode>('history')
   const [searchFocusToken, setSearchFocusToken] = useState(0)
@@ -69,7 +71,8 @@ export function useMainView({
     selection,
     (hash) => commitByHash.has(hash),
     graphRows[0]?.commit.hash ?? null,
-    hasWorkingChanges
+    hasWorkingChanges,
+    (hash) => stashes.some((s) => s.hash === hash)
   )
   if (fixedSelection !== selection) setSelection(fixedSelection)
 
@@ -83,8 +86,12 @@ export function useMainView({
     }
   }
 
+  // Only the selected stash's file shows; picking anything else leaves it behind.
+  const stashFile =
+    openStashFile && selection.type === 'stash' && selection.hash === openStashFile.hash ? openStashFile : null
+
   useArrowKeySelection(
-    !(fullScreenHash || workingDiff || showLaunchpad || keysBlocked || resolvingPath || rebaseBase || compare),
+    !(fullScreenHash || workingDiff || stashFile || showLaunchpad || keysBlocked || resolvingPath || rebaseBase || compare),
     selection,
     graphOrder,
     hasWorkingChanges,
@@ -97,6 +104,7 @@ export function useMainView({
     setComparing(null)
     setFileView(null)
     setWorkingDiff(null)
+    setOpenStashFile(null)
   }
 
   /** After a command stopped on conflicts: the working changes, so the conflicted files are in view. */
@@ -187,6 +195,25 @@ export function useMainView({
     setFullScreenLine(line)
   }
 
+  /** Shows a stash's files in the side bar, from the stash list. */
+  const selectStash = (hash: string): void => {
+    closeFileViews()
+    closeEditor()
+    setShowLaunchpad(false)
+    setSelection({ type: 'stash', hash })
+  }
+
+  /** Opens a stashed file's diff full window; clicking the open file again closes it. */
+  const showStashFile = (hash: string, file: StashFile): void => {
+    if (stashFile?.hash === hash && stashFile.file.path === file.path && !editingPath) {
+      setOpenStashFile(null)
+      return
+    }
+    closeEditor()
+    setFileView(null)
+    setOpenStashFile({ hash, file })
+  }
+
   /** From history or blame: a commit's diff full window, at that file. */
   const openCommitFromFileView = (hash: string, path: string): void => {
     setFileView(null)
@@ -243,7 +270,8 @@ export function useMainView({
         path: fileView.path,
         staged: workingDiff?.path === fileView.path ? workingDiff.staged : !status?.unstaged.some((f) => f.path === fileView.path)
       }
-    : (workingDiff ?? (fullScreenHash && fullScreenPath ? { path: fullScreenPath } : null))
+    : (workingDiff ??
+      (stashFile ? { path: stashFile.file.path } : fullScreenHash && fullScreenPath ? { path: fullScreenPath } : null))
 
   const handleClickCommit = (hash: string, modifiers: ClickModifiers): void =>
     setSelection((current) => clickCommit(current, hash, modifiers, graphOrder))
@@ -393,6 +421,10 @@ export function useMainView({
     closeFileView: () => setFileView(null),
     workingDiff,
     closeWorkingDiff: () => setWorkingDiff(null),
+    stashFile,
+    selectStash,
+    showStashFile,
+    closeStashFile: () => setOpenStashFile(null),
     activeFile,
     searchFocusToken,
     closeFileViews,

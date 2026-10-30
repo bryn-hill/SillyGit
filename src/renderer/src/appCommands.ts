@@ -128,6 +128,8 @@ export function appCommands(app: {
       applyPatch: git.applyPatch,
       stash: git.stash,
       stashWithMessage: git.stashWithMessage,
+      stashSome: () => git.openStashPicker(),
+      showStash: (stash) => view.selectStash(stash.hash),
       applyStash: git.stashActions.apply,
       popStash: git.stashActions.pop,
       createBranch: branches.promptCreateBranch,

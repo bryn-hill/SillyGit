@@ -87,6 +87,14 @@ describe('fixSelection', () => {
     const s = { type: 'commit', hash: 'x' } as const
     expect(fixSelection(s, has, null, false)).toBe(s)
   })
+
+  it('keeps a stash while it exists, then moves off it', () => {
+    const s = { type: 'stash', hash: 's1' } as const
+    const hasStash = (hash: string): boolean => hash === 's1'
+    expect(fixSelection(s, has, 'e', false, hasStash)).toBe(s)
+    expect(fixSelection({ type: 'stash', hash: 's2' }, has, 'e', false, hasStash)).toEqual({ type: 'commit', hash: 'e' })
+    expect(fixSelection({ type: 'stash', hash: 's2' }, has, 'e', true, hasStash)).toEqual({ type: 'working' })
+  })
 })
 
 describe('stepSelection', () => {

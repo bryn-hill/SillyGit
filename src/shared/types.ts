@@ -77,6 +77,25 @@ export interface StashEntry {
   date: string
 }
 
+/** What "Stash…" stashes. */
+export interface StashPushOptions {
+  message?: string
+  /** Only these files; every change when left out or empty. */
+  paths?: string[]
+  /** Leave staged changes in the working tree as well as stashing them (`--keep-index`). */
+  keepIndex?: boolean
+}
+
+/** A file a stash holds: its change against the commit it was stashed on. */
+export interface StashFile {
+  path: string
+  origPath?: string
+  /** A, M, D or R; untracked files are A. */
+  status: string
+  /** An untracked file, stored in the stash's third parent. */
+  untracked: boolean
+}
+
 /** A commit search match and its row in the full graph (0 = newest). */
 export interface CommitSearchHit {
   hash: string

@@ -200,6 +200,39 @@ describe('stashes', () => {
     // Stash commits stay out of the graph.
     expect((await git.getGraphLog(dir)).map((c) => c.subject)).toEqual(['Second', 'First'])
   })
+
+  it('lists the files a stash holds, untracked ones included, and their diffs', async () => {
+    writeFileSync(join(dir, 'a.txt'), 'three\n')
+    commitFile('gone.txt', 'gone\n', 'Add gone')
+    run('rm', '-q', 'gone.txt')
+    writeFileSync(join(dir, 'new.txt'), 'new\n')
+    await git.stash(dir)
+    const [entry] = await git.listStashes(dir)
+    expect(await git.stashFiles(dir, entry.hash)).toEqual([
+      { path: 'a.txt', status: 'M', untracked: false },
+      { path: 'gone.txt', status: 'D', untracked: false },
+      { path: 'new.txt', status: 'A', untracked: true }
+    ])
+    expect(await git.getCommitFileDiff(dir, entry.hash, 'a.txt')).toContain('+three')
+    expect(await git.getCommitFileDiff(dir, `${entry.hash}^3`, 'new.txt')).toContain('+new')
+  })
+
+  it('stashes only the picked files, and can keep the staged changes', async () => {
+    commitFile('b.txt', 'b\n', 'Add b')
+    writeFileSync(join(dir, 'a.txt'), 'edit\n')
+    writeFileSync(join(dir, 'b.txt'), 'edit b\n')
+    writeFileSync(join(dir, 'new.txt'), 'new\n')
+    await git.stashPush(dir, { paths: ['a.txt', 'new.txt'], message: 'some' })
+    expect(run('status', '--porcelain')).toBe('M b.txt')
+    const [entry] = await git.listStashes(dir)
+    expect(entry.message).toBe('On main: some')
+    expect((await git.stashFiles(dir, entry.hash)).map((f) => f.path)).toEqual(['a.txt', 'new.txt'])
+
+    run('add', 'b.txt')
+    await git.stashPush(dir, { keepIndex: true })
+    expect(run('status', '--porcelain')).toBe('M  b.txt')
+    expect((await git.listStashes(dir)).length).toBe(2)
+  })
 })
 
 describe('searchCommits', () => {

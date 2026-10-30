@@ -72,6 +72,9 @@ export interface PaletteContext {
     applyPatch: () => void
     stash: () => void
     stashWithMessage: () => void
+    /** Opens "Stash…" to pick files. */
+    stashSome: () => void
+    showStash: (stash: StashEntry) => void
     applyStash: (stash: StashEntry) => void
     popStash: (stash: StashEntry) => void
     createBranch: () => void
@@ -202,7 +205,13 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
     if (ctx.hasWorkingChanges && !operation) {
       add('stash', 'Stash changes', a.stash)
       add('stash-message', 'Stash changes with a message…', a.stashWithMessage)
+      add('stash-some', 'Stash some files…', a.stashSome)
     }
+    addList(
+      'stash-show',
+      'Show stash',
+      stashes.map((stash) => ({ id: stash.ref, label: `${stash.ref}: ${stash.message}`, run: () => a.showStash(stash) }))
+    )
     addList(
       'stash-apply',
       'Apply stash',

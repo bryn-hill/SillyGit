@@ -26,7 +26,8 @@ export default function ChangeList({
   onUnstage,
   onOpenFileView,
   onFilterHistory,
-  onCopyText
+  onCopyText,
+  onStash
 }: {
   /** Which list this is. */
   staged: boolean
@@ -41,6 +42,8 @@ export default function ChangeList({
   onOpenFileView: OpenFileView
   onFilterHistory?: (path: string) => void
   onCopyText: (text: string) => void
+  /** Opens "Stash…" with just this file picked. */
+  onStash: (path: string) => void
 }): JSX.Element {
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus } | null>(null)
   const customMenu = useCustomCommandMenu()
@@ -154,6 +157,7 @@ export default function ChangeList({
             onOpenInEditor: () => editor.open(fileMenu.file.path),
             editorName: editor.name,
             onCopyPath: () => onCopyText(fileMenu.file.path),
+            onStash: () => onStash(fileMenu.file.path),
             lfs: { installed: lfs.info.installed, tracked: !!fileMenu.file.lfs, onTrack: lfs.track },
             // Only untracked files: ignoring a tracked file does nothing until it's removed from the index.
             onIgnore: fileMenu.file.untracked ? onIgnore : undefined,

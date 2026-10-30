@@ -8,6 +8,7 @@ import SidebarStacks from './SidebarStacks'
 import type { StackInfo } from '../../../shared/stacks'
 import { dropTarget, useRefDrag } from './RefDrag'
 import { pressable } from '../lib/pressable'
+import { stashTitle } from '../lib/stash'
 import { favouriteBranches, staleAge, type BranchListSettings } from '../../../shared/branchStatus'
 import { CLEANUP_SNOOZE_DAYS, formatCount, tidyCount } from '../../../shared/branchCleanup'
 import { WORKSPACE_BRANCH } from '../../../shared/lanes'
@@ -64,6 +65,9 @@ interface Props {
   actions: RefActions
   stashes: StashEntry[]
   stashActions: StashActions
+  /** A click on a stash shows its files; the selected one is highlighted. */
+  onSelectStash: (stash: StashEntry) => void
+  selectedStash: string | null
   /** Starred branch names, pinned above the rest. */
   favourites: string[]
   onToggleFavourite: (name: string) => void
@@ -78,14 +82,6 @@ interface Props {
   /** Remotes, tags, worktrees and submodules. */
   listActions: SidebarListActions
   stacks: StackInfo[]
-}
-
-/** "WIP on main: 1a2b3c4 Subject" -> "Subject"; "On main: my note" -> "my note". */
-function stashTitle(message: string): string {
-  const wip = message.match(/^WIP on [^:]+: [0-9a-f]+ (.*)$/)
-  if (wip) return wip[1]
-  const named = message.match(/^On [^:]+: (.*)$/)
-  return named ? named[1] : message
 }
 
 type BranchMenu = (e: React.MouseEvent, branch: BranchInfo) => void
@@ -345,6 +341,8 @@ export default function Sidebar({
   actions,
   stashes,
   stashActions,
+  onSelectStash,
+  selectedStash,
   favourites,
   onToggleFavourite,
   branchListSettings,
@@ -414,6 +412,7 @@ export default function Sidebar({
 
   const stashMenuSections = (stash: StashEntry): ContextMenuItem[][] => [
     [
+      { id: 'show', label: 'Show files', onSelect: () => onSelectStash(stash) },
       { id: 'apply', label: 'Apply stash', onSelect: () => stashActions.apply(stash) },
       { id: 'pop', label: 'Pop stash', onSelect: () => stashActions.pop(stash) }
     ],
@@ -573,8 +572,14 @@ export default function Sidebar({
             {stashes.map((stash) => (
               <li
                 key={stash.ref}
-                className="tree-row stash-row"
-                title={`${stash.ref}: ${stash.message}\nDouble-click to apply, right-click for more`}
+                className={`tree-row stash-row ${selectedStash === stash.hash ? 'selected' : ''}`}
+                aria-current={selectedStash === stash.hash}
+                title={`${stash.ref}: ${stash.message}\nClick to see its files, double-click to apply, right-click for more`}
+                tabIndex={0}
+                onClick={() => onSelectStash(stash)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && e.key === 'Enter') onSelectStash(stash)
+                }}
                 onDoubleClick={() => stashActions.apply(stash)}
                 onContextMenu={(e) => {
                   e.preventDefault()
@@ -583,13 +588,31 @@ export default function Sidebar({
               >
                 <span className="stash-title">{stashTitle(stash.message)}</span>
                 <span className="stash-actions">
-                  <button className="link-button" onClick={() => stashActions.apply(stash)}>
+                  <button
+                    className="link-button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      stashActions.apply(stash)
+                    }}
+                  >
                     Apply
                   </button>
-                  <button className="link-button" onClick={() => stashActions.pop(stash)}>
+                  <button
+                    className="link-button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      stashActions.pop(stash)
+                    }}
+                  >
                     Pop
                   </button>
-                  <button className="link-button danger" onClick={() => stashActions.drop(stash)}>
+                  <button
+                    className="link-button danger"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      stashActions.drop(stash)
+                    }}
+                  >
                     Delete
                   </button>
                 </span>

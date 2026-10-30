@@ -2,9 +2,11 @@ import type { ClickModifiers } from '../components/CommitGraph'
 
 // 'none' means nothing is selected and the side bar is closed. 'commits' is a
 // multi-selection (newest first); `anchor` is where a Shift-click range starts.
+// 'stash' is a stash picked in the side bar, by its commit hash (its stash@{n} moves as others go).
 export type Selection =
   | { type: 'none' }
   | { type: 'working' }
+  | { type: 'stash'; hash: string }
   | { type: 'commit'; hash: string }
   | { type: 'commits'; hashes: string[]; anchor: string }
 
@@ -65,14 +67,20 @@ export function clickCommit(
 /**
  * Keeps a selection on something that exists: drops commits that went away
  * (e.g. after a rebase) and moves between the WIP row and the newest commit as
- * working changes come and go. Returns `selection` itself when it's fine.
+ * working changes come and go, and off a stash once it's popped or deleted.
+ * Returns `selection` itself when it's fine.
  */
 export function fixSelection(
   selection: Selection,
   hasCommit: (hash: string) => boolean,
   newestHash: string | null,
-  hasWorkingChanges: boolean
+  hasWorkingChanges: boolean,
+  hasStash: (hash: string) => boolean = () => false
 ): Selection {
+  if (selection.type === 'stash') {
+    if (hasStash(selection.hash)) return selection
+    return hasWorkingChanges || newestHash === null ? { type: 'working' } : { type: 'commit', hash: newestHash }
+  }
   if (newestHash === null || selection.type === 'none') return selection
   if (selection.type === 'commits') {
     const kept = selection.hashes.filter(hasCommit)

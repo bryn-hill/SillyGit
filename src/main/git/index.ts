@@ -46,7 +46,7 @@ export {
   getTreeHash,
   searchCommits
 } from './history'
-export { listStashes, stash, stashApply, stashDrop, stashPop } from './stash'
+export { listStashes, stash, stashApply, stashDrop, stashFiles, stashPop, stashPush } from './stash'
 export {
   applyCommitSplit,
   applyPatch,

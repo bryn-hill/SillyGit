@@ -3,6 +3,7 @@ import Sidebar from './Sidebar'
 import CommitGraph from './CommitGraph'
 import DetailPanel from './DetailPanel'
 import CommitFullView from './CommitFullView'
+import StashFileView from './StashFileView'
 import WorkingFileView from './WorkingFileView'
 import FileHistoryView from './FileHistoryView'
 import MergeResolver from './MergeResolver'
@@ -180,6 +181,10 @@ export default function MainArea({
             onFilterHistory={(path) => view.filterHistory({ path })}
             onCopyText={git.copyText}
             lanes={lanes}
+            stashes={repo.stashes}
+            stashActions={git.stashActions}
+            onOpenStashFile={view.showStashFile}
+            onStashFiles={git.openStashPicker}
           />
         </div>
       </>
@@ -198,6 +203,7 @@ export default function MainArea({
   // graph and detail panel are kept mounted (just hidden) while covered, and always sit in the same places,
   // so switching views never rebuilds or moves them: the panel's file list stays put, and the graph comes
   // back scrolled where it was.
+  const stashOfFile = view.stashFile && repo.stashes.find((s) => s.hash === view.stashFile?.hash)
   let cover: JSX.Element | null = null
   let panelBeside = true
   if (launchpad || overview) {
@@ -245,7 +251,7 @@ export default function MainArea({
       />
     )
   } else if (fileView) {
-    panelBeside = selection.type === 'working' || selection.type === 'commit'
+    panelBeside = selection.type === 'working' || selection.type === 'commit' || selection.type === 'stash'
     cover = (
       <FileHistoryView
         key={`${repoPath}\0${view.fileViewOpens}`}
@@ -295,6 +301,15 @@ export default function MainArea({
         lanes={diffLanes}
       />
     )
+  } else if (view.stashFile && stashOfFile) {
+    cover = (
+      <StashFileView
+        repoPath={repoPath}
+        stash={stashOfFile}
+        file={view.stashFile.file}
+        onClose={view.closeStashFile}
+      />
+    )
   } else if (fullScreenHash) {
     cover = (
       <CommitFullView
@@ -330,6 +345,8 @@ export default function MainArea({
           actions={branches.refActions}
           stashes={repo.stashes}
           stashActions={git.stashActions}
+          onSelectStash={(stash) => view.selectStash(stash.hash)}
+          selectedStash={selection.type === 'stash' ? selection.hash : null}
           favourites={branches.favourites}
           onToggleFavourite={branches.toggleFavourite}
           branchListSettings={settings.branchList}

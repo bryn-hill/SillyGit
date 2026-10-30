@@ -19,6 +19,8 @@ interface FileMenuOptions {
   onOpenInEditor?: () => void
   editorName?: string | null
   onCopyPath?: () => void
+  /** Stashes just this file (working changes). */
+  onStash?: () => void
   /** Offers "Track with LFS" (in the working tree): whether git-lfs is installed, the file is already in LFS, and how to track a pattern. */
   lfs?: { installed: boolean; tracked: boolean; onTrack: (pattern: string) => void }
   /** Offers "Ignore" for an untracked file: adds the chosen pattern to the repo's .gitignore. */
@@ -49,6 +51,8 @@ export function fileMenuSections(o: FileMenuOptions): ContextMenuItem[][] {
     const folder = folderOf(o.path)
     if (folder) history.push({ id: 'filter-folder', label: 'Show history of this folder', onSelect: () => filter(folder) })
   }
+  const stash: ContextMenuItem[] = []
+  if (o.onStash) stash.push({ id: 'stash', label: 'Stash this file…', onSelect: o.onStash })
   const copy: ContextMenuItem[] = []
   if (o.onCopyPath) copy.push({ id: 'copy-path', label: 'Copy file path', onSelect: o.onCopyPath })
   const tracking: ContextMenuItem[] = []
@@ -81,5 +85,5 @@ export function fileMenuSections(o: FileMenuOptions): ContextMenuItem[][] {
       }))
     })
   }
-  return [open, history, tracking, copy, o.custom ?? []].filter((section) => section.length > 0)
+  return [open, history, stash, tracking, copy, o.custom ?? []].filter((section) => section.length > 0)
 }

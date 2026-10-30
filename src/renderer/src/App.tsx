@@ -16,6 +16,7 @@ import { LfsContext } from './lib/lfs'
 import { EditorContext } from './lib/editorMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
+import StashDialog from './components/StashDialog'
 import CreatePullRequestDialog from './components/CreatePullRequestDialog'
 import GitFlowSetupDialog from './components/GitFlowSetupDialog'
 import CloneDialog from './components/CloneDialog'
@@ -164,7 +165,15 @@ export default function App(): JSX.Element {
   useEscapeToLeaveFocus()
   const helpOpen = useHelpCentre().open
   useAppShortcuts({
-    blocked: !!promptDialog || !!branches.gitFlow.setup || dialogs.showSettings || dialogs.showActivity || dialogs.showPublish || tabs.cloneOpen || helpOpen,
+    blocked:
+      !!promptDialog ||
+      !!branches.gitFlow.setup ||
+      !!actions.stashPicker ||
+      dialogs.showSettings ||
+      dialogs.showActivity ||
+      dialogs.showPublish ||
+      tabs.cloneOpen ||
+      helpOpen,
     paletteOpen: dialogs.palette !== null,
     repoOpen: !!repoPath,
     busy: git.busy,
@@ -355,6 +364,14 @@ export default function App(): JSX.Element {
               actions.absorb(head, diff, assignments)
             }}
             onClose={commitBox.closeAbsorb}
+          />
+        )}
+        {actions.stashPicker && repoPath && (
+          <StashDialog
+            status={repo.status}
+            initialPaths={actions.stashPicker.paths}
+            onStash={actions.stashPush}
+            onClose={actions.closeStashPicker}
           />
         )}
         {branches.createPullRequest && repoPath && (

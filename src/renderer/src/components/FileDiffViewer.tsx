@@ -37,6 +37,8 @@ interface Props {
   onOpenFileView?: (path: string, ref: string | null, mode: 'history' | 'blame') => void
   /** While lanes are on (working changes only): each line's lane, and moving lines to another. */
   lanes?: DiffLanes
+  /** Just shows the change, with no hunk actions (a stash's file, say). */
+  readOnly?: boolean
 }
 
 /** A changed line's lane, to edge it in the lane's colour. */
@@ -418,7 +420,8 @@ export default function FileDiffViewer({
   onWorkingTreeChanged,
   onEditFile,
   onOpenFileView,
-  lanes
+  lanes,
+  readOnly = false
 }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('diff')
   const [layout, setLayout] = useState<Layout>('unified')
@@ -629,7 +632,7 @@ export default function FileDiffViewer({
   // unstaged a hunk or a few lines at a time, and an unstaged one discarded. A diff that
   // ignores whitespace isn't the file's real change, so it can't be applied, and nor can
   // the diff of what LFS pointers stand for, since git stores the pointers. A comparison only reads.
-  const actions: HunkAction[] = lfsWantContents || base != null
+  const actions: HunkAction[] = lfsWantContents || readOnly || base != null
     ? []
     : hash != null
       ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory')]

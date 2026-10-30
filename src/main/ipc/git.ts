@@ -6,7 +6,7 @@ import * as editFile from '../editFile'
 import { activityLog } from '../gitExec'
 import { watchRepo, stopWatching } from '../watcher'
 import type { PartialAction } from '../../shared/lineStaging'
-import type { PullMode } from '../../shared/types'
+import type { PullMode, StashPushOptions } from '../../shared/types'
 import type { CommitSearch, GraphFilter } from '../../shared/historySearch'
 import { getGraphScope } from '../settings'
 import { wrap } from './wrap'
@@ -213,6 +213,12 @@ export function registerGitHandlers(): void {
   )
 
   ipcMain.handle('git:stash', (_e, repoPath: string, message?: string) => wrap(() => git.stash(repoPath, message)))
+
+  ipcMain.handle('git:stash-push', (_e, repoPath: string, options: StashPushOptions) =>
+    wrap(() => git.stashPush(repoPath, options))
+  )
+
+  ipcMain.handle('git:stash-files', (_e, repoPath: string, hash: string) => wrap(() => git.stashFiles(repoPath, hash)))
 
   ipcMain.handle('git:stash-pop', (_e, repoPath: string, ref?: string) => wrap(() => git.stashPop(repoPath, ref)))
 
