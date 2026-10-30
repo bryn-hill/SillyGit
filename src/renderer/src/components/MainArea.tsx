@@ -71,6 +71,13 @@ export default function MainArea({
       openRepos={tabs.tabs}
       onClose={() => view.setShowLaunchpad(false)}
       onOpenTerminal={onOpenTerminal}
+      onStartedWork={(path, message) => {
+        // Switching tabs clears the notice, so it goes up after.
+        void tabs.openRecentRepo(path).then(() => {
+          if (path === repoPath) refresh(path)
+          setNotice(message)
+        })
+      }}
     />
   )
   if (!repoPath) {

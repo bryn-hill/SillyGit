@@ -214,3 +214,27 @@
 .launchpad-card-clickable:hover .launchpad-card-title {
   color: var(--accent);
 }
+
+.launchpad-issue-labels {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.launchpad-issue-label {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border: 1px solid;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.start-work-issue {
+  font-size: 12.5px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

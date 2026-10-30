@@ -131,4 +131,22 @@ describe('with a repo', () => {
     const hashes = run('log', '--format=%h', '-2', '--abbrev=7').split('\n')
     expect(text.body).toBe(`## Commits\n\n- fix: only commit (${hashes[1]})\n- test: cover it (${hashes[0]})`)
   })
+
+  it('closes the issue the branch was started from', async () => {
+    run('checkout', '-q', '-b', '42-fix-export')
+    run('config', 'branch.42-fix-export.sillygit-issue', '42')
+    run('commit', '-q', '--allow-empty', '-m', 'fix: export on safari')
+    expect(await pullRequestText(dir, 'main', 'HEAD', '42-fix-export')).toEqual({
+      title: 'fix: export on safari',
+      body: 'Closes #42'
+    })
+    run('commit', '-q', '--allow-empty', '--amend', '-m', 'fix: export on safari', '-m', 'Fixes #42')
+    expect((await pullRequestText(dir, 'main', 'HEAD', '42-fix-export')).body).toBe('Fixes #42')
+  })
+
+  it("doesn't take a number at the start of a branch name for an issue", async () => {
+    run('checkout', '-q', '-b', '2026-release')
+    run('commit', '-q', '--allow-empty', '-m', 'chore: release')
+    expect((await pullRequestText(dir, 'main', 'HEAD', '2026-release')).body).toBe('')
+  })
 })

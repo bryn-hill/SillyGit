@@ -6,6 +6,7 @@ import { ConflictPanel } from './ConflictPanel'
 import { DetailPanel } from './DetailPanel'
 import { FileEditor } from './FileEditor'
 import { InteractiveRebase } from './InteractiveRebase'
+import { Launchpad } from './Launchpad'
 import { FileHistory } from './FileHistory'
 import { WorkingFileView } from './WorkingFileView'
 import { MergeTool } from './MergeTool'
@@ -29,6 +30,7 @@ export class SillyGitApp {
   readonly tabs: RepoTabs
   readonly editor: FileEditor
   readonly pullRequest: PullRequestReview
+  readonly launchpad: Launchpad
   readonly rebase: InteractiveRebase
   readonly fileHistory: FileHistory
   readonly workingFile: WorkingFileView
@@ -65,6 +67,7 @@ export class SillyGitApp {
     this.tabs = new RepoTabs(page)
     this.editor = new FileEditor(page)
     this.pullRequest = new PullRequestReview(page)
+    this.launchpad = new Launchpad(page)
     this.rebase = new InteractiveRebase(page)
     this.fileHistory = new FileHistory(page)
     this.workingFile = new WorkingFileView(page)

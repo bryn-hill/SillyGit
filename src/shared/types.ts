@@ -214,12 +214,43 @@ export interface LaunchpadSkippedRepo {
   message?: string
 }
 
+/** An open issue assigned to the signed-in user, in one of the workspace repos. */
+export interface LaunchpadIssue {
+  number: number
+  title: string
+  url: string
+  author: string
+  labels: { name: string; color: string }[]
+  updatedAt: string
+  repoPath: string
+  repoName: string
+}
+
+/** What Start work can do in a repo, for its dialog. */
+export interface IssueWorkOptions {
+  currentBranch: string | null
+  /** Where a fresh branch starts, e.g. "origin/main". */
+  base: string
+  /** Whether the current branch is one the new branch could stack on (not the trunk). */
+  canStack: boolean
+  /** The branch name asked about exists already, so Start work checks it out. */
+  branchExists: boolean
+}
+
+export interface StartIssueWorkResult {
+  branch: string
+  created: boolean
+  stackedOn: string | null
+}
+
 export interface LaunchpadData {
   connected: boolean
   reason?: LaunchpadUnavailableReason
   message?: string
   login?: string
   pullRequests: LaunchpadPullRequest[]
+  /** Open issues assigned to the user, most recently updated first. */
+  issues?: LaunchpadIssue[]
   skippedRepos?: LaunchpadSkippedRepo[]
 }
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GhStylePullRequest } from './github'
+import type { GhStyleIssue, GhStylePullRequest } from './github'
 import type { GithubAccess } from './hosting'
 
 // The gh CLI and the GitHub API are both stand-ins here.
@@ -9,6 +9,7 @@ const fake = vi.hoisted(() => ({
   api: (async () => ({ authored: [], reviewRequested: [] })) as (
     repo: string
   ) => Promise<{ authored: GhStylePullRequest[]; reviewRequested: GhStylePullRequest[] }>,
+  apiIssues: (async () => []) as (repo: string) => Promise<GhStyleIssue[]>,
   merged: [] as string[]
 }))
 
@@ -33,6 +34,7 @@ vi.mock('./hosting', () => ({
 
 vi.mock('./github', () => ({
   launchpadPullRequests: (_creds: unknown, repo: { name: string }) => fake.api(repo.name),
+  assignedIssues: (_creds: unknown, repo: { name: string }) => fake.apiIssues(repo.name),
   mergePullRequest: async (_creds: unknown, repo: { name: string }, n: number) => void fake.merged.push(`${repo.name}#${n}`)
 }))
 
@@ -77,9 +79,21 @@ const access = (username: string): GithubAccess => ({
   account: { id: '1', provider: 'github', host: 'github.com', username, displayName: username, avatar: null, emails: [], addedAt: '' }
 })
 
+const issue = (number: number, extra: Partial<GhStyleIssue> = {}): GhStyleIssue => ({
+  number,
+  title: `Issue ${number}`,
+  url: `https://github.com/o/r/issues/${number}`,
+  author: { login: 'grace' },
+  labels: [],
+  updatedAt: '2026-10-01T00:00:00Z',
+  ...extra
+})
+
 beforeEach(() => {
   fake.access.clear()
   fake.merged = []
+  fake.api = async () => ({ authored: [], reviewRequested: [] })
+  fake.apiIssues = async () => []
   ghAnswers([])
 })
 
@@ -125,7 +139,7 @@ describe('buckets', () => {
 
 describe('getLaunchpadData through gh', () => {
   it('is connected with nothing to show for no repos', async () => {
-    expect(await getLaunchpadData([])).toEqual({ connected: true, pullRequests: [] })
+    expect(await getLaunchpadData([])).toEqual({ connected: true, pullRequests: [], issues: [] })
   })
 
   it('merges repos, drops my own PRs from the review list, and sorts by bucket then recency', async () => {
@@ -177,6 +191,43 @@ describe('getLaunchpadData through gh', () => {
       { repoPath: '/repos/local', repoName: 'local', reason: 'not-github' },
       { repoPath: '/repos/broken', repoName: 'broken', reason: 'error', message: 'HTTP 502' }
     ])
+  })
+})
+
+describe('assigned issues', () => {
+  it('lists issues assigned to me from gh and the API, newest first', async () => {
+    fake.access.set('/repos/api', access('ada'))
+    fake.apiIssues = async () => [issue(4, { updatedAt: '2026-10-03T00:00:00Z', labels: [{ name: 'bug', color: 'd73a4a' }] })]
+    const gh = vi.fn(async (_cwd: string, args: string[]) => {
+      if (args[0] === 'api') return 'ada'
+      if (args[0] === 'issue') return JSON.stringify([issue(8, { updatedAt: '2026-10-05T00:00:00Z' })])
+      return '[]'
+    })
+    fake.gh = gh
+    const data = await getLaunchpadData(['/repos/api', '/repos/cli'])
+    expect(data.issues?.map((i) => [i.number, i.repoName])).toEqual([
+      [8, 'cli'],
+      [4, 'api']
+    ])
+    expect(data.issues?.[1]).toMatchObject({ author: 'grace', labels: [{ name: 'bug', color: 'd73a4a' }], repoPath: '/repos/api' })
+    expect(gh).toHaveBeenCalledWith('/repos/cli', expect.arrayContaining(['issue', 'list', '--assignee', '@me']))
+  })
+
+  it('still shows pull requests when issues fail to load', async () => {
+    fake.access.set('/repos/api', access('ada'))
+    fake.api = async () => ({ authored: [pr(5)], reviewRequested: [] })
+    fake.apiIssues = async () => {
+      throw new Error('Issues are disabled')
+    }
+    fake.gh = async (_cwd, args) => {
+      if (args[0] === 'api') return 'ada'
+      if (args[0] === 'issue') throw ghError('the repository has disabled issues')
+      return JSON.stringify(args.includes('--author') ? [pr(6)] : [])
+    }
+    const data = await getLaunchpadData(['/repos/api', '/repos/cli'])
+    expect(data.pullRequests.map((p) => p.number).sort()).toEqual([5, 6])
+    expect(data.issues).toEqual([])
+    expect(data.skippedRepos).toEqual([])
   })
 })
 

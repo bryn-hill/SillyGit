@@ -369,6 +369,15 @@ const api = {
     ipcRenderer.invoke('launchpad:get-data', repoPaths),
   launchpadMergePr: (repoPath: string, number: number): Wrapped<void> =>
     ipcRenderer.invoke('launchpad:merge-pr', repoPath, number),
+  issueWorkOptions: (repoPath: string, branch: string): Wrapped<import('../shared/types').IssueWorkOptions> =>
+    ipcRenderer.invoke('issues:work-options', repoPath, branch),
+  startIssueWork: (
+    repoPath: string,
+    number: number,
+    branch: string,
+    stack: boolean
+  ): Wrapped<import('../shared/types').StartIssueWorkResult> =>
+    ipcRenderer.invoke('issues:start-work', repoPath, number, branch, stack),
   prGetDetail: (repoPath: string, number: number): Wrapped<import('../shared/prReview').PullRequestDetail> =>
     ipcRenderer.invoke('pr:get-detail', repoPath, number),
   prSubmitReview: (repoPath: string, number: number, input: import('../shared/prReview').SubmitReviewInput): Wrapped<void> =>

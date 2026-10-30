@@ -8,6 +8,7 @@ import { HttpError } from './http'
 import type {
   LaunchpadBucketId,
   LaunchpadData,
+  LaunchpadIssue,
   LaunchpadPullRequest,
   LaunchpadSkippedRepo
 } from '../shared/types'
@@ -31,6 +32,10 @@ const PR_FIELDS = [
   'additions',
   'deletions'
 ].join(',')
+
+const ISSUE_FIELDS = 'number,title,url,author,labels,updatedAt'
+
+type RepoResult = { pullRequests: LaunchpadPullRequest[]; issues: LaunchpadIssue[] } | { skipped: LaunchpadSkippedRepo }
 
 interface RawCheckRollupItem {
   state?: string
@@ -136,6 +141,19 @@ function toPullRequest(
   }
 }
 
+function toIssue(issue: github.GhStyleIssue, repoPath: string, repoName: string): LaunchpadIssue {
+  return {
+    number: issue.number,
+    title: issue.title,
+    url: issue.url,
+    author: issue.author?.login ?? 'unknown',
+    labels: (issue.labels ?? []).map((l) => ({ name: l.name, color: l.color })),
+    updatedAt: issue.updatedAt,
+    repoPath,
+    repoName
+  }
+}
+
 function bucketSort(a: LaunchpadPullRequest, b: LaunchpadPullRequest): number {
   const order = LAUNCHPAD_BUCKET_ORDER.indexOf(a.bucket) - LAUNCHPAD_BUCKET_ORDER.indexOf(b.bucket)
   if (order !== 0) return order
@@ -146,10 +164,7 @@ function isNotGithubError(message: string): boolean {
   return /no git remotes found|could not determine|not a git repository|failed to determine/i.test(message)
 }
 
-async function getRepoPullRequests(
-  repoPath: string,
-  login: () => Promise<string>
-): Promise<{ pullRequests: LaunchpadPullRequest[] } | { skipped: LaunchpadSkippedRepo }> {
+async function getRepoPullRequests(repoPath: string, login: () => Promise<string>): Promise<RepoResult> {
   const repoName = basename(repoPath)
   try {
     const authored = JSON.parse(
@@ -167,7 +182,11 @@ async function getRepoPullRequests(
         PR_FIELDS
       ])
     ) as RawPullRequest[]
-    return { pullRequests: classify(authored, reviewRequested, await login(), repoPath, repoName) }
+    // Issues are extra: a repo with them turned off still shows its pull requests.
+    const issues = await runGh(repoPath, ['issue', 'list', '--state', 'open', '--assignee', '@me', '--json', ISSUE_FIELDS])
+      .then((out) => (JSON.parse(out) as github.GhStyleIssue[]).map((i) => toIssue(i, repoPath, repoName)))
+      .catch(() => [])
+    return { pullRequests: classify(authored, reviewRequested, await login(), repoPath, repoName), issues }
   } catch (err) {
     const message = errorMessage(err)
     if (isNotGithubError(message)) {
@@ -192,14 +211,17 @@ function classify(
 }
 
 /** The same as getRepoPullRequests, through the GitHub API with the signed-in account's token. */
-async function getRepoPullRequestsByApi(
-  repoPath: string,
-  access: GithubAccess
-): Promise<{ pullRequests: LaunchpadPullRequest[] } | { skipped: LaunchpadSkippedRepo }> {
+async function getRepoPullRequestsByApi(repoPath: string, access: GithubAccess): Promise<RepoResult> {
   const repoName = basename(repoPath)
   try {
-    const { authored, reviewRequested } = await github.launchpadPullRequests(access.creds, access.repo)
-    return { pullRequests: classify(authored, reviewRequested, access.account.username, repoPath, repoName) }
+    const [{ authored, reviewRequested }, issues] = await Promise.all([
+      github.launchpadPullRequests(access.creds, access.repo),
+      github.assignedIssues(access.creds, access.repo).catch(() => [])
+    ])
+    return {
+      pullRequests: classify(authored, reviewRequested, access.account.username, repoPath, repoName),
+      issues: issues.map((i) => toIssue(i, repoPath, repoName))
+    }
   } catch (err) {
     const message =
       err instanceof HttpError && err.status === 401
@@ -232,7 +254,7 @@ async function ghLogin(repoPath: string): Promise<GhLogin> {
  */
 export async function getLaunchpadData(repoPaths: string[]): Promise<LaunchpadData> {
   const paths = [...new Set(repoPaths)]
-  if (paths.length === 0) return { connected: true, pullRequests: [] }
+  if (paths.length === 0) return { connected: true, pullRequests: [], issues: [] }
 
   const access = await Promise.all(paths.map((p) => githubAccess(p).catch(() => null)))
   const viaGh = paths.filter((_, i) => !access[i])
@@ -265,12 +287,15 @@ export async function getLaunchpadData(repoPaths: string[]): Promise<LaunchpadDa
   const pullRequests = perRepo
     .flatMap((r) => ('pullRequests' in r ? r.pullRequests : []))
     .sort(bucketSort)
+  const issues = perRepo
+    .flatMap((r) => ('issues' in r ? r.issues : []))
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   const skippedRepos = perRepo.flatMap((r) => ('skipped' in r ? [r.skipped] : []))
   const firstAccess = access.find((a) => a)
   const ghResult = gh.login ? await gh.login : null
   const login = firstAccess?.account.username ?? (ghResult && 'login' in ghResult ? ghResult.login : undefined)
 
-  return { connected: true, login, pullRequests, skippedRepos }
+  return { connected: true, login, pullRequests, issues, skippedRepos }
 }
 
 export async function mergePullRequest(repoPath: string, number: number): Promise<void> {
