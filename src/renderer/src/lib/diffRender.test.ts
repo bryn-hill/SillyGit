@@ -26,9 +26,9 @@ describe('renderFileDiff', () => {
     expect(hunks.map((h) => h.header)).toEqual(['@@ -1,4 +1,4 @@', '@@ -10,2 +10,3 @@ function tail() {'])
     expect(hunks[0].lines).toEqual([
       { type: 'context', text: 'const a = 1', oldLine: 1, newLine: 1 },
-      { type: 'remove', text: 'const b = 2', oldLine: 2, newLine: null },
+      { type: 'remove', text: 'const b = 2', oldLine: 2, newLine: null, words: [[10, 11]] },
       { type: 'remove', text: 'const c = 3', oldLine: 3, newLine: null },
-      { type: 'add', text: 'const b = 20', oldLine: null, newLine: 2 },
+      { type: 'add', text: 'const b = 20', oldLine: null, newLine: 2, words: [[10, 12]] },
       { type: 'context', text: 'const d = 4', oldLine: 4, newLine: 3 }
     ])
   })

@@ -123,7 +123,7 @@ export default function FileDiff({
                       </span>
                       <span
                         className="line-code"
-                        dangerouslySetInnerHTML={{ __html: highlightLine(line.text, lang) || ' ' }}
+                        dangerouslySetInnerHTML={{ __html: highlightLine(line.text, lang, line.words) || ' ' }}
                       />
                     </div>
                     {(here.length > 0 || pending.length > 0 || composing) && (

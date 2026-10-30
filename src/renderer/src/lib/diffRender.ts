@@ -1,10 +1,13 @@
 import { parseCommitDiff, type DiffUnit } from '../../../shared/diffSplit'
+import { changedWordsForHunk, type WordRange } from '../../../shared/wordDiff'
 
 export interface RenderedDiffLine {
   type: 'add' | 'remove' | 'context'
   text: string
   oldLine: number | null
   newLine: number | null
+  /** The words that changed against the line this one replaced (or was replaced by), if paired. */
+  words?: WordRange[] | null
 }
 
 export interface RenderedHunk {
@@ -41,6 +44,9 @@ function renderHunk(unit: DiffUnit): RenderedHunk {
       newLine++
     }
   }
+  changedWordsForHunk(lines).forEach((words, i) => {
+    if (words) lines[i].words = words
+  })
   return { id: unit.id, header: headerLine, lines }
 }
 

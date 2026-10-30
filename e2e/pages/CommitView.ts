@@ -20,6 +20,12 @@ export class CommitView {
     this.backButton = this.root.getByTitle('Back to repository view')
   }
 
+  /** The words highlighted as changed within paired removed/added lines. */
+  changedWords(): Locator {
+    // Playwright's role list has no 'mark' yet, so match the element itself.
+    return this.diff.locator('mark')
+  }
+
   file(path: string): Locator {
     return this.files.locator('.file-row').filter({ hasText: path })
   }
