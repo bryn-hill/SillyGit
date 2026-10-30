@@ -1,4 +1,5 @@
 import { lfsTrackOptions } from '../../../shared/lfs'
+import { ignoreOptions } from '../../../shared/gitignore'
 import type { ContextMenuItem } from './ContextMenu'
 import { folderOf } from '../../../shared/historySearch'
 
@@ -20,6 +21,8 @@ interface FileMenuOptions {
   onCopyPath?: () => void
   /** Offers "Track with LFS" (in the working tree): whether git-lfs is installed, the file is already in LFS, and how to track a pattern. */
   lfs?: { installed: boolean; tracked: boolean; onTrack: (pattern: string) => void }
+  /** Offers "Ignore" for an untracked file: adds the chosen pattern to the repo's .gitignore. */
+  onIgnore?: (pattern: string) => void
   /** The user's custom commands for files. */
   custom?: ContextMenuItem[]
 }
@@ -48,13 +51,13 @@ export function fileMenuSections(o: FileMenuOptions): ContextMenuItem[][] {
   }
   const copy: ContextMenuItem[] = []
   if (o.onCopyPath) copy.push({ id: 'copy-path', label: 'Copy file path', onSelect: o.onCopyPath })
-  const lfs: ContextMenuItem[] = []
-  if (o.lfs?.tracked) lfs.push({ id: 'lfs-tracked', label: 'Stored in Git LFS', disabled: true })
+  const tracking: ContextMenuItem[] = []
+  if (o.lfs?.tracked) tracking.push({ id: 'lfs-tracked', label: 'Stored in Git LFS', disabled: true })
   else if (o.lfs && !o.lfs.installed) {
-    lfs.push({ id: 'lfs-track', label: 'Track with LFS', disabled: true, title: 'Install Git LFS from git-lfs.com first' })
+    tracking.push({ id: 'lfs-track', label: 'Track with LFS', disabled: true, title: 'Install Git LFS from git-lfs.com first' })
   } else if (o.lfs) {
     const { onTrack } = o.lfs
-    lfs.push({
+    tracking.push({
       id: 'lfs-track',
       label: 'Track with LFS',
       submenu: lfsTrackOptions(o.path).map((option) => ({
@@ -65,5 +68,18 @@ export function fileMenuSections(o: FileMenuOptions): ContextMenuItem[][] {
       }))
     })
   }
-  return [open, history, lfs, copy, o.custom ?? []].filter((section) => section.length > 0)
+  if (o.onIgnore) {
+    const onIgnore = o.onIgnore
+    tracking.push({
+      id: 'ignore',
+      label: 'Ignore',
+      submenu: ignoreOptions(o.path).map((option) => ({
+        id: `ignore-${option.pattern}`,
+        label: option.label,
+        title: `Add ${option.pattern} to .gitignore`,
+        onSelect: () => onIgnore(option.pattern)
+      }))
+    })
+  }
+  return [open, history, tracking, copy, o.custom ?? []].filter((section) => section.length > 0)
 }

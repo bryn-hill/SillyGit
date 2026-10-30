@@ -17,6 +17,8 @@ const api = {
   unstageAll: (repoPath: string): Wrapped<void> => ipcRenderer.invoke('git:unstage-all', repoPath),
   discard: (repoPath: string, path: string, untracked: boolean): Wrapped<void> =>
     ipcRenderer.invoke('git:discard', repoPath, path, untracked),
+  /** Adds `pattern` to the repo's root .gitignore; false when it was already there. */
+  ignore: (repoPath: string, pattern: string): Wrapped<boolean> => ipcRenderer.invoke('git:ignore', repoPath, pattern),
   commit: (repoPath: string, message: string, amend?: boolean): Wrapped<void> =>
     ipcRenderer.invoke('git:commit', repoPath, message, amend),
   lastCommitMessage: (repoPath: string): Wrapped<string> => ipcRenderer.invoke('git:last-commit-message', repoPath),

@@ -23,6 +23,8 @@ interface Props {
   onStage: (paths: string[]) => void
   onUnstage: (paths: string[]) => void
   onDiscard: (file: FileStatus) => void
+  /** Adds a pattern to the root .gitignore. */
+  onIgnore: (pattern: string) => void
   onCommit: () => void
   onOpenCommitFileDiff: (hash: string, path: string, line?: number) => void
   headHash: string | null
@@ -71,6 +73,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       onStage={props.onStage}
       onUnstage={props.onUnstage}
       onDiscard={props.onDiscard}
+      onIgnore={props.onIgnore}
       onCommit={props.onCommit}
       amend={props.amend}
       onAmendChange={props.onAmendChange}

@@ -139,6 +139,7 @@ export default function MainArea({
             onStage={git.stage}
             onUnstage={git.unstage}
             onDiscard={git.discard}
+            onIgnore={git.ignore}
             onCommit={commitBox.commit}
             onOpenCommitFileDiff={view.openCommitFile}
             headHash={headHash}

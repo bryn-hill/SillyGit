@@ -73,6 +73,18 @@ export function useGitActions({
     runGit((path) => window.api.discard(path, file.path, file.untracked))
   }
 
+  /** Adds `pattern` to the root .gitignore, so the files it matches drop out of the working changes. */
+  const ignore = (pattern: string): void =>
+    runGit(
+      (path) => window.api.ignore(path, pattern),
+      (added) =>
+        setNotice(
+          added
+            ? `Added ${pattern} to .gitignore. Commit .gitignore so everyone ignores it too.`
+            : `.gitignore already has ${pattern}.`
+        )
+    )
+
   const undo = (): void => {
     if (undoLabel) runGit((path) => window.api.undo(path), (done) => setNotice(`${done}.`))
   }
@@ -221,6 +233,7 @@ export function useGitActions({
     stage,
     unstage,
     discard,
+    ignore,
     undo,
     redo,
     fetch,

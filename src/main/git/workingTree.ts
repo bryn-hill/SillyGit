@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { promises as fsp } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { addIgnorePattern } from '../../shared/gitignore'
 import { buildPartialPatch, isReverse, type PartialAction } from '../../shared/lineStaging'
 import type { FileStatus, RepoStatus } from '../../shared/types'
 import { GitError, runGit } from '../gitExec'
@@ -202,4 +203,18 @@ export async function getWorkingFileContent(repoPath: string, path: string): Pro
 export async function listTrackedFiles(repoPath: string): Promise<string[]> {
   const out = await runGit(repoPath, ['ls-files', '-z'])
   return out.split('\0').filter(Boolean)
+}
+
+/** Adds `pattern` to the .gitignore at the root of the repo, creating it if needed. False when it was already there. */
+export async function addToGitignore(repoPath: string, pattern: string): Promise<boolean> {
+  const root = (await runGit(repoPath, ['rev-parse', '--show-toplevel'])).trim()
+  const file = join(root, '.gitignore')
+  const text = await fsp.readFile(file, 'utf8').catch((err: NodeJS.ErrnoException) => {
+    if (err.code === 'ENOENT') return ''
+    throw err
+  })
+  const next = addIgnorePattern(text, pattern)
+  if (next === null) return false
+  await fsp.writeFile(file, next)
+  return true
 }

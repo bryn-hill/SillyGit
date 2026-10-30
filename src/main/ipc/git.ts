@@ -44,6 +44,10 @@ export function registerGitHandlers(): void {
       wrap(() => git.discardFile(repoPath, path, untracked))
   )
 
+  ipcMain.handle('git:ignore', (_e, repoPath: string, pattern: string) =>
+    wrap(() => git.addToGitignore(repoPath, pattern))
+  )
+
   ipcMain.handle('git:commit', (_e, repoPath: string, message: string, amend?: boolean) =>
     wrap(() => git.commit(repoPath, message, !!amend))
   )

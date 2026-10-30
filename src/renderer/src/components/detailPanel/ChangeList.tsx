@@ -20,6 +20,7 @@ export default function ChangeList({
   onOpenFile,
   onEditFile,
   onDiscard,
+  onIgnore,
   onStage,
   onUnstage,
   onOpenFileView,
@@ -33,6 +34,7 @@ export default function ChangeList({
   onOpenFile: (file: FileStatus, staged: boolean) => void
   onEditFile: (path: string) => void
   onDiscard: (file: FileStatus) => void
+  onIgnore: (pattern: string) => void
   onStage: (paths: string[]) => void
   onUnstage: (paths: string[]) => void
   onOpenFileView: OpenFileView
@@ -140,6 +142,8 @@ export default function ChangeList({
             editorName: editor.name,
             onCopyPath: () => onCopyText(fileMenu.file.path),
             lfs: { installed: lfs.info.installed, tracked: !!fileMenu.file.lfs, onTrack: lfs.track },
+            // Only untracked files: ignoring a tracked file does nothing until it's removed from the index.
+            onIgnore: fileMenu.file.untracked ? onIgnore : undefined,
             custom: customMenu('file', { file: fileMenu.file.path })
           })}
           onClose={() => setFileMenu(null)}

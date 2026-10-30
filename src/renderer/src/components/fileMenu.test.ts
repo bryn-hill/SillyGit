@@ -29,3 +29,20 @@ describe('fileMenuSections: Git LFS', () => {
     expect(lfsItem(undefined)).toBeUndefined()
   })
 })
+
+describe('fileMenuSections: ignore', () => {
+  const ignoreItem = (path: string, onIgnore?: (pattern: string) => void) =>
+    fileMenuSections({ path, onIgnore }).flat().find((item) => item.id === 'ignore')
+
+  it('offers the file, its extension and its folder', () => {
+    const onIgnore = vi.fn()
+    const item = ignoreItem('logs/debug.log', onIgnore)
+    expect(item?.submenu?.map((s) => s.label)).toEqual(['This file', 'All *.log files', 'Folder logs/'])
+    item?.submenu?.[2].onSelect?.()
+    expect(onIgnore).toHaveBeenCalledWith('/logs/')
+  })
+
+  it('has no ignore item when not asked for', () => {
+    expect(ignoreItem('debug.log')).toBeUndefined()
+  })
+})

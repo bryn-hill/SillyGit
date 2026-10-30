@@ -19,6 +19,7 @@ import commitsFixupAndAbsorb from './commits/fixup-and-absorb'
 import commitsCommitMessageHelp from './commits/commit-message-help'
 import commitsEditFiles from './commits/edit-files'
 import commitsGitLfs from './commits/git-lfs'
+import commitsIgnoreFiles from './commits/ignore-files'
 import branchesCreateAndSwitch from './branches/create-and-switch'
 import branchesBranchMenu from './branches/branch-menu'
 import branchesBranchStatusAndCleanup from './branches/branch-status-and-cleanup'
@@ -75,6 +76,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   commitsCommitMessageHelp,
   commitsEditFiles,
   commitsGitLfs,
+  commitsIgnoreFiles,
   branchesCreateAndSwitch,
   branchesBranchMenu,
   branchesBranchStatusAndCleanup,

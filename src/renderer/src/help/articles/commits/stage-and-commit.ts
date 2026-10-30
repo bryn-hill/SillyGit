@@ -10,6 +10,7 @@ const article: HelpArticle = {
     'commits/line-staging',
     'commits/amend-and-co-authors',
     'commits/commit-message-help',
+    'commits/ignore-files',
     'rebase-history/undo-and-redo'
   ],
   body: `Select **Uncommitted changes**, the top row of the graph. The detail panel lists your **Unstaged** and **Staged** files, with the commit box underneath. The list updates by itself as files change on disk.
@@ -27,7 +28,7 @@ Your commit appears at the top of the graph. If you committed too soon, **Undo**
 
 - **Discard changes** (the bin icon on an unstaged file) throws away your edits to it. It asks first.
 - The pencil opens the file in the built-in editor.
-- Right-click a file for more: blame, history, open in your editor, track with LFS, copy the path.
+- Right-click a file for more: blame, history, open in your editor, track with LFS, [ignore it](help:commits/ignore-files), copy the path.
 
 ## Example
 

@@ -18,6 +18,8 @@ export interface WorkingProps {
   onStage: (paths: string[]) => void
   onUnstage: (paths: string[]) => void
   onDiscard: (file: FileStatus) => void
+  /** Adds a pattern to the root .gitignore. */
+  onIgnore: (pattern: string) => void
   onCommit: () => void
   amend: boolean
   onAmendChange: (amend: boolean) => void
@@ -45,6 +47,7 @@ export default function WorkingDirectoryView({
   onStage,
   onUnstage,
   onDiscard,
+  onIgnore,
   onCommit,
   amend,
   onAmendChange,
@@ -69,6 +72,7 @@ export default function WorkingDirectoryView({
     onOpenFile,
     onEditFile,
     onDiscard,
+    onIgnore,
     onStage,
     onUnstage,
     onOpenFileView,
