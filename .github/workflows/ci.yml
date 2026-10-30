@@ -22,14 +22,19 @@ defaults:
 # The runner is Bryn's own Mac, and the repo is public. Pull requests from
 # forks never run on it, approved or not: `if` skips them, and nothing here
 # uses pull_request_target. Actions are pinned to commit SHAs (Renovate keeps
-# them current), checkout leaves no token in .git/config, and every job wipes
-# its workspace when it ends, so nothing carries over to the next run.
+# them current), checkout leaves no token in .git/config, and every job
+# starts by wiping the workspace, so nothing carries over from the last run.
 jobs:
   commits:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 5
     steps:
+      # Wipe what the last run left. This can't run at the end of the job:
+      # setup-node's post step still needs package-lock.json to save the cache.
+      - name: Clean workspace
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -49,15 +54,16 @@ jobs:
           git cat-file -e "${RANGE%%..*}" 2>/dev/null || RANGE="${RANGE#*..}~1..${RANGE#*..}"
           node scripts/commit-msg.mjs --range "$RANGE"
 
-      - name: Clean workspace
-        if: always()
-        run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-
   test:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 15
     steps:
+      # Wipe what the last run left. This can't run at the end of the job:
+      # setup-node's post step still needs package-lock.json to save the cache.
+      - name: Clean workspace
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -89,7 +95,3 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Clean workspace
-        if: always()
-        run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
