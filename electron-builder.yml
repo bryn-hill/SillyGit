@@ -2,6 +2,8 @@
 # for an unpacked app you can run straight away). Output goes to dist/.
 appId: com.brynhill.sillygit
 productName: SillyGit
+# Release asset names, e.g. SillyGit-0.1.0-mac-arm64.dmg, SillyGit-0.1.0-win-x64.exe.
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:
   buildResources: resources
   output: dist
@@ -22,11 +24,16 @@ mac:
     - dmg
     - zip
   # Ad hoc signed, not notarized: first launch needs right-click > Open.
+  # To sign and notarize, see "Code signing" in RELEASING.md.
   identity: '-'
   hardenedRuntime: false
 win:
   icon: resources/icon.png
   target: nsis
+nsis:
+  # Let people choose the install folder rather than a silent one-click install.
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 linux:
   icon: resources/icon.png
   category: Development
