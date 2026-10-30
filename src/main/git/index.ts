@@ -52,6 +52,7 @@ export {
   revertHunk
 } from './commits'
 export { redo, redoLabel, undo, undoLabel } from './undo'
+export { getImagePair } from './images'
 export {
   deleteTag,
   listSubmodules,

@@ -75,6 +75,11 @@ const api = {
     lines: number[] | null,
     action: import('../shared/lineStaging').PartialAction
   ): Wrapped<void> => ipcRenderer.invoke('git:apply-partial', repoPath, diffText, unitId, lines, action),
+  /** Both versions of an image file a change compares, for the image diff. */
+  imagePair: (
+    repoPath: string,
+    change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
+  ): Wrapped<import('../shared/imageDiff').ImagePair> => ipcRenderer.invoke('git:image-pair', repoPath, change),
   tags: (repoPath: string): Wrapped<import('../shared/types').TagInfo[]> => ipcRenderer.invoke('git:tags', repoPath),
   pushTag: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('git:push-tag', repoPath, name),
   /** Deletes a tag here, and from the remote too when `remote` is set. */

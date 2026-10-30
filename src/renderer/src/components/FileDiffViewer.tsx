@@ -3,6 +3,8 @@ import type { PartialAction } from '../../../shared/lineStaging'
 import { pairForSplit, renderFileDiff, type RenderedDiffLine, type RenderedHunk } from '../lib/diffRender'
 import { selectDiffLine, type PickedLines } from '../lib/lineSelection'
 import { highlightLine, languageForPath } from '../lib/highlight'
+import { imageMime } from '../../../shared/imageDiff'
+import ImageDiff from './ImageDiff'
 
 type Mode = 'file' | 'diff'
 type Layout = 'unified' | 'split'
@@ -388,6 +390,10 @@ export default function FileDiffViewer({
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([])
 
   const lang = languageForPath(path)
+  const mime = imageMime(path)
+  // Images show as pictures; an SVG can switch to its source's text diff.
+  const [svgAsText, setSvgAsText] = useState(false)
+  const showImage = mime != null && !(mime === 'image/svg+xml' && svgAsText)
 
   // New file or commit selected: reset per-file state while rendering, as
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
@@ -399,6 +405,7 @@ export default function FileDiffViewer({
     setIgnoreWhitespace(false)
     setActiveHunkIndex(0)
     setRevertStatus(null)
+    setSvgAsText(false)
   }
 
   // Jumping to a line needs the unified diff to show it in.
@@ -551,6 +558,11 @@ export default function FileDiffViewer({
               Diff View
             </button>
           </div>
+          {mode === 'diff' && mime === 'image/svg+xml' && svgAsText && (
+            <button className="text-toggle" onClick={() => setSvgAsText(false)} title="Compare the SVG as pictures">
+              Image diff
+            </button>
+          )}
           {onOpenFileView && (
             <>
               <button className="text-toggle" onClick={() => onOpenFileView(path, hash, 'blame')} title="Who last changed each line">
@@ -563,7 +575,7 @@ export default function FileDiffViewer({
           )}
         </div>
         <div className="diff-toolbar-right">
-          {mode === 'diff' && (
+          {mode === 'diff' && !showImage && (
             <div className="hunk-nav">
               <button className="icon-button" onClick={() => gotoHunk(activeHunkIndex - 1)} disabled={hunks.length === 0} title="Previous change">
                 ↑
@@ -574,7 +586,7 @@ export default function FileDiffViewer({
               </button>
             </div>
           )}
-          {mode === 'diff' && (
+          {mode === 'diff' && !showImage && (
             <div className="toggle-group">
               <button className={layout === 'unified' ? 'active' : ''} onClick={() => setLayout('unified')} title="Unified view">
                 ▤
@@ -630,6 +642,17 @@ export default function FileDiffViewer({
             lang={lang}
             loading={!fileLoaded}
             showWhitespace={showWhitespace}
+          />
+        ) : showImage ? (
+          <ImageDiff
+            repoPath={repoPath}
+            hash={hash}
+            staged={staged}
+            untracked={untracked}
+            path={path}
+            oldPath={oldPath}
+            diffText={diffText}
+            onShowText={mime === 'image/svg+xml' ? () => setSvgAsText(true) : undefined}
           />
         ) : layout === 'unified' ? (
           <UnifiedDiff

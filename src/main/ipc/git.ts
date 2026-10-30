@@ -113,6 +113,11 @@ export function registerGitHandlers(): void {
       wrap(() => git.applyPartial(repoPath, diffText, unitId, lines, action))
   )
 
+  ipcMain.handle(
+    'git:image-pair',
+    (_e, repoPath: string, change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>
+      wrap(() => git.getImagePair(repoPath, change))
+  )
   ipcMain.handle('git:tags', (_e, repoPath: string) => wrap(() => git.listTags(repoPath)))
   ipcMain.handle('git:push-tag', (_e, repoPath: string, name: string) => wrap(() => git.pushTag(repoPath, name)))
   ipcMain.handle('git:delete-tag', (_e, repoPath: string, name: string, remote: boolean) =>

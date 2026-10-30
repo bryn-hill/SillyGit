@@ -15,6 +15,7 @@
 @import './styles/ai.css';
 @import './styles/settings.css';
 @import './styles/file-diff-viewer.css';
+@import './styles/image-diff.css';
 @import './styles/terminal.css';
 @import './styles/context-menu.css';
 @import './styles/launchpad.css';
