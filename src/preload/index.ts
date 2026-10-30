@@ -80,6 +80,17 @@ const api = {
     repoPath: string,
     change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
   ): Wrapped<import('../shared/imageDiff').ImagePair> => ipcRenderer.invoke('git:image-pair', repoPath, change),
+  /** Whether git-lfs is installed and which patterns the repo stores in LFS. */
+  lfsInfo: (repoPath: string): Wrapped<import('../shared/lfs').LfsInfo> => ipcRenderer.invoke('lfs:info', repoPath),
+  /** The diff of the real files behind an LFS file's pointers. */
+  lfsDiff: (
+    repoPath: string,
+    change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }
+  ): Wrapped<import('../shared/lfs').LfsDiff> => ipcRenderer.invoke('lfs:diff', repoPath, change),
+  /** `git lfs track <pattern>`, setting up LFS in the repo first if needed. */
+  lfsTrack: (repoPath: string, pattern: string): Wrapped<void> => ipcRenderer.invoke('lfs:track', repoPath, pattern),
+  lfsRun: (repoPath: string, command: 'fetch' | 'pull' | 'prune'): Wrapped<void> =>
+    ipcRenderer.invoke('lfs:run', repoPath, command),
   tags: (repoPath: string): Wrapped<import('../shared/types').TagInfo[]> => ipcRenderer.invoke('git:tags', repoPath),
   pushTag: (repoPath: string, name: string): Wrapped<void> => ipcRenderer.invoke('git:push-tag', repoPath, name),
   /** Deletes a tag here, and from the remote too when `remote` is set. */

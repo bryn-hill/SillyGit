@@ -18,6 +18,9 @@ interface Props {
   onClose: () => void
 }
 
+/** The submenus' min-width in context-menu.css. */
+const SUBMENU_WIDTH = 220
+
 function MenuItemRow({ item, onClose }: { item: ContextMenuItem; onClose: () => void }): JSX.Element {
   if (item.submenu && item.submenu.length > 0) {
     return (
@@ -53,7 +56,7 @@ export default function ContextMenu({ x, y, sections, onClose }: Props): JSX.Ele
   const ref = useRef<HTMLDivElement>(null)
   // Items can arrive after the menu opens (e.g. a pull request lookup), so re-measure when they change.
   const itemCount = sections.reduce((n, s) => n + s.length, 0)
-  const [pos, setPos] = useState({ left: x, top: y, visible: false })
+  const [pos, setPos] = useState({ left: x, top: y, visible: false, submenusLeft: false })
 
   // Measure the rendered menu and nudge it back on-screen if it would
   // overflow the window edge the cursor opened it near.
@@ -70,7 +73,9 @@ export default function ContextMenu({ x, y, sections, onClose }: Props): JSX.Ele
     if (top + rect.height + margin > window.innerHeight) {
       top = Math.max(margin, window.innerHeight - rect.height - margin)
     }
-    setPos({ left, top, visible: true })
+    // Submenus open to the left when there's no room for them on the right (a menu in the side panel).
+    const submenusLeft = left + rect.width + SUBMENU_WIDTH + margin > window.innerWidth
+    setPos({ left, top, visible: true, submenusLeft })
   }, [x, y, itemCount])
 
   useEffect(() => {
@@ -93,7 +98,7 @@ export default function ContextMenu({ x, y, sections, onClose }: Props): JSX.Ele
       />
       <div
         ref={ref}
-        className="context-menu"
+        className={`context-menu ${pos.submenusLeft ? 'submenus-left' : ''}`}
         role="menu"
         style={{ left: pos.left, top: pos.top, visibility: pos.visible ? 'visible' : 'hidden' }}
       >

@@ -8,6 +8,7 @@ import type {
   FileHistoryEntry
 } from '../../shared/types'
 import { runGit } from '../gitExec'
+import { markLfs } from './lfs'
 
 // Reading history: the log and graph, commit details and diffs, file history, blame and search.
 
@@ -106,6 +107,7 @@ export async function getCommitDetail(repoPath: string, hash: string): Promise<C
     i++
   }
   const files = parseNameStatus(lines.slice(i))
+  await markLfs(repoPath, files, h)
   return {
     hash: h,
     parents: parents ? parents.split(' ').filter(Boolean) : [],

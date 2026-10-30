@@ -31,6 +31,8 @@ export interface PaletteContext {
   showTerminal: boolean
   showLaunchpad: boolean
   canSelfUpdate: boolean
+  /** Git LFS: whether git-lfs is installed and the repo stores files in it. */
+  lfs?: { installed: boolean; used: boolean }
   actions: {
     undo: () => void
     redo: () => void
@@ -77,6 +79,8 @@ export interface PaletteContext {
     openRepo: () => void
     openRecentRepo: (path: string) => void
     openSettings: () => void
+    lfs?: (command: 'fetch' | 'pull' | 'prune') => void
+    installLfs?: () => void
   }
 }
 
@@ -126,6 +130,12 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       ctx.trackedFiles.map((path) => ({ id: path, label: path, run: () => a.openFileView(path, 'history') }))
     )
     add('apply-patch', 'Apply patch…', a.applyPatch)
+    if (ctx.lfs?.used && ctx.lfs.installed && a.lfs) {
+      const lfs = a.lfs
+      add('lfs-fetch', 'Git LFS: Fetch files', () => lfs('fetch'))
+      add('lfs-pull', 'Git LFS: Pull files', () => lfs('pull'))
+      add('lfs-prune', 'Git LFS: Prune old files', () => lfs('prune'))
+    } else if (ctx.lfs?.used && a.installLfs) add('lfs-install', 'Git LFS: Install git-lfs…', a.installLfs)
     if (ctx.hasWorkingChanges && !operation) {
       add('stash', 'Stash changes', a.stash)
       add('stash-message', 'Stash changes with a message…', a.stashWithMessage)

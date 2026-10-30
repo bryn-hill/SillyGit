@@ -11,6 +11,7 @@ import UpdateDialog from './components/UpdateDialog'
 import StatusBanners from './components/StatusBanners'
 import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
+import { LfsContext } from './lib/lfs'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
@@ -32,6 +33,7 @@ import { useConflicts } from './hooks/useConflicts'
 import { useRun } from './hooks/useRun'
 import { useTabs } from './hooks/useTabs'
 import { useAppShortcuts } from './hooks/useAppShortcuts'
+import { useLfs } from './hooks/useLfs'
 
 /**
  * The window: repo tabs, the toolbar, banners, the main area with the
@@ -53,6 +55,7 @@ export default function App(): JSX.Element {
   const layout = usePanelLayout()
   const dialogs = useDialogs(repoPath)
   const git = useGitRunner({ repoPath, refresh: repo.refresh, showError, setNotice })
+  const lfs = useLfs({ repoPath, refreshKey: status, git, setNotice })
   const commitBox = useCommitBox({ repoPath, operation, git, refresh: repo.refresh, showError })
 
   // Amending can reword the last commit with nothing changed, so the WIP row
@@ -201,27 +204,32 @@ export default function App(): JSX.Element {
         restoreMessage={cleanup.restoreMessage}
         onRestore={cleanup.restoreBranches}
         onDismissRestore={cleanup.dismissRestore}
+        lfsMissing={lfs.showMissingNote}
+        onInstallLfs={lfs.installLfs}
+        onDismissLfsMissing={lfs.dismissMissingNote}
       />
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
             <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
-              <MainArea
-                repo={repo}
-                view={view}
-                settings={settings}
-                layout={layout}
-                git={actions}
-                branches={branches}
-                cleanup={cleanup}
-                conflicts={conflicts}
-                commitBox={commitBox}
-                tabs={tabs}
-                hasWorkingChanges={hasWorkingChanges}
-                onOpenTerminal={() => setShowTerminal(true)}
-                showError={showError}
-                setNotice={setNotice}
-              />
+              <LfsContext value={{ info: lfs.info, track: lfs.track }}>
+                <MainArea
+                  repo={repo}
+                  view={view}
+                  settings={settings}
+                  layout={layout}
+                  git={actions}
+                  branches={branches}
+                  cleanup={cleanup}
+                  conflicts={conflicts}
+                  commitBox={commitBox}
+                  tabs={tabs}
+                  hasWorkingChanges={hasWorkingChanges}
+                  onOpenTerminal={() => setShowTerminal(true)}
+                  showError={showError}
+                  setNotice={setNotice}
+                />
+              </LfsContext>
             </CustomCommandsContext>
           </div>
           <TerminalPanel
@@ -298,6 +306,7 @@ export default function App(): JSX.Element {
             layout,
             dialogs,
             selfUpdate,
+            lfs,
             hasWorkingChanges,
             customCommands: settings.customCommands
           })}

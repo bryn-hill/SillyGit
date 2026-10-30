@@ -37,6 +37,7 @@ const READ_ONLY = new Set([
   'format-patch',
   'read-tree',
   'check-ignore',
+  'check-attr',
   'grep'
 ])
 
@@ -57,6 +58,9 @@ export function isLoggedCommand(args: string[]): boolean {
       return !rest.some((a) => a === '--points-at' || a === '--list' || a.startsWith('--format') || a === '--show-current')
     case 'tag':
       return rest.length > 0 && rest[0] !== '-l' && rest[0] !== '--list'
+    case 'lfs':
+      // Looking (version, ls-files, status, env, a bare track) isn't worth a line.
+      return !['version', 'ls-files', 'status', 'env', 'smudge', 'pointer'].includes(rest[0]) && !(rest[0] === 'track' && rest.length === 1)
     case 'apply':
       return !rest.includes('--check')
     default:

@@ -1,7 +1,9 @@
-import { useState, type JSX } from 'react'
+import { useContext, useState, type JSX } from 'react'
 import type { FileStatus } from '../../../../shared/types'
 import ContextMenu from '../ContextMenu'
 import { fileMenuSections } from '../fileMenu'
+import { LfsContext } from '../../lib/lfs'
+import LfsBadge from '../LfsBadge'
 import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import type { ActiveFile, OpenFileView } from './types'
 
@@ -36,6 +38,7 @@ export default function ChangeList({
 }): JSX.Element {
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus } | null>(null)
   const customMenu = useCustomCommandMenu()
+  const lfs = useContext(LfsContext)
 
   const renderRow = (file: FileStatus): JSX.Element => {
     const key = `${staged ? 's' : 'u'}:${file.path}`
@@ -56,6 +59,7 @@ export default function ChangeList({
             {statusLabel(file.index !== '.' && staged ? file.index : file.worktree)}
           </span>
           <span className="file-path">{file.path}</span>
+          {file.lfs && <LfsBadge />}
           <span className="file-actions">
             {(staged ? file.index : file.worktree) !== 'D' && (
               <button
@@ -128,6 +132,7 @@ export default function ChangeList({
             onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
             onCopyPath: () => onCopyText(fileMenu.file.path),
+            lfs: { installed: lfs.info.installed, tracked: !!fileMenu.file.lfs, onTrack: lfs.track },
             custom: customMenu('file', { file: fileMenu.file.path })
           })}
           onClose={() => setFileMenu(null)}

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useContext, useEffect, useRef, useState, type JSX } from 'react'
 import type { PartialAction } from '../../../shared/lineStaging'
 import { pairForSplit, renderFileDiff, type RenderedDiffLine, type RenderedHunk } from '../lib/diffRender'
 import { selectDiffLine, type PickedLines } from '../lib/lineSelection'
 import { highlightLine, languageForPath } from '../lib/highlight'
-import { imageMime } from '../../../shared/imageDiff'
+import { formatBytes, imageMime } from '../../../shared/imageDiff'
+import { LFS_MISSING_NOTE, isLfsPointerDiff, type LfsDiff } from '../../../shared/lfs'
+import { LfsContext } from '../lib/lfs'
 import ImageDiff from './ImageDiff'
 
 type Mode = 'file' | 'diff'
@@ -376,7 +378,7 @@ export default function FileDiffViewer({
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
   // The whitespace-ignoring diff, for the diff text it was asked for alongside.
   const [wsDiff, setWsDiff] = useState<{ source: string; text: string } | null>(null)
-  const effectiveDiffText = ignoreWhitespace && wsDiff?.source === diffText ? wsDiff.text : diffText
+  const plainDiffText = ignoreWhitespace && wsDiff?.source === diffText ? wsDiff.text : diffText
 
   // The whole file, for the request it answers; anything else means it's still loading.
   const fileRequest = `${repoPath}\0${hash}\0${staged}\0${path}`
@@ -395,6 +397,17 @@ export default function FileDiffViewer({
   const [svgAsText, setSvgAsText] = useState(false)
   const showImage = mime != null && !(mime === 'image/svg+xml' && svgAsText)
 
+  // An LFS file's diff compares pointers; with git-lfs installed it shows what they point to instead.
+  const lfs = useContext(LfsContext)
+  const lfsPointers = !showImage && isLfsPointerDiff(diffText)
+  const [lfsShowPointer, setLfsShowPointer] = useState(false)
+  const lfsWantContents = lfsPointers && mode === 'diff' && lfs.info.installed && !lfsShowPointer
+  const lfsRequest = `${fileRequest}\0${untracked}\0${oldPath}\0${diffText}`
+  const [lfsDiff, setLfsDiff] = useState<{ request: string; result: LfsDiff | { error: string } } | null>(null)
+  const lfsResult = lfsWantContents && lfsDiff?.request === lfsRequest ? lfsDiff.result : null
+  const lfsText = lfsResult && 'kind' in lfsResult && lfsResult.kind === 'text' ? lfsResult.diff : null
+  const effectiveDiffText = lfsText ?? plainDiffText
+
   // New file or commit selected: reset per-file state while rendering, as
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   // suggests, so the old file's settings never paint for the new one.
@@ -406,6 +419,7 @@ export default function FileDiffViewer({
     setActiveHunkIndex(0)
     setRevertStatus(null)
     setSvgAsText(false)
+    setLfsShowPointer(false)
   }
 
   // Jumping to a line needs the unified diff to show it in.
@@ -453,6 +467,17 @@ export default function FileDiffViewer({
       cancelled = true
     }
   }, [mode, repoPath, hash, staged, path, diffText, fileRequest])
+
+  useEffect(() => {
+    if (!lfsWantContents) return
+    let cancelled = false
+    window.api.lfsDiff(repoPath, { hash, staged, untracked, path, oldPath }).then((res) => {
+      if (!cancelled) setLfsDiff({ request: lfsRequest, result: res.ok ? res.data : { error: res.error } })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [lfsWantContents, lfsRequest, repoPath, hash, staged, untracked, path, oldPath])
 
   useEffect(() => {
     if (!revertStatus) return
@@ -511,9 +536,11 @@ export default function FileDiffViewer({
 
   // A commit's hunk is undone in the working tree. An uncommitted change can be staged or
   // unstaged a hunk or a few lines at a time, and an unstaged one discarded. A diff that
-  // ignores whitespace isn't the file's real change, so it can't be applied.
-  const actions: HunkAction[] =
-    hash != null
+  // ignores whitespace isn't the file's real change, so it can't be applied, and nor can
+  // the diff of what LFS pointers stand for, since git stores the pointers.
+  const actions: HunkAction[] = lfsWantContents
+    ? []
+    : hash != null
       ? [hunkAction('revert', 'Revert', 'Reverting…', '↺', 'Revert this change in your working directory')]
       : ignoreWhitespace
         ? []
@@ -631,6 +658,31 @@ export default function FileDiffViewer({
         </div>
       </div>
 
+      {lfsPointers && mode === 'diff' && (
+        <div className="lfs-bar" role="group" aria-label="Git LFS">
+          <span className="lfs-badge">LFS</span>
+          {!lfs.info.installed ? (
+            <span className="lfs-bar-note">{LFS_MISSING_NOTE}</span>
+          ) : lfsResult && 'error' in lfsResult ? (
+            <span className="lfs-bar-note error">Couldn’t load the file from Git LFS: {lfsResult.error}</span>
+          ) : (
+            <span className="lfs-bar-note">
+              {lfsShowPointer ? 'Showing the pointer files git stores.' : 'Showing the files the LFS pointers stand for.'}
+            </span>
+          )}
+          {lfs.info.installed && (
+            <div className="toggle-group">
+              <button className={!lfsShowPointer ? 'active' : ''} onClick={() => setLfsShowPointer(false)}>
+                File contents
+              </button>
+              <button className={lfsShowPointer ? 'active' : ''} onClick={() => setLfsShowPointer(true)}>
+                Pointer
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {revertStatus && (
         <div className={`revert-status ${revertStatus.ok ? 'ok' : 'error'}`}>{revertStatus.message}</div>
       )}
@@ -643,6 +695,14 @@ export default function FileDiffViewer({
             loading={!fileLoaded}
             showWhitespace={showWhitespace}
           />
+        ) : lfsWantContents && !lfsResult ? (
+          <div className="diff-empty">Loading the file from Git LFS…</div>
+        ) : lfsResult && 'kind' in lfsResult && lfsResult.kind === 'binary' ? (
+          <div className="diff-empty">
+            Binary file stored in Git LFS:{' '}
+            {lfsResult.before == null ? 'added' : formatBytes(lfsResult.before)} →{' '}
+            {lfsResult.after == null ? 'deleted' : formatBytes(lfsResult.after)}
+          </div>
         ) : showImage ? (
           <ImageDiff
             repoPath={repoPath}

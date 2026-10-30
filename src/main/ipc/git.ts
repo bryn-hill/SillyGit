@@ -113,6 +113,20 @@ export function registerGitHandlers(): void {
       wrap(() => git.applyPartial(repoPath, diffText, unitId, lines, action))
   )
 
+  ipcMain.handle('lfs:info', (_e, repoPath: string) => wrap(() => git.getLfsInfo(repoPath)))
+
+  ipcMain.handle(
+    'lfs:diff',
+    (_e, repoPath: string, change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>
+      wrap(() => git.getLfsDiff(repoPath, change))
+  )
+
+  ipcMain.handle('lfs:track', (_e, repoPath: string, pattern: string) => wrap(() => git.lfsTrack(repoPath, pattern)))
+
+  ipcMain.handle('lfs:run', (_e, repoPath: string, command: 'fetch' | 'pull' | 'prune') =>
+    wrap(() => git.lfsCommand(repoPath, command))
+  )
+
   ipcMain.handle(
     'git:image-pair',
     (_e, repoPath: string, change: { hash: string | null; staged: boolean; untracked: boolean; path: string; oldPath?: string }) =>

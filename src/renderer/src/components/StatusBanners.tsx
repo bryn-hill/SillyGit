@@ -2,7 +2,8 @@ import type { JSX } from 'react'
 
 /**
  * The error and notice banners under the toolbar (click to dismiss), the Undo
- * offer after a bulk conflict action, and the Restore offer after a branch cleanup.
+ * offer after a bulk conflict action, the Restore offer after a branch cleanup,
+ * and a note when the repo uses Git LFS but git-lfs isn't installed.
  */
 export default function StatusBanners({
   error,
@@ -14,7 +15,10 @@ export default function StatusBanners({
   onDismissUndo,
   restoreMessage,
   onRestore,
-  onDismissRestore
+  onDismissRestore,
+  lfsMissing,
+  onInstallLfs,
+  onDismissLfsMissing
 }: {
   error: string | null
   onDismissError: () => void
@@ -28,6 +32,9 @@ export default function StatusBanners({
   restoreMessage: string | null
   onRestore: () => void
   onDismissRestore: () => void
+  lfsMissing: boolean
+  onInstallLfs: () => void
+  onDismissLfsMissing: () => void
 }): JSX.Element {
   return (
     <>
@@ -59,6 +66,17 @@ export default function StatusBanners({
             Restore
           </button>
           <button className="icon-button" title="Dismiss" onClick={onDismissRestore}>
+            ✕
+          </button>
+        </div>
+      )}
+      {lfsMissing && (
+        <div className="notice-banner conflict-undo-banner" role="status" aria-label="Git LFS not installed">
+          This repository stores files in Git LFS, but git-lfs isn’t installed, so they show as small pointer files.
+          <button className="link-button" onClick={onInstallLfs}>
+            Get Git LFS
+          </button>
+          <button className="icon-button" title="Dismiss" aria-label="Dismiss" onClick={onDismissLfsMissing}>
             ✕
           </button>
         </div>

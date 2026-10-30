@@ -4,6 +4,8 @@ export interface FileStatus {
   index: string
   worktree: string
   untracked: boolean
+  /** Stored in Git LFS. */
+  lfs?: boolean
 }
 
 export interface RepoStatus {
@@ -102,6 +104,8 @@ export interface CommitFileChange {
   path: string
   origPath?: string
   status: string
+  /** Stored in Git LFS. */
+  lfs?: boolean
 }
 
 export interface CommitDetail {

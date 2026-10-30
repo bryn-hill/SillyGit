@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { formatCommand, isLoggedCommand, type ActivityEntry } from '../shared/activity'
 
@@ -108,6 +108,34 @@ async function execGit(repoPath: string, args: string[], env: Record<string, str
     record(false, error.message)
     throw error
   }
+}
+
+/**
+ * Runs git with `input` on stdin and returns stdout's raw bytes, for commands
+ * that read their input (check-attr --stdin, lfs smudge). Not logged or queued:
+ * only read-only commands use it.
+ */
+export function runGitWithInput(
+  repoPath: string,
+  args: string[],
+  input: string | Buffer,
+  env?: Record<string, string>
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, { cwd: repoPath, env: env ? { ...process.env, ...env } : undefined })
+    const out: Buffer[] = []
+    const err: Buffer[] = []
+    child.stdout.on('data', (chunk: Buffer) => out.push(chunk))
+    child.stderr.on('data', (chunk: Buffer) => err.push(chunk))
+    child.on('error', (e) => reject(new GitError(e.message)))
+    child.on('close', (code) => {
+      if (code === 0) resolve(Buffer.concat(out))
+      else reject(new GitError(Buffer.concat(err).toString('utf8').trim() || `git ${args[0]} exited with ${code}`))
+    })
+    // A command that fails early stops reading; its exit code says why.
+    child.stdin.on('error', () => {})
+    child.stdin.end(input)
+  })
 }
 
 // Extra environment for commands that talk to a remote, e.g. the tokens of
