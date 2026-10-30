@@ -1,0 +1,145 @@
+name: Release
+
+# Builds the installers and publishes them as a GitHub release. Push a tag
+# like v0.1.0 whose version matches package.json, or run it by hand from the
+# Actions tab (the tag is created at the chosen branch's tip if it doesn't
+# exist yet). See RELEASING.md.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release, e.g. v0.1.0. Must match the version in package.json.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One release at a time per tag, and never cancel one halfway through uploading.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+# Same rules as ci.yml: the runner is Bryn's own Mac and the repo is public.
+# Nothing here runs for pull requests, actions are pinned to commit SHAs,
+# checkout leaves no token in .git/config and the workspace is wiped first.
+# Only this job can write, and only to contents (the release and its tag).
+#
+# The Mac builds macOS (arm64 and x64) and Windows (x64). Linux isn't built:
+# node-pty has no Linux prebuilds and compiling it needs a Linux machine.
+# Builds go straight onto the release, never through upload-artifact.
+jobs:
+  release:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # Wipe what the last run left, even if it was cancelled.
+      - name: Clean workspace
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      # The runner's launchd service starts with a bare PATH; gh comes from Homebrew.
+      - name: Find gh
+        run: |
+          for dir in /opt/homebrew/bin /usr/local/bin; do
+            [ -x "$dir/gh" ] && echo "$dir" >> "$GITHUB_PATH"
+          done
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          command -v gh >/dev/null || { echo "::error::gh is not installed on the runner (brew install gh)"; exit 1; }
+
+      - name: Check the tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::tag $TAG doesn't match package.json version $version; bump the version first"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run build
+
+      # Signing is off unless the secrets below exist; see "Code signing" in
+      # RELEASING.md. Without them the app is ad hoc signed (identity '-').
+      - name: Package for macOS
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_IDENTITY: ${{ secrets.MAC_IDENTITY }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          signing=()
+          if [ -n "$CSC_LINK" ]; then
+            signing=("-c.mac.identity=$MAC_IDENTITY" -c.mac.hardenedRuntime=true)
+            [ -n "$APPLE_ID" ] && signing+=(-c.mac.notarize=true)
+          else
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          for arch in arm64 x64; do
+            node scripts/release-sdk-binary.mjs darwin "$arch"
+            npx electron-builder --mac --"$arch" --publish never "${signing[@]}"
+          done
+
+      # The NSIS installer needs wine to build off Windows, so it's only made
+      # when the runner has wine (brew install --cask wine-stable). The zip
+      # always is.
+      - name: Package for Windows
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          [ -n "$WIN_CSC_LINK" ] || unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+          targets=(zip)
+          command -v wine >/dev/null && targets+=(nsis)
+          node scripts/release-sdk-binary.mjs win32 x64
+          npx electron-builder --win "${targets[@]}" --x64 --publish never
+
+      - name: Checksums
+        working-directory: dist
+        run: shasum -a 256 SillyGit-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      # Assets go onto a draft first, so a half-finished upload never shows up
+      # as the latest release. Rerunning a release replaces its assets.
+      - name: Publish the release
+        run: |
+          shopt -s nullglob
+          assets=(dist/SillyGit-*.dmg dist/SillyGit-*.zip dist/SillyGit-*.exe dist/SHA256SUMS.txt)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" \
+              --title "SillyGit $VERSION" --generate-notes --notes-file .github/release-notes.md
+            gh release upload "$TAG" "${assets[@]}"
+          fi
+          gh release edit "$TAG" --draft=false --latest
+          gh release view "$TAG" --json url --jq .url
