@@ -195,10 +195,12 @@ export default function App(): JSX.Element {
           pinned={tabs.pinnedTabs}
           activeTab={repoPath}
           launchpadActive={view.showLaunchpad}
+          overviewActive={view.showOverview}
           onSelect={tabs.selectTab}
           onClose={tabs.closeTabs}
           onNewTab={tabs.openRepo}
           onOpenLaunchpad={() => view.setShowLaunchpad(true)}
+          onOpenOverview={() => view.setShowOverview(true)}
           onTogglePin={tabs.togglePin}
           onMove={tabs.move}
           onCopyPath={actions.copyText}

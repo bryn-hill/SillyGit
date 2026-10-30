@@ -19,6 +19,7 @@
 @import './styles/terminal.css';
 @import './styles/context-menu.css';
 @import './styles/launchpad.css';
+@import './styles/repo-overview.css';
 @import './styles/pr-review.css';
 @import './styles/create-pr.css';
 @import './styles/claude-panel.css';

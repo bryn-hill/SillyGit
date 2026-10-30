@@ -29,7 +29,10 @@ export function useMainView({
 }) {
   const { repoPath, status, commitByHash, graphRows, graphOrder } = repo
   const [selection, setSelection] = useState<Selection>({ type: 'working' })
+  // Launchpad and the repository overview take the same place: `showLaunchpad`
+  // is whether one of them is up, `overview` which.
   const [showLaunchpad, setShowLaunchpad] = useState(false)
+  const [overview, setOverview] = useState(false)
   // A pull request Launchpad opens straight onto, e.g. one just created; bumped opens remount Launchpad.
   const [launchpadReview, setLaunchpadReview] = useState<{ pr: PullRequestRef | null; opens: number }>({
     pr: null,
@@ -321,8 +324,17 @@ export function useMainView({
 
   /** Shows or hides Launchpad on its list of pull requests. */
   const showLaunchpadList = (next: SetStateAction<boolean>): void => {
+    const show = typeof next === 'function' ? next(showLaunchpad && !overview) : next
     setLaunchpadReview((r) => ({ pr: null, opens: r.opens + 1 }))
-    setShowLaunchpad(next)
+    setOverview(false)
+    setShowLaunchpad(show)
+  }
+
+  /** Shows or hides the repository overview. */
+  const showRepoOverview = (next: SetStateAction<boolean>): void => {
+    const show = typeof next === 'function' ? next(showLaunchpad && overview) : next
+    setOverview(show)
+    setShowLaunchpad(show)
   }
 
   /** Opens a pull request's review screen in Launchpad. */
@@ -330,14 +342,17 @@ export function useMainView({
     closeFileViews()
     setResolvingPath(null)
     setLaunchpadReview((r) => ({ pr, opens: r.opens + 1 }))
+    setOverview(false)
     setShowLaunchpad(true)
   }
 
   return {
     selection,
     setSelection,
-    showLaunchpad,
+    showLaunchpad: showLaunchpad && !overview,
     setShowLaunchpad: showLaunchpadList,
+    showOverview: showLaunchpad && overview,
+    setShowOverview: showRepoOverview,
     launchpadReview: launchpadReview.pr,
     launchpadKey: launchpadReview.opens,
     openPullRequestReview,

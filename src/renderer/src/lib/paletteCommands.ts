@@ -42,6 +42,7 @@ export interface PaletteContext {
   showClaude: boolean
   showTerminal: boolean
   showLaunchpad: boolean
+  showOverview: boolean
   canSelfUpdate: boolean
   /** Git LFS: whether git-lfs is installed and the repo stores files in it. */
   lfs?: { installed: boolean; used: boolean }
@@ -101,6 +102,7 @@ export interface PaletteContext {
     showActivity: () => void
     showUpdate: () => void
     toggleLaunchpad: () => void
+    toggleOverview: () => void
     cycleTab: (offset: number) => void
     clone: () => void
     toggleTerminal: () => void
@@ -282,6 +284,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
   add('activity', 'Activity log', a.showActivity)
   if (ctx.canSelfUpdate) add('update-sillygit', 'Update SillyGit…', a.showUpdate)
   add('launchpad', ctx.showLaunchpad ? 'Close Launchpad' : 'Open Launchpad', a.toggleLaunchpad)
+  add('repo-overview', ctx.showOverview ? 'Close repository overview' : 'Open repository overview', a.toggleOverview)
   if (ctx.tabCount > 1) {
     add('next-tab', 'Next tab', () => a.cycleTab(1), 'Ctrl+Tab')
     add('previous-tab', 'Previous tab', () => a.cycleTab(-1), 'Ctrl+⇧Tab')

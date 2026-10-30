@@ -77,6 +77,14 @@ export const TOUR_STEPS: TourStep[] = [
     articleId: 'remotes-prs/launchpad'
   },
   {
+    id: 'repo-overview',
+    title: 'All your repositories',
+    body: 'Every repository you work on, in your own groups, with its branch, commits to push or pull and uncommitted changes. **Fetch all** updates them in one go.',
+    target: 'repo-overview',
+    placement: 'bottom',
+    articleId: 'remotes-prs/repository-overview'
+  },
+  {
     id: 'palette',
     title: 'Every action, one search away',
     body: `**Actions** (or ${MOD}K) opens the command palette: type a few letters of anything SillyGit can do.`,

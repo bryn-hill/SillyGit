@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
-import { BranchIcon, FolderIcon, LaunchpadIcon } from './topBar/icons'
+import { BranchIcon, FolderIcon, LaunchpadIcon, OverviewIcon } from './topBar/icons'
 import { repoDisplayName } from '../lib/repoName'
 import { MOD } from '../lib/shortcuts'
 
@@ -11,10 +11,12 @@ interface Props {
   pinned: string[]
   activeTab: string | null
   launchpadActive: boolean
+  overviewActive: boolean
   onSelect: (path: string) => void
   onClose: (paths: string[]) => void
   onNewTab: () => void
   onOpenLaunchpad: () => void
+  onOpenOverview: () => void
   onTogglePin: (path: string) => void
   /** Moves `path` to just before `before`, or to the end of its group when `before` is null. */
   onMove: (path: string, before: string | null) => void
@@ -69,7 +71,8 @@ function tabLabels(tabs: string[]): Map<string, string> {
 const DRAG_THRESHOLD = 5
 
 /**
- * GitKraken-style window title strip: open a repo, the Launchpad tab, one tab
+ * GitKraken-style window title strip: open a repo, the Launchpad and
+ * repository overview tabs, one tab
  * per open repo (pinned ones grouped on the left) and + for a new tab. The
  * strip's empty space drags the window on macOS; tabs take clicks.
  *
@@ -83,10 +86,12 @@ export default function TabBar({
   pinned,
   activeTab,
   launchpadActive,
+  overviewActive,
   onSelect,
   onClose,
   onNewTab,
   onOpenLaunchpad,
+  onOpenOverview,
   onTogglePin,
   onMove,
   onCopyPath
@@ -167,7 +172,7 @@ export default function TabBar({
 
   const renderTab = (path: string): JSX.Element => {
     const isPinned = pinned.includes(path)
-    const active = path === activeTab && !launchpadActive
+    const active = path === activeTab && !launchpadActive && !overviewActive
     const group = isPinned ? pinnedTabs : otherTabs
     const isLast = group[group.length - 1] === path
     const dropClass =
@@ -290,6 +295,26 @@ export default function TabBar({
             <LaunchpadIcon />
           </span>
           <span className="repo-tab-name">Launchpad</span>
+        </div>
+        <div
+          role="tab"
+          aria-selected={overviewActive}
+          tabIndex={overviewActive ? 0 : -1}
+          className={`repo-tab launchpad-tab ${overviewActive ? 'repo-tab-active' : ''}`}
+          title="Repositories — every repo's branch and changes at a glance"
+          data-tour="repo-overview"
+          onClick={onOpenOverview}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onOpenOverview()
+            }
+          }}
+        >
+          <span className="repo-tab-icon">
+            <OverviewIcon />
+          </span>
+          <span className="repo-tab-name">Repositories</span>
         </div>
         {pinnedTabs.length > 0 && (
           <div className="tab-group" role="group" aria-label="Pinned tabs">

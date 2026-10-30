@@ -1,6 +1,7 @@
 // Git commands for the main process, one module per area. Merge and rebase
 // conflicts live in ../conflicts/ and branch housekeeping in ../branches.ts.
 export { clone, initRepo, isGitRepo } from './repo'
+export { repoOverview } from './overview'
 export {
   addToGitignore,
   applyPartial,

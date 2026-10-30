@@ -31,6 +31,7 @@ import branchesTagsWorktreesSubmodules from './branches/tags-worktrees-submodule
 import branchesRemotes from './branches/remotes'
 import remotesPrsPushPullFetch from './remotes-prs/push-pull-fetch'
 import remotesPrsLaunchpad from './remotes-prs/launchpad'
+import remotesPrsRepositoryOverview from './remotes-prs/repository-overview'
 import remotesPrsCreatePullRequest from './remotes-prs/create-pull-request'
 import remotesPrsReviewPullRequests from './remotes-prs/review-pull-requests'
 import remotesPrsCheckOutPullRequest from './remotes-prs/check-out-pull-request'
@@ -91,6 +92,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   branchesRemotes,
   remotesPrsPushPullFetch,
   remotesPrsLaunchpad,
+  remotesPrsRepositoryOverview,
   remotesPrsCreatePullRequest,
   remotesPrsReviewPullRequests,
   remotesPrsCheckOutPullRequest,

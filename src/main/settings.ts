@@ -11,10 +11,13 @@ import { normalizeThemePreference, type ThemePreference } from '../shared/theme'
 import { normalizeEditorSettings, type EditorSettings } from '../shared/editors'
 import { normalizeHelpSettings } from '../shared/help/tour'
 import type { HelpSettings } from '../shared/help/types'
+import { normalizeRepoGroups, type RepoGroup } from '../shared/repoOverview'
 
 interface StoredSettings {
   anthropicApiKey?: string
   workspaceRepos?: string[]
+  /** The repository overview's groups, in the user's order. */
+  repoGroups?: RepoGroup[]
   lastRepo?: string | null
   recentRepos?: string[]
   /** Repos open as tabs, in tab order; lastRepo is the active one. */
@@ -294,6 +297,14 @@ export async function addWorkspaceRepo(repoPath: string): Promise<string[]> {
 
 export async function removeWorkspaceRepo(repoPath: string): Promise<string[]> {
   return updateSettings((current) => (current.workspaceRepos = (current.workspaceRepos ?? []).filter((p) => p !== repoPath)))
+}
+
+export async function getRepoGroups(): Promise<RepoGroup[]> {
+  return normalizeRepoGroups((await readSettings()).repoGroups)
+}
+
+export async function setRepoGroups(groups: RepoGroup[]): Promise<RepoGroup[]> {
+  return updateSettings((current) => (current.repoGroups = normalizeRepoGroups(groups)))
 }
 
 export async function getLastSession(): Promise<{

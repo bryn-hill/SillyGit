@@ -13,6 +13,7 @@ import { wrap } from './wrap'
 import { applyThemePreference } from '../theme'
 import type { ThemePreference } from '../../shared/theme'
 import type { HelpSettings } from '../../shared/help/types'
+import type { RepoGroup } from '../../shared/repoOverview'
 
 /** Settings, the saved session (tabs, recents, layout), per-repo Run commands and favourite branches. */
 export function registerSettingsHandlers(): void {
@@ -30,6 +31,11 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:remove-workspace-repo', (_e, repoPath: string) =>
     wrap(() => settings.removeWorkspaceRepo(repoPath))
   )
+
+  ipcMain.handle('overview:get-groups', () => settings.getRepoGroups())
+  ipcMain.handle('overview:set-groups', (_e, groups: RepoGroup[]) => wrap(() => settings.setRepoGroups(groups)))
+  // Never throws: a repo that can't be read comes back as a row with its error.
+  ipcMain.handle('overview:status', (_e, repoPaths: string[]) => git.repoOverview(repoPaths))
 
   ipcMain.handle('session:get', async (): Promise<SavedSession> => {
     const { lastRepo, recentRepos, openTabs, pinnedTabs, layout } = await settings.getLastSession()

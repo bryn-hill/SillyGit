@@ -3,6 +3,7 @@ import type { LaunchpadBucketId, LaunchpadData, LaunchpadIssue, LaunchpadPullReq
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
 import { timeAgo } from '../lib/timeAgo'
 import PullRequestReview from './PullRequestReview'
+import { BackIcon, RefreshIcon } from './topBar/icons'
 import StartWorkDialog, { type WorkItem } from './StartWorkDialog'
 import MergePullRequestDialog from './MergePullRequestDialog'
 import { issueBranchName } from '../../../shared/issues'
@@ -34,28 +35,6 @@ const NO_REPOS: string[] = []
 
 function repoDisplayName(path: string): string {
   return path.split('/').filter(Boolean).pop() ?? path
-}
-
-function RefreshIcon(): JSX.Element {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M13 4.5A5.5 5.5 0 0 0 3.6 5.6M3 2.5v3.3h3.3M3 11.5A5.5 5.5 0 0 0 12.4 10.4M13 13.5v-3.3h-3.3"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function BackIcon(): JSX.Element {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
 }
 
 function groupByBucket(

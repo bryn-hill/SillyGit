@@ -10,6 +10,7 @@ import InteractiveRebase from './InteractiveRebase'
 import CompareView from './CompareView'
 import PanelResizer from './PanelResizer'
 import Launchpad from './Launchpad'
+import RepoOverview from './RepoOverview'
 import EmptyState from './EmptyState'
 import type { Repo } from '../hooks/useRepo'
 import type { MainView } from '../hooks/useMainView'
@@ -48,7 +49,8 @@ interface Props {
 
 /**
  * The middle of the window: the side bar, commit graph and detail panel, or
- * whatever has taken the graph's place (see useMainView), or Launchpad, or
+ * whatever has taken the graph's place (see useMainView), Launchpad or the
+ * repository overview, or
  * the empty screen with no repo open.
  */
 export default function MainArea({
@@ -90,8 +92,17 @@ export default function MainArea({
       }}
     />
   )
+  const overview = view.showOverview && (
+    <RepoOverview
+      openRepos={tabs.tabs}
+      activeRepo={repoPath}
+      onClose={() => view.setShowOverview(false)}
+      onOpenRepo={(path) => void tabs.openRecentRepo(path)}
+    />
+  )
   if (!repoPath) {
     if (launchpad) return launchpad
+    if (overview) return overview
     // Nothing yet while the last session's repo may still be on its way.
     if (!tabs.sessionRestored) return <div className="empty-state" aria-busy="true" />
     return (
@@ -188,9 +199,9 @@ export default function MainArea({
   // back scrolled where it was.
   let cover: JSX.Element | null = null
   let panelBeside = true
-  if (launchpad) {
+  if (launchpad || overview) {
     panelBeside = false
-    cover = launchpad
+    cover = launchpad || overview || null
   } else if (resolvingPath) {
     panelBeside = false
     cover = (

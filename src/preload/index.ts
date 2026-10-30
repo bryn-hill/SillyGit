@@ -579,6 +579,14 @@ const api = {
     ipcRenderer.invoke('settings:add-workspace-repo', repoPath),
   removeWorkspaceRepo: (repoPath: string): Wrapped<string[]> =>
     ipcRenderer.invoke('settings:remove-workspace-repo', repoPath),
+  /** The repository overview's groups. */
+  getRepoGroups: (): Promise<import('../shared/repoOverview').RepoGroup[]> => ipcRenderer.invoke('overview:get-groups'),
+  setRepoGroups: (
+    groups: import('../shared/repoOverview').RepoGroup[]
+  ): Wrapped<import('../shared/repoOverview').RepoGroup[]> => ipcRenderer.invoke('overview:set-groups', groups),
+  /** Branch, ahead/behind and change counts for each repo; a repo that can't be read gets its error instead. */
+  repoOverview: (repoPaths: string[]): Promise<import('../shared/repoOverview').RepoOverviewEntry[]> =>
+    ipcRenderer.invoke('overview:status', repoPaths),
 
   /** Opens a shell, or, with `command`, runs that command in a shell that exits when it does. */
   terminalCreate: (cwd: string | undefined, cols: number, rows: number, command?: string): Promise<number> =>

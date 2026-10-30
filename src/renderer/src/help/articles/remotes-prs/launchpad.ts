@@ -10,7 +10,8 @@ const article: HelpArticle = {
     'remotes-prs/review-pull-requests',
     'remotes-prs/check-out-pull-request',
     'integrations/start-work',
-    'integrations/accounts'
+    'integrations/accounts',
+    'remotes-prs/repository-overview'
   ],
   body: `Click the **Launchpad** tab at the left of the tab bar. It gathers pull requests from every repository you have open, sorted into groups such as **Needs my review**, **Ready to merge**, **Changes requested**, **Failing CI**, **Has conflicts** and **Waiting for review**.
 

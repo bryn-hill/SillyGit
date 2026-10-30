@@ -113,6 +113,39 @@ export function LaunchpadIcon(): JSX.Element {
   )
 }
 
+export function OverviewIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2.5" width="5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="9" y="2.5" width="5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="2" y="9" width="5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="9" y="9" width="5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  )
+}
+
+export function RefreshIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M13 4.5A5.5 5.5 0 0 0 3.6 5.6M3 2.5v3.3h3.3M3 11.5A5.5 5.5 0 0 0 12.4 10.4M13 13.5v-3.3h-3.3"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function BackIcon(): JSX.Element {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export function TerminalIcon(): JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
