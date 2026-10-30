@@ -5,6 +5,7 @@ import Avatar from '../Avatar'
 import AiResults, { idleAiRun, type AiRun } from '../AiResults'
 import SplitCommitPanel from '../SplitCommitPanel'
 import { fileMenuSections } from '../fileMenu'
+import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import type { OpenFileView } from './types'
 
 function SparkleIcon(): JSX.Element {
@@ -92,6 +93,7 @@ function CommitDetailBody({
 }): JSX.Element {
   const { hash } = detail
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; status: string } | null>(null)
+  const customMenu = useCustomCommandMenu()
   const [commitAi, setCommitAi] = useState<AiRun>(idleAiRun)
   const [fileAiPath, setFileAiPath] = useState<string | null>(null)
   const [fileAi, setFileAi] = useState<AiRun>(idleAiRun)
@@ -198,7 +200,8 @@ function CommitDetailBody({
             onOpenDiff: () => openFile(fileMenu.path),
             onBlame: () => onOpenFileView(fileMenu.path, hash, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.path, hash, 'history'),
-            onCopyPath: () => onCopyText(fileMenu.path)
+            onCopyPath: () => onCopyText(fileMenu.path),
+            custom: customMenu('file', { file: fileMenu.path, sha: hash })
           })}
           onClose={() => setFileMenu(null)}
         />

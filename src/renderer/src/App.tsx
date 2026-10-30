@@ -10,6 +10,7 @@ import ActivityLog from './components/ActivityLog'
 import UpdateDialog from './components/UpdateDialog'
 import StatusBanners from './components/StatusBanners'
 import RefDropMenu from './components/RefDropMenu'
+import { CustomCommandsContext } from './lib/customCommandMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
@@ -204,22 +205,24 @@ export default function App(): JSX.Element {
       <div className="workspace-row">
         <div className="workspace">
           <div className="workspace-main">
-            <MainArea
-              repo={repo}
-              view={view}
-              settings={settings}
-              layout={layout}
-              git={actions}
-              branches={branches}
-              cleanup={cleanup}
-              conflicts={conflicts}
-              commitBox={commitBox}
-              tabs={tabs}
-              hasWorkingChanges={hasWorkingChanges}
-              onOpenTerminal={() => setShowTerminal(true)}
-              showError={showError}
-              setNotice={setNotice}
-            />
+            <CustomCommandsContext value={{ commands: settings.customCommands, run: run.runCustom }}>
+              <MainArea
+                repo={repo}
+                view={view}
+                settings={settings}
+                layout={layout}
+                git={actions}
+                branches={branches}
+                cleanup={cleanup}
+                conflicts={conflicts}
+                commitBox={commitBox}
+                tabs={tabs}
+                hasWorkingChanges={hasWorkingChanges}
+                onOpenTerminal={() => setShowTerminal(true)}
+                showError={showError}
+                setNotice={setNotice}
+              />
+            </CustomCommandsContext>
           </div>
           <TerminalPanel
             ref={terminalRef}
@@ -276,6 +279,8 @@ export default function App(): JSX.Element {
           onMergeToolChange={settings.setMergeTool}
           mergeAnimation={settings.mergeAnimation}
           onMergeAnimationChange={settings.setMergeAnimation}
+          customCommands={settings.customCommands}
+          onCustomCommandsChange={settings.setCustomCommands}
         />
       )}
       {dialogs.palette && (
@@ -293,7 +298,8 @@ export default function App(): JSX.Element {
             layout,
             dialogs,
             selfUpdate,
-            hasWorkingChanges
+            hasWorkingChanges,
+            customCommands: settings.customCommands
           })}
           variant={dialogs.palette}
           onClose={() => dialogs.setPalette(null)}

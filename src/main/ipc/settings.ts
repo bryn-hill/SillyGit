@@ -2,6 +2,7 @@ import { app, ipcMain } from 'electron'
 import { join } from 'path'
 import * as git from '../git'
 import type { MergeToolSettings } from '../../shared/mergeTools'
+import type { CustomCommand } from '../../shared/customCommands'
 import * as settings from '../settings'
 import * as run from '../run'
 import type { SprintSettings } from '../../shared/sprints'
@@ -69,6 +70,11 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('settings:set-merge-tool', (_e, next: MergeToolSettings) =>
     wrap(() => settings.setMergeToolSettings(next))
+  )
+
+  ipcMain.handle('settings:get-custom-commands', () => settings.getCustomCommands())
+  ipcMain.handle('settings:set-custom-commands', (_e, next: CustomCommand[]) =>
+    wrap(() => settings.setCustomCommands(next))
   )
 
   ipcMain.handle('run:get-command', async (_e, repoPath: string) => ({

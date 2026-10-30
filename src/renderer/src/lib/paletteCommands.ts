@@ -9,6 +9,8 @@ import { MOD } from './shortcuts'
 export interface PaletteContext {
   repoPath: string | null
   status: RepoStatus | null
+  /** The user's custom commands that can run from here, already bound to what they act on. */
+  customCommands?: { id: string; label: string; run: () => void }[]
   branches: BranchInfo[]
   hasRemotes: boolean
   stashes: StashEntry[]
@@ -189,5 +191,6 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       .map((path) => ({ id: path, label: repoDisplayName(path), run: () => a.openRecentRepo(path) }))
   )
   add('settings', 'Settings', a.openSettings, `${MOD},`)
+  if (repoPath) for (const c of ctx.customCommands ?? []) commands.push({ ...c, id: `custom-${c.id}`, group: 'Custom' })
   return commands.sort((x, y) => x.label.localeCompare(y.label))
 }

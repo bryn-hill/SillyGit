@@ -1,5 +1,6 @@
 import { useEffect, type JSX } from 'react'
 import type { BranchRemoteInfo } from '../../../shared/types'
+import { useCustomCommandMenu } from '../lib/customCommandMenu'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 
 const MAX_REF_LENGTH = 36
@@ -90,6 +91,7 @@ export default function RefContextMenu({
   onClose
 }: Props): JSX.Element {
   const info = target ? actions.remoteInfo(target) : null
+  const customMenu = useCustomCommandMenu()
   const { revalidate } = actions
   useEffect(() => {
     if (target) revalidate()
@@ -266,6 +268,9 @@ export default function RefContextMenu({
     { id: 'tag', label: 'Create tag here…', onSelect: () => actions.createTag(hash) },
     { id: 'annotated-tag', label: 'Create annotated tag here…', onSelect: () => actions.createAnnotatedTag(hash) }
   ])
+
+  const custom = customMenu(target ? ['branch', 'commit'] : 'commit', { sha: hash, branch: target?.name })
+  if (custom.length > 0) sections.push(custom)
 
   // Shortened labels show the full branch names on hover.
   const fullNames = [target?.name, into, info?.remoteBranch && `${info.remote}/${info.remoteBranch}`]

@@ -12,6 +12,7 @@ import type { Tabs } from './hooks/useTabs'
 import type { PanelLayout } from './hooks/usePanelLayout'
 import type { Dialogs } from './hooks/useDialogs'
 import { paletteCommands } from './lib/paletteCommands'
+import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 
 /** The Actions list and command palette, wired to the app's features. */
 export function appCommands(app: {
@@ -28,12 +29,34 @@ export function appCommands(app: {
   dialogs: Dialogs
   selfUpdate: SelfUpdateState | null
   hasWorkingChanges: boolean
+  customCommands: CustomCommand[]
 }): Command[] {
   const { repo, view, git, branches, conflicts, run, tabs, layout, dialogs } = app
   const { repoPath } = repo
+  // Repository commands always; Branch ones on the checked-out branch; Commit ones on the selected commit.
+  const branch = repo.status?.branch
+  const sha = view.selection.type === 'commit' ? view.selection.hash : null
+  const customCommands = [
+    ...commandsFor(app.customCommands, 'repo').map((c) => ({ id: c.id, label: c.name, run: () => run.runCustom(c, {}) })),
+    ...(branch
+      ? commandsFor(app.customCommands, 'branch').map((c) => ({
+          id: c.id,
+          label: `${c.name} (${branch})`,
+          run: () => run.runCustom(c, { branch })
+        }))
+      : []),
+    ...(sha
+      ? commandsFor(app.customCommands, 'commit').map((c) => ({
+          id: c.id,
+          label: `${c.name} (${sha.slice(0, 7)})`,
+          run: () => run.runCustom(c, { sha })
+        }))
+      : [])
+  ]
   return paletteCommands({
     repoPath,
     status: repo.status,
+    customCommands,
     branches: repo.branches,
     hasRemotes: repo.remotes.length > 0,
     stashes: repo.stashes,

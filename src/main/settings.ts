@@ -6,6 +6,7 @@ import { normalizeNotificationSettings, type NotificationSettings } from '../sha
 import { normalizeSprintSettings, type SprintSettings } from '../shared/sprints'
 import { normalizeMergeToolSettings, type MergeToolSettings } from '../shared/mergeTools'
 import { normalizeBranchListSettings, type BranchListSettings } from '../shared/branchStatus'
+import { normalizeCustomCommands, type CustomCommand } from '../shared/customCommands'
 
 interface StoredSettings {
   anthropicApiKey?: string
@@ -29,6 +30,8 @@ interface StoredSettings {
   sprints?: Partial<SprintSettings>
   /** The external merge tool, if any. */
   mergeTool?: Partial<MergeToolSettings>
+  /** The user's own commands for the menus and command palette. */
+  customCommands?: CustomCommand[]
   /** The Run button's command, per repo path. */
   runCommands?: Record<string, string>
   /** Stale tags in the branch list. */
@@ -161,6 +164,14 @@ export async function getMergeToolSettings(): Promise<MergeToolSettings> {
 
 export async function setMergeToolSettings(next: MergeToolSettings): Promise<MergeToolSettings> {
   return updateSettings((current) => (current.mergeTool = normalizeMergeToolSettings(next)))
+}
+
+export async function getCustomCommands(): Promise<CustomCommand[]> {
+  return normalizeCustomCommands((await readSettings()).customCommands)
+}
+
+export async function setCustomCommands(next: CustomCommand[]): Promise<CustomCommand[]> {
+  return updateSettings((current) => (current.customCommands = normalizeCustomCommands(next)))
 }
 
 export async function getRunCommand(repoPath: string): Promise<string | null> {

@@ -1,7 +1,10 @@
 import { DEFAULT_SPRINT_SETTINGS } from '../../../shared/sprints'
 import { DEFAULT_BRANCH_LIST_SETTINGS } from '../../../shared/branchStatus'
 import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName } from '../../../shared/mergeTools'
+import type { CustomCommand } from '../../../shared/customCommands'
 import { useSavedSetting } from './useSavedSetting'
+
+const NO_COMMANDS: CustomCommand[] = []
 
 /** The app-wide settings kept by the main process, as the Settings dialog edits them. */
 export function useAppSettings(onError: (message: string) => void) {
@@ -39,7 +42,16 @@ export function useAppSettings(onError: (message: string) => void) {
     true,
     onError
   )
+  // The user's own commands for the menus and palette.
+  const [customCommands, setCustomCommands] = useSavedSetting(
+    window.api.getCustomCommands,
+    window.api.setCustomCommands,
+    NO_COMMANDS,
+    onError
+  )
   return {
+    customCommands,
+    setCustomCommands,
     autoFetchMinutes,
     setAutoFetchMinutes,
     sprints,

@@ -1,5 +1,6 @@
 import { useState, type RefObject } from 'react'
 import type { RunMode } from '../../../shared/run'
+import { expandCommand, type CommandTarget, type CustomCommand } from '../../../shared/customCommands'
 import type { TerminalPanelHandle } from '../components/TerminalPanel'
 import type { PromptRequest } from '../components/PromptDialog'
 import { repoDisplayName } from '../lib/repoName'
@@ -123,11 +124,26 @@ export function useRun({
     }
   }
 
+  /** Runs a custom command on `target` in its own terminal tab, which a rerun of it replaces. */
+  const runCustom = (custom: CustomCommand, target: Omit<CommandTarget, 'repo' | 'currentBranch'>): void => {
+    if (!repoPath) return
+    let script: string
+    try {
+      script = expandCommand(custom.command, { ...target, repo: repoPath, currentBranch: repo.status?.branch ?? null })
+    } catch (err) {
+      showError(`${custom.name}: ${err instanceof Error ? err.message : String(err)}`)
+      return
+    }
+    showError(null)
+    terminalRef.current?.startRun({ key: `${repoPath}\0custom\0${custom.id}`, title: custom.name, cwd: repoPath, script })
+    showTerminal()
+  }
+
   const stop = (): void => {
     if (repoPath) terminalRef.current?.stopRun(runKey(repoPath, isolated))
   }
 
-  return { setRunningKeys, command, commit, mode, running, preparing, editCommand, run, stop }
+  return { setRunningKeys, command, commit, mode, running, preparing, editCommand, run, runCustom, stop }
 }
 
 export type Run = ReturnType<typeof useRun>

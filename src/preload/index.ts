@@ -278,6 +278,11 @@ const api = {
   setMergeToolSettings: (
     next: import('../shared/mergeTools').MergeToolSettings
   ): Wrapped<import('../shared/mergeTools').MergeToolSettings> => ipcRenderer.invoke('settings:set-merge-tool', next),
+  getCustomCommands: (): Promise<import('../shared/customCommands').CustomCommand[]> =>
+    ipcRenderer.invoke('settings:get-custom-commands'),
+  setCustomCommands: (
+    next: import('../shared/customCommands').CustomCommand[]
+  ): Wrapped<import('../shared/customCommands').CustomCommand[]> => ipcRenderer.invoke('settings:set-custom-commands', next),
   getSprintSettings: (): Promise<import('../shared/sprints').SprintSettings> =>
     ipcRenderer.invoke('settings:get-sprints'),
   setSprintSettings: (

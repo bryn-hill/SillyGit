@@ -6,9 +6,11 @@ import { resetAvatars } from '../lib/avatars'
 import type { BranchListSettings } from '../../../shared/branchStatus'
 import AccountsSection from './settings/AccountsSection'
 import BranchesSection from './settings/BranchesSection'
+import CustomCommandsSection from './settings/CustomCommandsSection'
 import MergeToolSection from './settings/MergeToolSection'
 import NotificationsSection from './settings/NotificationsSection'
 import SprintsSection from './settings/SprintsSection'
+import type { CustomCommand } from '../../../shared/customCommands'
 
 interface Props {
   onClose: () => void
@@ -22,6 +24,8 @@ interface Props {
   onMergeToolChange: (next: MergeToolSettings) => void
   mergeAnimation: boolean
   onMergeAnimationChange: (on: boolean) => void
+  customCommands: CustomCommand[]
+  onCustomCommandsChange: (next: CustomCommand[]) => void
 }
 
 const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
@@ -37,7 +41,9 @@ export default function SettingsModal({
   mergeTool,
   onMergeToolChange,
   mergeAnimation,
-  onMergeAnimationChange
+  onMergeAnimationChange,
+  customCommands,
+  onCustomCommandsChange
 }: Props): JSX.Element {
   const [key, setKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -118,6 +124,8 @@ export default function SettingsModal({
           <SprintsSection sprints={sprints} onChange={onSprintsChange} />
 
           <MergeToolSection mergeTool={mergeTool} onChange={onMergeToolChange} />
+
+          <CustomCommandsSection commands={customCommands} onChange={onCustomCommandsChange} />
 
           <section className="settings-section">
             <label className="modal-label" htmlFor="auto-fetch">

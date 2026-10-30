@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react'
 import type { FileStatus } from '../../../../shared/types'
 import ContextMenu from '../ContextMenu'
 import { fileMenuSections } from '../fileMenu'
+import { useCustomCommandMenu } from '../../lib/customCommandMenu'
 import type { ActiveFile, OpenFileView } from './types'
 
 function statusLabel(code: string): string {
@@ -34,6 +35,7 @@ export default function ChangeList({
   onCopyText: (text: string) => void
 }): JSX.Element {
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus } | null>(null)
+  const customMenu = useCustomCommandMenu()
 
   const renderRow = (file: FileStatus): JSX.Element => {
     const key = `${staged ? 's' : 'u'}:${file.path}`
@@ -124,7 +126,8 @@ export default function ChangeList({
             onEdit: () => onEditFile(fileMenu.file.path),
             onBlame: () => onOpenFileView(fileMenu.file.path, null, 'blame'),
             onHistory: () => onOpenFileView(fileMenu.file.path, null, 'history'),
-            onCopyPath: () => onCopyText(fileMenu.file.path)
+            onCopyPath: () => onCopyText(fileMenu.file.path),
+            custom: customMenu('file', { file: fileMenu.file.path })
           })}
           onClose={() => setFileMenu(null)}
         />
