@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SillyGit: a friendly desktop Git client</title>
+  <meta name="description" content="SillyGit is a free, open-source desktop Git client with a commit graph, line staging, a three-way merge tool, lanes, pull requests and Claude built in.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#1b1d28" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f7f7fb" media="(prefers-color-scheme: light)">
+  <meta property="og:title" content="SillyGit">
+  <meta property="og:description" content="A friendly desktop Git client with a real merge tool, lanes, and Claude built in.">
+  <meta property="og:image" content="https://bryn-hill.github.io/sillygit/images/social-preview.png">
+  <meta property="og:url" content="https://bryn-hill.github.io/sillygit/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="./"><img src="images/logo.png" alt="" width="32" height="32">SillyGit</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/bryn-hill/sillygit">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <img class="hero-logo" src="images/logo.png" alt="SillyGit logo: a Git diamond wearing sunglasses" width="112" height="112">
+      <h1>Git, but friendly.</h1>
+      <p class="lede">SillyGit is a desktop Git client with a clear commit graph, staging down to single lines, a real three-way merge tool, and Claude built in. The name is silly; the Git underneath is real.</p>
+      <div class="cta">
+        <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download for free</a>
+        <a class="button" href="https://github.com/bryn-hill/sillygit">View on GitHub</a>
+      </div>
+      <p class="fine">macOS and Windows builds · Linux from source · MIT licensed</p>
+      <figure class="shot hero-shot">
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="images/graph-light.webp">
+          <img src="images/graph-dark.webp" alt="SillyGit showing a commit graph with coloured branch lanes, tags, a branch sidebar and the working changes panel" width="2880" height="1800">
+        </picture>
+      </figure>
+    </section>
+
+    <section class="why">
+      <h2>Why SillyGit</h2>
+      <div class="cards">
+        <article>
+          <h3>It's real Git</h3>
+          <p>Every action runs the <code>git</code> on your <code>PATH</code> with your own config, hooks and credentials. The activity log shows exactly what ran.</p>
+        </article>
+        <article>
+          <h3>Conflicts stop being scary</h3>
+          <p>A three-way merge tool with per-chunk and per-line choices, bulk resolution with undo, and AI suggestions when you're stuck.</p>
+        </article>
+        <article>
+          <h3>One checkout, many branches</h3>
+          <p>Lanes keep changes for different branches in the same working tree, and commit each to its own branch.</p>
+        </article>
+        <article>
+          <h3>Free and open</h3>
+          <p>MIT licensed. No account, no telemetry, no paywalled features. Built in the open on GitHub.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="feature">
+        <div class="copy">
+          <p class="kicker">Merge conflicts</p>
+          <h2>A merge tool you'll actually use</h2>
+          <p>See both sides and the result together. Take ours, theirs or both for each chunk or single line, edit the output by hand, and resolve many files at once with undo. Conflicts from merges, rebases, cherry-picks and stash pops all land in the same place.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: light)" srcset="images/conflict-light.webp">
+            <img src="images/conflict-dark.webp" alt="The three-way merge tool with the current and incoming sides above the output" width="1800" height="1125" loading="lazy">
+          </picture>
+        </figure>
+      </div>
+
+      <div class="feature flip">
+        <div class="copy">
+          <p class="kicker">Lanes</p>
+          <h2>Work on several branches at once</h2>
+          <p>Fixing a bug in the middle of a feature? Turn on lanes, move each file to the lane it belongs to, and commit every lane to its own branch, all without stashing or switching.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: light)" srcset="images/lanes-light.webp">
+            <img src="images/lanes-dark.webp" alt="The lanes panel with two lanes, each with its own files and commit box" width="1800" height="1125" loading="lazy">
+          </picture>
+        </figure>
+      </div>
+
+      <div class="feature">
+        <div class="copy">
+          <p class="kicker">Claude</p>
+          <h2>Claude, right next to your graph</h2>
+          <p>Chat with Claude Code inside SillyGit. Every edit and command arrives as a card you approve, with the diff right there. AI commit messages, reviews and help splitting a big change are a click away.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: light)" srcset="images/claude-light.webp">
+            <img src="images/claude-dark.webp" alt="The Claude panel asking permission to make an edit, showing the diff" width="1800" height="1125" loading="lazy">
+          </picture>
+        </figure>
+      </div>
+
+      <div class="feature flip">
+        <div class="copy">
+          <p class="kicker">Staging</p>
+          <h2>Commit exactly what you mean</h2>
+          <p>Stage, unstage or discard whole files, single hunks or individual lines. Fix up an earlier commit, or <em>absorb</em> staged hunks into the unpushed commits they belong to.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: light)" srcset="images/diff-light.webp">
+            <img src="images/diff-dark.webp" alt="A file diff with Stage Hunk and Discard Hunk buttons" width="1800" height="1125" loading="lazy">
+          </picture>
+        </figure>
+      </div>
+
+      <div class="feature">
+        <div class="copy">
+          <p class="kicker">Help</p>
+          <h2>Help that's always one key away</h2>
+          <p>A short walkthrough on first launch and over 50 help articles, each with a worked example. Press <kbd>F1</kbd> or <kbd>?</kbd> anywhere in the app.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: light)" srcset="images/help-light.webp">
+            <img src="images/help-dark.webp" alt="The help centre with topics on the left and popular articles" width="1800" height="1125" loading="lazy">
+          </picture>
+        </figure>
+      </div>
+    </section>
+
+    <section class="more">
+      <h2>And plenty more</h2>
+      <ul class="grid">
+        <li><strong>Interactive rebase</strong> by drag and drop</li>
+        <li><strong>Pull requests</strong>: review, create and check out</li>
+        <li><strong>Accounts</strong> for GitHub, GitLab, Bitbucket, Gitea and Azure DevOps</li>
+        <li><strong>Start work</strong> on GitHub issues, Jira tickets and Azure Boards items</li>
+        <li><strong>Guided bisect</strong>, git-flow and stacked branches</li>
+        <li><strong>Blame</strong>, file history and image diffs</li>
+        <li><strong>Built-in editor</strong>, terminal and command palette</li>
+        <li><strong>Multi-repo tabs</strong> that come back where you left them</li>
+        <li><strong>Git LFS</strong>, tags, worktrees and submodules</li>
+        <li><strong>Undo and redo</strong> for everyday operations</li>
+        <li><strong>Search history</strong> by message, author, path or content</li>
+        <li><strong>Light, dark or system</strong> theme</li>
+      </ul>
+    </section>
+
+    <section id="download" class="download">
+      <h2>Get SillyGit</h2>
+      <div class="cards">
+        <article>
+          <h3>macOS</h3>
+          <p>Apple silicon and Intel, as a <code>.dmg</code>.</p>
+          <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download</a>
+          <p class="fine">First launch: right-click the app and choose <b>Open</b>.</p>
+        </article>
+        <article>
+          <h3>Windows</h3>
+          <p>Windows 10 and 11, 64-bit. Unzip and run <code>SillyGit.exe</code>.</p>
+          <a class="button primary" href="https://github.com/bryn-hill/sillygit/releases/latest">Download</a>
+          <p class="fine">On the SmartScreen prompt, click <b>More info → Run anyway</b>.</p>
+        </article>
+        <article>
+          <h3>Linux and source</h3>
+          <p>Run it from a clone with Node.js 22, or build an AppImage with <code>npm run dist</code>.</p>
+          <a class="button" href="https://github.com/bryn-hill/sillygit#run-from-source">Build from source</a>
+          <p class="fine">Needs Git on your <code>PATH</code>.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><img src="images/logo.png" alt="" width="20" height="20"> SillyGit is open source under the <a href="https://github.com/bryn-hill/sillygit/blob/main/LICENSE">MIT licence</a>.</p>
+    <p><a href="https://github.com/bryn-hill/sillygit">GitHub</a> · <a href="https://github.com/bryn-hill/sillygit/releases">Releases</a> · <a href="https://github.com/bryn-hill/sillygit/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/bryn-hill/sillygit/issues">Issues</a></p>
+  </footer>
+</body>
+</html>
