@@ -35,7 +35,7 @@ const COMMANDS = {
       return
     }
 
-    // The window must never be shown (SILLYGIT_E2E=1). Also strip
+    // The window must stay out of the way (SILLYGIT_E2E=1). Also strip
     // ELECTRON_RUN_AS_NODE: some shells (including Claude Code's sandboxed
     // Bash) set it globally to stop Electron GUIs launching from Bash, which
     // would make Electron start as a plain Node process instead. We want a

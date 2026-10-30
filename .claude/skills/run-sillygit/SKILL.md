@@ -3,11 +3,12 @@ name: run-sillygit
 description: Build, run, and drive the SillyGit Electron desktop app without opening a visible window. Use when asked to start SillyGit, screenshot it, check that a UI change works, or debug its behavior.
 ---
 
-SillyGit is an Electron + React app (electron-vite). Its window can run in
-a special mode where it's created but never shown (`SILLYGIT_E2E=1`,
-see `src/main/index.ts`) — Chromium still renders and can be driven over
-the DevTools Protocol, so this never pops a window on the user's screen or
-steals focus. Drive it via the Playwright REPL at
+SillyGit is an Electron + React app (electron-vite). It has a special mode
+for drivers (`SILLYGIT_E2E=1`, see `showForE2E` in `src/main/window.ts`):
+the window never takes focus and has no Dock icon; on macOS and Windows it's
+shown fully transparent with clicks passing through, on Linux it's never
+shown. Chromium still renders and can be driven over the DevTools Protocol,
+so this never pops a window on the user's screen or steals focus. Drive it via the Playwright REPL at
 `.claude/skills/run-sillygit/driver.mjs`.
 
 All paths below are relative to the repo root.
@@ -111,9 +112,12 @@ Layout (page object model):
 - `e2e/support/`: `FixtureRepo` and `stubIpc()` for replacing a main-process
   handler (the Claude panel tests stub `claude:start`).
 
-With `CI` or `E2E_SHOW_WINDOW=1` set, the window is shown inactive, which
-makes clicks fast and lets failed tests attach a screenshot; leave both unset
-on a real desktop so no window pops up. Open a failure's trace with
+On macOS and Windows the test windows are shown but fully transparent and
+click-through, with no Dock icon, so the suite runs at full speed without
+anything appearing or taking focus. Linux can't do that, so there the window
+is only shown with `CI` set (under xvfb); a never-shown window makes each
+click wait ~2s and can't screenshot. `E2E_SHOW_WINDOW=1` shows the windows
+for real (still unfocused) so you can watch. Open a failure's trace with
 `npx playwright show-trace test-results/<test>/attachments/trace-*.zip`.
 
 ## Run (human path)

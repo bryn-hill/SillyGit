@@ -3,10 +3,11 @@ import { join } from 'path'
 import { windowBackground } from '../shared/theme'
 import icon from '../../resources/icon.png?asset'
 
-// When set, the window is never shown (still fully rendered, just not mapped
-// to the screen) so a Playwright driver can automate it without disturbing
-// the user's desktop. See .claude/skills/run-sillygit.
+// When set, the app runs for a Playwright driver without disturbing the
+// user's desktop: its window never takes focus and, unless
+// SILLYGIT_E2E_SHOW_WINDOW=1, can't be seen. See .claude/skills/run-sillygit.
 export const isE2E = process.env['SILLYGIT_E2E'] === '1'
+const showE2EWindow = process.env['SILLYGIT_E2E_SHOW_WINDOW'] === '1'
 
 const CONSOLE_LEVELS: Record<string, string> = { info: 'INFO', warning: 'WARN', error: 'ERROR', debug: 'DEBUG' }
 
@@ -34,10 +35,13 @@ export function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // A test window sits behind the user's other windows; keep it rendering at full speed there.
+      backgroundThrottling: !isE2E
     }
   })
   mainWindow = window
+  if (isE2E) showForE2E(window)
 
   // Shown once the renderer says it has restored the last session (and
   // loaded the repo it reopens), so launch never flashes the empty "no repo"
@@ -77,5 +81,24 @@ export function createWindow(): void {
     window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     window.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+/**
+ * A never-shown window barely renders (each Playwright click waits ~2s for a
+ * stable frame, and screenshots hang), so a test window is shown, without
+ * focus. Where windows can be made transparent (macOS, Windows) it's shown
+ * fully transparent and lets clicks through, so it's invisible to the user;
+ * Playwright's input goes straight to the page, so tests still work. Linux
+ * can't, so there it stays hidden unless asked for (tests on xvfb ask).
+ */
+function showForE2E(window: BrowserWindow): void {
+  if (showE2EWindow) {
+    window.showInactive()
+  } else if (process.platform === 'darwin' || process.platform === 'win32') {
+    window.setOpacity(0)
+    window.setIgnoreMouseEvents(true)
+    window.setHasShadow(false)
+    window.showInactive()
   }
 }

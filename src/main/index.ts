@@ -47,6 +47,8 @@ app.whenReady().then(async () => {
   registerIpcHandlers()
   // Packaged macOS builds take the icon from the bundle; dev runs need it set here.
   if (!app.isPackaged) app.dock?.setIcon(icon)
+  // Each test worker is its own app; keep them out of the Dock and the app switcher.
+  if (isE2E) app.dock?.hide()
   // Before the window opens, so it paints in the saved theme from the start.
   applyThemePreference(await settings.getThemePreference())
   createWindow()

@@ -7,12 +7,16 @@ import { FixtureRepo } from './support/fixtureRepo'
 
 const APP_DIR = resolve(__dirname, '..')
 
-// The window is never shown by default, so the suite doesn't pop windows on a
-// developer's desktop. A never-shown window barely renders frames, though:
-// each click waits ~2s for the element to look stable, and screenshots hang.
-// In CI (under xvfb) nobody sees it, so show it without focus there. Set
-// E2E_SHOW_WINDOW=1 to do the same locally.
-const SHOW_WINDOW = !!process.env['CI'] || process.env['E2E_SHOW_WINDOW'] === '1'
+// The app shows its test window without focus (see showForE2E in
+// src/main/window.ts). On macOS and Windows it's fully transparent and lets
+// clicks through, so tests don't disturb the desktop. Linux can't do that, so
+// there it's only shown on CI (under xvfb, where nobody sees it); a
+// never-shown window renders slowly (each click waits ~2s, screenshots hang).
+// Set E2E_SHOW_WINDOW=1 to watch the tests.
+const SHOW_WINDOW =
+  process.env['E2E_SHOW_WINDOW'] === '1' || (!!process.env['CI'] && process.platform === 'linux')
+/** Whether the window is shown (if only transparently), so it renders and screenshots work. */
+const WINDOW_RENDERS = SHOW_WINDOW || process.platform !== 'linux'
 
 type Fixtures = {
   /** Extra environment for the app, e.g. `test.use({ appEnv: { … } })`. Implies `freshApp`. */
@@ -36,11 +40,12 @@ type WorkerFixtures = {
 }
 
 function launchApp(userData: string, appEnv: Record<string, string> = {}): Promise<ElectronApplication> {
-  // SILLYGIT_E2E keeps the window hidden (see src/main/index.ts). Some
+  // SILLYGIT_E2E keeps the window out of the user's way (see src/main/window.ts). Some
   // shells set ELECTRON_RUN_AS_NODE globally, which would start Electron as
   // plain Node; the CLAUDE* vars would make the Claude panel reuse the
   // parent Claude Code session.
   const env: Record<string, string> = { ...(process.env as Record<string, string>), ...appEnv, SILLYGIT_E2E: '1' }
+  if (SHOW_WINDOW) env['SILLYGIT_E2E_SHOW_WINDOW'] = '1'
   for (const key of ['ELECTRON_RUN_AS_NODE', 'CLAUDECODE', 'CLAUDE_CODE_SESSION_ID']) delete env[key]
   return electron.launch({ args: [APP_DIR, `--user-data-dir=${userData}`], env, timeout: 30_000 })
 }
@@ -55,9 +60,6 @@ function makeUserData(): string {
 
 async function openWindow(electronApp: ElectronApplication): Promise<SillyGitApp> {
   const page = await electronApp.firstWindow()
-  if (SHOW_WINDOW) {
-    await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].showInactive())
-  }
   await page.waitForLoadState('domcontentloaded')
   return new SillyGitApp(electronApp, page)
 }
@@ -204,7 +206,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
     // The config's `trace` option only covers the built-in browser page, so
     // record one here and keep it when a test fails.
-    await app.context().tracing.start({ screenshots: SHOW_WINDOW, snapshots: true })
+    await app.context().tracing.start({ screenshots: WINDOW_RENDERS, snapshots: true })
     await use(app)
     // A test that used `relaunch` has already closed this app, and its trace with it.
     if (testInfo.status !== testInfo.expectedStatus) {
@@ -228,7 +230,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   sillygit: async ({ electronApp }, use, testInfo) => {
     const sillygit = await openWindow(electronApp)
     await use(sillygit)
-    if (SHOW_WINDOW && testInfo.status !== testInfo.expectedStatus) {
+    if (WINDOW_RENDERS && testInfo.status !== testInfo.expectedStatus) {
       const shot = await sillygit.page.screenshot({ timeout: 5_000 }).catch(() => null)
       if (shot) await testInfo.attach('screenshot', { body: shot, contentType: 'image/png' })
     }

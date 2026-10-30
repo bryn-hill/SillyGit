@@ -157,6 +157,19 @@ export class SillyGitApp {
     await expect(this.repositoryCrumb).toContainText(repoPath.split('/').pop()!)
   }
 
+  /** How the app's window and Dock icon look to the user's desktop. */
+  async desktopPresence(): Promise<{ shown: boolean; focused: boolean; opacity: number; inDock: boolean }> {
+    return this.electronApp.evaluate(({ app, BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      return {
+        shown: window.isVisible(),
+        focused: window.isFocused(),
+        opacity: window.getOpacity(),
+        inDock: app.dock?.isVisible() ?? false
+      }
+    })
+  }
+
   /** Resizes the window's content area, like dragging it to half the screen. */
   async resizeWindow(width: number, height: number): Promise<void> {
     await this.electronApp.evaluate(
