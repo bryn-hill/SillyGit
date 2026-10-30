@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ConflictableResult, FileStatus, PullMode, StashEntry } from '../../../shared/types'
+import type { ConflictableResult, FileStatus, FixupResult, PullMode, StashEntry } from '../../../shared/types'
 import type { RebasePlan, RebaseStep } from '../../../shared/rebase'
 import type { DragSource, DropOption } from '../lib/refDrag'
 import type { IpcResult } from '../lib/ipc'
@@ -42,6 +42,26 @@ export function useGitActions({
     runGitThen(call, (data) => {
       if (data.conflicts) view.showConflicts()
     })
+
+  /** Runs a fixup or absorb, then says if it rewrote pushed commits or stopped on conflicts. */
+  const runFixup = (call: (path: string) => Promise<IpcResult<FixupResult>>, done: string): void =>
+    runGitThen(call, (data) => {
+      if (data.conflicts) view.showConflicts()
+      else setNotice(data.pushed ? `${done} That commit was already pushed, so pushing now needs a force push.` : done)
+    })
+
+  /** Folds everything staged into `hash`. */
+  const fixupInto = (hash: string): void =>
+    runFixup((path) => window.api.fixupInto(path, hash), `Folded the staged changes into ${hash.slice(0, 7)}.`)
+
+  /** Folds staged hunks into the commits `assignments` picks for them (unit id to hash). */
+  const absorb = (planHead: string, planDiff: string, assignments: Record<string, string>): void => {
+    const count = new Set(Object.values(assignments)).size
+    runFixup(
+      (path) => window.api.absorb(path, planHead, planDiff, assignments),
+      `Absorbed the staged changes into ${count} ${count === 1 ? 'commit' : 'commits'}.`
+    )
+  }
 
   const stage = (paths: string[]): void => runGit((path) => window.api.stage(path, paths))
 
@@ -196,6 +216,8 @@ export function useGitActions({
 
   return {
     runConflictable,
+    fixupInto,
+    absorb,
     stage,
     unstage,
     discard,

@@ -17,7 +17,8 @@ export default function CommitBox({
   onStage,
   onCommit,
   amend,
-  onAmendChange
+  onAmendChange,
+  onAbsorb
 }: {
   repoPath: string
   staged: FileStatus[]
@@ -27,6 +28,7 @@ export default function CommitBox({
   onCommit: () => void
   amend: boolean
   onAmendChange: (amend: boolean) => void
+  onAbsorb: () => void
 }): JSX.Element {
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
@@ -125,6 +127,14 @@ export default function CommitBox({
         </button>
         <button className="link-button" disabled={staged.length === 0 || generating} onClick={handleGenerateMessage}>
           {generating ? 'Generating…' : 'Generate message'}
+        </button>
+        <button
+          className="link-button"
+          disabled={staged.length === 0}
+          onClick={onAbsorb}
+          title="Fold each staged change into the earlier commit it fixes"
+        >
+          Absorb…
         </button>
       </div>
       {generateError && <div className="ai-error">{generateError}</div>}

@@ -62,6 +62,7 @@ export function appCommands(app: {
         view.goToWorkingChanges()
         app.commitBox.changeAmend(true)
       },
+      absorb: app.commitBox.openAbsorb,
       run: (mode) => void run.run(mode),
       editRunCommand: () => void run.editCommand(),
       openFileView: (path, mode) => view.openFileView(path, null, mode),

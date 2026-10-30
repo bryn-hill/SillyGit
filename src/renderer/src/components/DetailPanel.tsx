@@ -15,6 +15,7 @@ interface Props {
   multiActions: MultiCommitActions
   amend: boolean
   onAmendChange: (amend: boolean) => void
+  onAbsorb: () => void
   status: RepoStatus | null
   commitMessage: string
   onCommitMessageChange: (value: string) => void
@@ -68,6 +69,7 @@ export default function DetailPanel(props: Props): JSX.Element {
       onCommit={props.onCommit}
       amend={props.amend}
       onAmendChange={props.onAmendChange}
+      onAbsorb={props.onAbsorb}
       operation={props.operation}
       conflictActions={props.conflictActions}
       onEditFile={props.onEditFile}

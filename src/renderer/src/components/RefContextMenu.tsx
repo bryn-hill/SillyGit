@@ -36,6 +36,10 @@ export interface RefActions {
   interactiveRebase: (hash: string) => void
   /** Whether `hash` is below HEAD on the current branch, so an interactive rebase can start there. */
   canInteractiveRebase: (hash: string) => boolean
+  /** Folds the staged changes into `hash`, an earlier commit of the current branch. */
+  fixupInto: (hash: string) => void
+  /** Whether something is staged and `hash` is on the current branch, so it can take a fixup. */
+  canFixup: (hash: string) => boolean
   resetTo: (hash: string, mode: 'soft' | 'mixed' | 'hard') => void
   revertCommit: (hash: string) => void
   deleteBranch: (target: RefTarget) => void
@@ -170,15 +174,23 @@ export default function RefContextMenu({
   commitItems.push({ id: 'revert', label: 'Revert commit', onSelect: () => actions.revertCommit(hash) })
   sections.push(commitItems)
 
-  if (currentBranch && actions.canInteractiveRebase(hash)) {
-    sections.push([
-      {
-        id: 'interactive-rebase',
-        label: `Interactive rebase ${shortInto} to here…`,
-        onSelect: () => actions.interactiveRebase(hash)
-      }
-    ])
+  const rewriteItems: ContextMenuItem[] = []
+  if (currentBranch && actions.canFixup(hash)) {
+    rewriteItems.push({
+      id: 'fixup',
+      label: 'Fix up this commit with staged changes',
+      title: 'Fold what is staged into this commit and replay the commits after it',
+      onSelect: () => actions.fixupInto(hash)
+    })
   }
+  if (currentBranch && actions.canInteractiveRebase(hash)) {
+    rewriteItems.push({
+      id: 'interactive-rebase',
+      label: `Interactive rebase ${shortInto} to here…`,
+      onSelect: () => actions.interactiveRebase(hash)
+    })
+  }
+  if (rewriteItems.length > 0) sections.push(rewriteItems)
 
   if (target) {
     const prItems: ContextMenuItem[] = []

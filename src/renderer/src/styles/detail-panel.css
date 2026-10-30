@@ -156,6 +156,8 @@
 
 .commit-box-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
   justify-content: space-between;
   font-size: 12px;
 }

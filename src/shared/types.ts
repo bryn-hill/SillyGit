@@ -244,6 +244,11 @@ export interface ConflictableResult {
   conflicts: boolean
 }
 
+/** A fixup or absorb: whether it stopped on conflicts, and whether it rewrote commits already pushed. */
+export interface FixupResult extends ConflictableResult {
+  pushed: boolean
+}
+
 /**
  * How Pull brings remote commits in, like GitKraken's Pull menu: `ff` merges
  * when the branches have diverged and fast-forwards otherwise, `ff-only`

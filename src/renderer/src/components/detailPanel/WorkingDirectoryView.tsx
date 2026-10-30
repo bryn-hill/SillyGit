@@ -18,6 +18,8 @@ export interface WorkingProps {
   onCommit: () => void
   amend: boolean
   onAmendChange: (amend: boolean) => void
+  /** Opens Absorb, which folds staged hunks into earlier commits. */
+  onAbsorb: () => void
   operation: OperationState | null
   conflictActions: ConflictActions
   onEditFile: (path: string) => void
@@ -39,6 +41,7 @@ export default function WorkingDirectoryView({
   onCommit,
   amend,
   onAmendChange,
+  onAbsorb,
   operation,
   conflictActions,
   onEditFile,
@@ -97,6 +100,7 @@ export default function WorkingDirectoryView({
           onCommit={onCommit}
           amend={amend}
           onAmendChange={onAmendChange}
+          onAbsorb={onAbsorb}
         />
       )}
     </div>

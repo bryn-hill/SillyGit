@@ -150,6 +150,20 @@ const api = {
     steps: import('../shared/rebase').RebaseStep[]
   ): Wrapped<import('../shared/types').ConflictableResult> =>
     ipcRenderer.invoke('git:start-interactive-rebase', repoPath, base, expectedHead, steps),
+  /** Commits what's staged as a fixup of `target` and squashes it in. */
+  fixupInto: (repoPath: string, target: string): Wrapped<import('../shared/types').FixupResult> =>
+    ipcRenderer.invoke('git:fixup-into', repoPath, target),
+  /** Which earlier commit each staged hunk belongs in. */
+  planAbsorb: (repoPath: string): Wrapped<import('../shared/absorb').AbsorbPlan> =>
+    ipcRenderer.invoke('git:plan-absorb', repoPath),
+  /** Folds staged hunks into the commits `assignments` maps them to (unit id to hash). */
+  absorb: (
+    repoPath: string,
+    planHead: string,
+    planDiff: string,
+    assignments: Record<string, string>
+  ): Wrapped<import('../shared/types').FixupResult> =>
+    ipcRenderer.invoke('git:absorb', repoPath, planHead, planDiff, assignments),
   dropRelation: (repoPath: string, source: string, target: string): Wrapped<import('../shared/types').DropRelation> =>
     ipcRenderer.invoke('git:drop-relation', repoPath, source, target),
   mergeInto: (repoPath: string, source: string, target: string): Wrapped<import('../shared/types').ConflictableResult> =>

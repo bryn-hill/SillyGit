@@ -114,6 +114,7 @@ export default function MainArea({
             }}
             amend={commitBox.amend}
             onAmendChange={commitBox.changeAmend}
+            onAbsorb={commitBox.openAbsorb}
             status={status}
             commitMessage={commitBox.message}
             onCommitMessageChange={commitBox.setMessage}

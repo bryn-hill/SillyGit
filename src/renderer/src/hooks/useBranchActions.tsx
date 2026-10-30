@@ -141,6 +141,9 @@ export function useBranchActions({
     canInteractiveRebase: (hash) => !!status?.branch && hash !== headHash && repo.headAncestors.has(hash),
     resetTo: actions.resetTo,
     revertCommit: actions.revert,
+    fixupInto: actions.fixupInto,
+    canFixup: (hash) =>
+      !!status?.branch && status.staged.length > 0 && (hash === headHash || repo.headAncestors.has(hash)),
     deleteBranch,
     renameBranch,
     pull: pullBranch,

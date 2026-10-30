@@ -18,6 +18,8 @@ export function useCommitBox({
 }) {
   const [message, setMessage] = useState('')
   const [amend, setAmend] = useState(false)
+  // The Absorb dialog, which folds staged hunks into the commits they fix.
+  const [absorbOpen, setAbsorbOpen] = useState(false)
 
   // Prefill the message with git's prepared merge message, once per
   // operation, without overwriting anything the user typed.
@@ -67,7 +69,10 @@ export function useCommitBox({
     changeAmend,
     /** Amend is per repo, so it's switched off when another repo shows. */
     resetAmend: () => setAmend(false),
-    commit
+    commit,
+    absorbOpen,
+    openAbsorb: () => setAbsorbOpen(true),
+    closeAbsorb: () => setAbsorbOpen(false)
   }
 }
 

@@ -8,6 +8,7 @@
 @import './styles/empty-state.css';
 @import './styles/sidebar.css';
 @import './styles/branch-cleanup.css';
+@import './styles/absorb.css';
 @import './styles/commit-graph.css';
 @import './styles/detail-panel.css';
 @import './styles/diff.css';

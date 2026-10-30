@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import * as conflicts from '../conflicts'
 import * as mergeTool from '../mergeTool'
 import { parseConflictMarkers } from '../../shared/conflicts'
+import * as fixup from '../fixup'
 import * as rebase from '../rebase'
 import * as refDrop from '../refDrop'
 import * as ai from '../ai'
@@ -31,6 +32,18 @@ export function registerMergeHandlers(): void {
     'git:start-interactive-rebase',
     (_e, repoPath: string, base: string, expectedHead: string, steps: RebaseStep[]) =>
       wrap(() => rebase.startInteractiveRebase(repoPath, base, expectedHead, steps))
+  )
+
+  ipcMain.handle('git:fixup-into', (_e, repoPath: string, target: string) =>
+    wrap(() => fixup.fixupInto(repoPath, target))
+  )
+
+  ipcMain.handle('git:plan-absorb', (_e, repoPath: string) => wrap(() => fixup.planAbsorb(repoPath)))
+
+  ipcMain.handle(
+    'git:absorb',
+    (_e, repoPath: string, planHead: string, planDiff: string, assignments: Record<string, string>) =>
+      wrap(() => fixup.absorb(repoPath, planHead, planDiff, assignments))
   )
 
   ipcMain.handle('git:drop-relation', (_e, repoPath: string, source: string, target: string) =>

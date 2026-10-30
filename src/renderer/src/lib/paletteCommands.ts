@@ -36,6 +36,7 @@ export interface PaletteContext {
     focusSearch: () => void
     goToWorkingChanges: () => void
     startAmend: () => void
+    absorb: () => void
     run: (mode?: RunMode) => void
     editRunCommand: () => void
     openFileView: (path: string, mode: FileViewMode) => void
@@ -99,6 +100,7 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
     add('search', 'Search commits', a.focusSearch, `${MOD}F`)
     add('commit', 'Go to uncommitted changes', a.goToWorkingChanges)
     add('amend', 'Amend last commit', a.startAmend)
+    if (status?.staged.length) add('absorb', 'Absorb staged changes into earlier commits…', a.absorb)
     add('run', 'Run', () => a.run())
     if (ctx.canRunCommit) {
       add('run-isolated', 'Run selected commit in isolation', () => a.run('isolated'))

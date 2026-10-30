@@ -11,6 +11,7 @@ import UpdateDialog from './components/UpdateDialog'
 import StatusBanners from './components/StatusBanners'
 import RefDropMenu from './components/RefDropMenu'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
+import AbsorbDialog from './components/AbsorbDialog'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
@@ -250,6 +251,16 @@ export default function App(): JSX.Element {
           nowMs={repo.branchesListedAt}
           onDelete={cleanup.deleteBranches}
           onClose={cleanup.close}
+        />
+      )}
+      {commitBox.absorbOpen && repoPath && (
+        <AbsorbDialog
+          repoPath={repoPath}
+          onAbsorb={(head, diff, assignments) => {
+            commitBox.closeAbsorb()
+            actions.absorb(head, diff, assignments)
+          }}
+          onClose={commitBox.closeAbsorb}
         />
       )}
       {dialogs.showSettings && (
