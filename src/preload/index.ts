@@ -472,6 +472,13 @@ const api = {
   getFavouriteBranches: (repoPath: string): Promise<string[]> => ipcRenderer.invoke('branches:get-favourites', repoPath),
   setFavouriteBranches: (repoPath: string, names: string[]): Wrapped<void> =>
     ipcRenderer.invoke('branches:set-favourites', repoPath, names),
+  /** Which branches the commit graph draws for a repo: hidden, soloed, or the current one only. */
+  getGraphScope: (repoPath: string): Promise<import('../shared/graphScope').GraphScope> => ipcRenderer.invoke('graph:get-scope', repoPath),
+  setGraphScope: (
+    repoPath: string,
+    scope: import('../shared/graphScope').GraphScope
+  ): Wrapped<import('../shared/graphScope').GraphScope> =>
+    ipcRenderer.invoke('graph:set-scope', repoPath, scope),
   /** When the "can be tidied" banner may show again, in ms, or null when it isn't snoozed. */
   getCleanupSnooze: (repoPath: string): Promise<number | null> => ipcRenderer.invoke('branches:get-cleanup-snooze', repoPath),
   setCleanupSnooze: (repoPath: string, until: number | null): Wrapped<void> =>

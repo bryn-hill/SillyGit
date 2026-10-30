@@ -4,6 +4,7 @@ import { classifyGitFlowBranch, GIT_FLOW_KINDS, type GitFlowConfig, type GitFlow
 import type { BranchInfo, OpenPullRequest, OperationState, PullMode, RepoStatus, StashEntry } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
 import { foldersOf, graphFilterLabel, type GraphFilter } from '../../../shared/historySearch'
+import { graphScopeLabel, isSolo, type GraphScope, type ScopedBranch } from '../../../shared/graphScope'
 import { repoDisplayName } from './repoName'
 import { MOD } from './shortcuts'
 
@@ -36,6 +37,8 @@ export interface PaletteContext {
   trackedFiles: string[]
   /** The graph's path filter, when it's narrowed to a file or folder. */
   graphFilter?: GraphFilter | null
+  /** Which branches the graph draws, when the graph can be scoped. */
+  graphScope?: GraphScope | null
   tabPinned: boolean
   tabCount: number
   recentRepos: string[]
@@ -63,6 +66,9 @@ export interface PaletteContext {
     editRunCopyFiles: () => void
     openFileView: (path: string, mode: FileViewMode) => void
     filterHistory: (filter: GraphFilter | null) => void
+    toggleCurrentBranchOnly?: () => void
+    soloBranch?: (branch: ScopedBranch) => void
+    showAllBranches?: () => void
     applyPatch: () => void
     stash: () => void
     stashWithMessage: () => void
@@ -172,6 +178,20 @@ export function paletteCommands(ctx: PaletteContext): Command[] {
       foldersOf(ctx.trackedFiles).map((path) => ({ id: path, label: path, run: () => a.filterHistory({ path }) }))
     )
     if (ctx.graphFilter) add('clear-history-filter', `Clear filter: ${graphFilterLabel(ctx.graphFilter)}`, () => a.filterHistory(null))
+    if (ctx.graphScope && a.toggleCurrentBranchOnly && a.soloBranch && a.showAllBranches) {
+      const { soloBranch } = a
+      const scope = ctx.graphScope
+      const scopeLabel = graphScopeLabel(ctx.graphScope)
+      if (scopeLabel) add('graph-show-all-branches', `Show all branches in graph (now: ${scopeLabel})`, a.showAllBranches)
+      if (!ctx.graphScope.currentOnly) add('graph-current-branch-only', 'Show only the current branch in graph', a.toggleCurrentBranchOnly)
+      addList(
+        'graph-solo-branch',
+        'Show only one branch in graph',
+        branches
+          .filter((b) => !isSolo(scope, b))
+          .map((b) => ({ id: `${b.remote ? 'remote' : 'local'}:${b.name}`, label: b.name, run: () => soloBranch(b) }))
+      )
+    }
     add('apply-patch', 'Apply patch…', a.applyPatch)
     if (ctx.lfs?.used && ctx.lfs.installed && a.lfs) {
       const lfs = a.lfs

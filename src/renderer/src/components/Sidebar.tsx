@@ -100,6 +100,8 @@ interface RowHandlers {
   settings: BranchListSettings
   listedAt: number
   conflicts: ConflictForecast
+  /** Whether the graph leaves this branch out, or shows only it. */
+  graphState: (branch: BranchInfo) => 'hidden' | 'solo' | null
 }
 
 function pluralCommits(n: number): string {
@@ -229,9 +231,10 @@ function BranchRow({
 }): JSX.Element {
   const drag = useRefDrag()
   const starred = handlers.favourites.has(branch.name)
+  const graphState = handlers.graphState(branch)
   return (
     <div
-      className={`tree-row branch-row ${branch.current ? 'current' : ''}`}
+      className={`tree-row branch-row ${branch.current ? 'current' : ''} ${graphState === 'hidden' ? 'hidden-in-graph' : ''}`}
       data-branch={branch.name}
       style={{ paddingLeft: 8 + depth * 14 }}
       title={branch.current ? branch.name : `${branch.name} (double-click to check out)`}
@@ -249,6 +252,19 @@ function BranchRow({
         listedAt={handlers.listedAt}
         conflicts={branch.remote ? undefined : handlers.conflicts[branch.name]}
       />
+      {graphState && (
+        <span
+          className={`branch-tag branch-tag-${graphState}`}
+          data-testid={`branch-tag-${graphState}`}
+          title={
+            graphState === 'hidden'
+              ? 'Hidden in the graph (right-click to show it again)'
+              : 'The graph shows only this branch (right-click to show all branches)'
+          }
+        >
+          {graphState === 'hidden' ? 'hidden' : 'solo'}
+        </span>
+      )}
       <button
         className={`branch-star ${starred ? 'starred' : ''}`}
         aria-label={starred ? `Remove ${branch.name} from favourites` : `Add ${branch.name} to favourites`}
@@ -422,7 +438,9 @@ export default function Sidebar({
     onToggleFavourite,
     settings: branchListSettings,
     listedAt,
-    conflicts
+    conflicts,
+    graphState: (branch) =>
+      actions.isSoloInGraph(branch) ? 'solo' : actions.isHiddenInGraph(branch) ? 'hidden' : null
   }
 
   const submitNewBranch = (): void => {

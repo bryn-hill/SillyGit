@@ -6,6 +6,7 @@ import gettingStartedCommandPalette from './getting-started/command-palette'
 import gettingStartedKeyboardShortcuts from './getting-started/keyboard-shortcuts'
 import graphCommitGraph from './graph/commit-graph'
 import graphSearchAndFilter from './graph/search-and-filter'
+import graphHideAndSoloBranches from './graph/hide-and-solo-branches'
 import graphCommitDetails from './graph/commit-details'
 import graphDiffs from './graph/diffs'
 import graphCompare from './graph/compare'
@@ -71,6 +72,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   gettingStartedKeyboardShortcuts,
   graphCommitGraph,
   graphSearchAndFilter,
+  graphHideAndSoloBranches,
   graphCommitDetails,
   graphDiffs,
   graphCompare,

@@ -8,6 +8,7 @@ import * as settings from '../settings'
 import * as run from '../run'
 import type { SprintSettings } from '../../shared/sprints'
 import type { BranchListSettings } from '../../shared/branchStatus'
+import type { GraphScope } from '../../shared/graphScope'
 import type { SavedLayout, SavedSession, SavedTabs } from '../../shared/types'
 import { wrap } from './wrap'
 import { applyThemePreference } from '../theme'
@@ -123,6 +124,12 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('branches:set-favourites', (_e, repoPath: string, names: string[]) =>
     wrap(() => settings.setFavouriteBranches(repoPath, names))
+  )
+
+  ipcMain.handle('graph:get-scope', (_e, repoPath: string) => settings.getGraphScope(repoPath))
+
+  ipcMain.handle('graph:set-scope', (_e, repoPath: string, scope: GraphScope) =>
+    wrap(() => settings.setGraphScope(repoPath, scope))
   )
 
   ipcMain.handle('branches:get-cleanup-snooze', (_e, repoPath: string) => settings.getCleanupSnooze(repoPath))

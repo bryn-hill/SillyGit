@@ -1,6 +1,7 @@
 import { useEffect, type JSX } from 'react'
 import { canOpenPullRequests, pullRequestHostLabel } from '../../../shared/createPullRequest'
 import type { BranchRemoteInfo } from '../../../shared/types'
+import type { ScopedBranch } from '../../../shared/graphScope'
 import type { StackActions } from '../hooks/useBranchActions'
 import type { GitFlowActions } from '../hooks/useGitFlow'
 import { classifyGitFlowBranch, GIT_FLOW_KINDS, gitFlowBase } from '../../../shared/gitflow'
@@ -71,6 +72,11 @@ export interface RefActions extends StackActions, GitFlowActions {
   toggleFavourite: (name: string) => void
   /** Compares the checked-out branch (or HEAD) with a branch or commit. */
   compareWithCurrent: (refOrHash: string) => void
+  /** Whether a branch is left out of the graph, or is the only one it shows. */
+  isHiddenInGraph: (branch: ScopedBranch) => boolean
+  isSoloInGraph: (branch: ScopedBranch) => boolean
+  toggleHiddenInGraph: (branch: ScopedBranch) => void
+  toggleSoloInGraph: (branch: ScopedBranch) => void
 }
 
 interface Props {
@@ -323,7 +329,22 @@ export default function RefContextMenu({
         id: 'favourite',
         label: starred ? `Remove ${name} from favourites` : `Add ${name} to favourites`,
         onSelect: () => actions.toggleFavourite(target.name)
-      }
+      },
+      {
+        id: 'solo-in-graph',
+        label: actions.isSoloInGraph(target) ? 'Show all branches in graph' : `Show only ${name} in graph`,
+        onSelect: () => actions.toggleSoloInGraph(target)
+      },
+      // The checked-out branch always shows, so it can't be hidden.
+      ...(target.current && !actions.isHiddenInGraph(target)
+        ? []
+        : [
+            {
+              id: 'hide-in-graph',
+              label: actions.isHiddenInGraph(target) ? `Show ${name} in graph` : `Hide ${name} in graph`,
+              onSelect: () => actions.toggleHiddenInGraph(target)
+            }
+          ])
     ])
   }
 

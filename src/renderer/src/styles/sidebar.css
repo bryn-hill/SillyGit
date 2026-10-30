@@ -127,6 +127,21 @@
   background: color-mix(in srgb, var(--text-dim) 22%, transparent);
 }
 
+.branch-tag-hidden {
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+}
+
+.branch-tag-solo {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Left out of the commit graph: dimmed, like the graph no longer drawing it. */
+.branch-row.hidden-in-graph .branch-name {
+  opacity: 0.55;
+}
+
 .tidy-banner {
   display: flex;
   align-items: center;

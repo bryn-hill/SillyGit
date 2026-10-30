@@ -416,3 +416,49 @@ describe('a signature git has nothing to check against', () => {
     })
   })
 })
+
+describe('graph scope', () => {
+  beforeEach(() => {
+    run('checkout', '-q', '-b', 'feat')
+    commitFile('f.txt', 'f\n', 'On feat')
+    run('checkout', '-q', '-b', 'other', 'main')
+    commitFile('o.txt', 'o\n', 'On other')
+    run('checkout', '-q', 'main')
+    commitFile('m.txt', 'm\n', 'On main')
+  })
+
+  const subjects = async (scope: Parameters<typeof git.getGraphLog>[3]): Promise<string[]> =>
+    (await git.getGraphLog(dir, 100, null, scope)).map((c) => c.subject)
+
+  it('leaves hidden branches out, but never the checked-out one', async () => {
+    const scope = { hidden: [{ name: 'feat', remote: false }, { name: 'main', remote: false }], solo: null, currentOnly: false }
+    // Commits made in the same second can come in either order.
+    expect((await subjects(scope)).sort()).toEqual(['First', 'On main', 'On other', 'Second'])
+  })
+
+  it('shows only a soloed branch, even when another is checked out', async () => {
+    expect(await subjects({ hidden: [], solo: { name: 'feat', remote: false }, currentOnly: false })).toEqual([
+      'On feat',
+      'Second',
+      'First'
+    ])
+  })
+
+  it('shows only the current branch', async () => {
+    expect(await subjects({ hidden: [], solo: null, currentOnly: true })).toEqual(['On main', 'Second', 'First'])
+  })
+
+  it('searches only the branches the graph shows', async () => {
+    const scope = { hidden: [], solo: null, currentOnly: true }
+    expect(await git.searchCommits(dir, 'on main', undefined, null, scope)).toEqual([{ hash: run('rev-parse', 'main'), index: 0 }])
+    expect(await git.searchCommits(dir, { mode: 'message', term: 'On feat' }, undefined, null, scope)).toEqual([])
+  })
+
+  it('still works with a path filter', async () => {
+    expect(
+      (await git.getGraphLog(dir, 100, { path: 'f.txt' }, { hidden: [], solo: { name: 'feat', remote: false }, currentOnly: false })).map(
+        (c) => c.subject
+      )
+    ).toEqual(['On feat'])
+  })
+})

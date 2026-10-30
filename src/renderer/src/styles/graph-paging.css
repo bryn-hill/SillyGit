@@ -103,3 +103,28 @@ button.graph-filter-clear:hover {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--text);
 }
+
+/* "Current branch" toggle in the graph header: limits the graph to the checked-out branch. */
+button.graph-scope-toggle {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-dim);
+}
+
+button.graph-scope-toggle.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.graph-scope-toggle + .graph-search {
+  margin-left: 0;
+}
+
+.graph-scope-bar {
+  flex-wrap: wrap;
+}

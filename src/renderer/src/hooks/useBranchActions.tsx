@@ -1,5 +1,15 @@
 import { useState } from 'react'
 import { toggleFavourite } from '../../../shared/branchStatus'
+import {
+  DEFAULT_GRAPH_SCOPE,
+  isHidden,
+  isSolo,
+  toggleCurrentOnly,
+  toggleHidden,
+  toggleSolo,
+  type GraphScope,
+  type ScopedBranch
+} from '../../../shared/graphScope'
 import { resolveBranchRemote, splitRemoteRef } from '../../../shared/branchRemote'
 import type { CreatedPullRequest } from '../../../shared/createPullRequest'
 import { stackOf, type StackInfo } from '../../../shared/stacks'
@@ -49,6 +59,8 @@ export function useBranchActions({
   const { runGit, runGitThen, withBusy } = git
   // Starred branches, per repo.
   const [favourites, setFavourites] = useRepoValue(repoPath, window.api.getFavouriteBranches, NO_FAVOURITES)
+  // Which branches the graph draws, per repo; main reads the same setting when it reads the graph.
+  const [graphScope, setGraphScopeValue] = useRepoValue(repoPath, window.api.getGraphScope, DEFAULT_GRAPH_SCOPE)
   const stacks = useStacks(repoPath, branches)
   // The open Create pull request dialog, and the repo it's for.
   const [creatingPr, setCreatingPr] = useState<{ repoPath: string; request: CreatePullRequestRequest } | null>(null)
@@ -168,6 +180,26 @@ export function useBranchActions({
     const names = toggleFavourite(favourites, name)
     setFavourites(repoPath, names)
     window.api.setFavouriteBranches(repoPath, names).then((res) => !res.ok && showError(res.error))
+  }
+
+  /** Saves the graph's branch scope, then reads the graph again with it. */
+  const setGraphScope = (next: GraphScope): void => {
+    if (!repoPath) return
+    setGraphScopeValue(repoPath, next)
+    withBusy(async () => {
+      const res = await window.api.setGraphScope(repoPath, next)
+      if (!res.ok) showError(res.error)
+      await refresh(repoPath)
+    })
+  }
+
+  const graphScopeActions: GraphScopeActions = {
+    scope: graphScope,
+    set: setGraphScope,
+    toggleHidden: (branch) => setGraphScope(toggleHidden(graphScope, branch)),
+    toggleSolo: (branch) => setGraphScope(toggleSolo(graphScope, branch)),
+    toggleCurrentOnly: () => setGraphScope(toggleCurrentOnly(graphScope)),
+    showAll: () => setGraphScope(DEFAULT_GRAPH_SCOPE)
   }
 
   const pushTag = (name: string): void => runGit((path) => window.api.pushTag(path, name), () => setNotice(`Pushed tag ${name}.`))
@@ -292,6 +324,10 @@ export function useBranchActions({
     remoteInfo: (target) => resolveBranchRemote(target, branches, remotes, pullRequests),
     isFavourite: (name) => favourites.includes(name),
     toggleFavourite: toggleFavouriteBranch,
+    isHiddenInGraph: (branch) => isHidden(graphScope, branch),
+    isSoloInGraph: (branch) => isSolo(graphScope, branch),
+    toggleHiddenInGraph: graphScopeActions.toggleHidden,
+    toggleSoloInGraph: graphScopeActions.toggleSolo,
     revalidate: revalidatePullRequests,
     compareWithCurrent: (ref) => view.openCompare({ from: status?.branch ?? 'HEAD', to: ref }),
     ...stackActions,
@@ -307,6 +343,7 @@ export function useBranchActions({
     pullRequests,
     favourites,
     toggleFavourite: toggleFavouriteBranch,
+    graphScope: graphScopeActions,
     createBranch,
     promptCreateBranch,
     deleteBranch,
@@ -328,6 +365,17 @@ export interface StackActions {
   leaveStack: (branch: string) => void
   restack: (branch: string) => void
   pushStack: (branch: string) => void
+}
+
+/** Hiding and soloing branches in the graph, or limiting it to the current branch. */
+export interface GraphScopeActions {
+  scope: GraphScope
+  set: (scope: GraphScope) => void
+  toggleHidden: (branch: ScopedBranch) => void
+  toggleSolo: (branch: ScopedBranch) => void
+  toggleCurrentOnly: () => void
+  /** Back to every branch: nothing hidden, nothing soloed. */
+  showAll: () => void
 }
 
 export type BranchActions = ReturnType<typeof useBranchActions>

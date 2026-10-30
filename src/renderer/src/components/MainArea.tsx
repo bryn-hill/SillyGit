@@ -379,6 +379,7 @@ export default function MainArea({
           filter={repo.graphFilter}
           onFilterChange={view.filterHistory}
           ciPollMinutes={settings.autoFetchMinutes ?? 0}
+          scope={branches.graphScope}
         />
       </Activity>
       {cover}

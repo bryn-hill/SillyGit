@@ -26,6 +26,11 @@ export class Sidebar {
     return this.root.locator(`[data-branch="${fullName}"]`)
   }
 
+  /** The "hidden" or "solo" tag on a branch the graph leaves out or shows alone. */
+  graphTag(fullName: string, kind: 'hidden' | 'solo'): Locator {
+    return this.branchNamed(fullName).getByTestId(`branch-tag-${kind}`)
+  }
+
   deletedTag(fullName: string): Locator {
     return this.branchNamed(fullName).getByTestId('branch-tag-deleted')
   }

@@ -8,6 +8,7 @@ import type {
   FileHistoryEntry
 } from '../../shared/types'
 import { filterPathspecs, type CommitSearch, type GraphFilter } from '../../shared/historySearch'
+import { DEFAULT_GRAPH_SCOPE, graphRevisionArgs, isDefaultScope, type GraphScope } from '../../shared/graphScope'
 import { runGit } from '../gitExec'
 import { parseCoAuthors, parseShortlog, type CoAuthorCandidate } from '../../shared/coAuthors'
 import { parseSignature, type CommitSignature } from '../../shared/signature'
@@ -38,36 +39,54 @@ const RS = '\x1e' // record separator, safe commit delimiter
 export const GRAPH_PAGE_SIZE = 500
 
 /**
- * `git log` of the whole graph, newest first, or with a filter just the
- * commits touching its path. Parent rewriting joins each of those to the
- * next one down its line, so the filtered graph still draws as lanes.
+ * `git log` of the graph's branches (see graphRevisionArgs), newest first,
+ * or with a filter just the commits touching its path. Parent rewriting joins
+ * each of those to the next one down its line, so the filtered graph still
+ * draws as lanes.
  */
-function graphLogArgs(filter: GraphFilter | null, extra: string[]): string[] {
+function graphLogArgs(filter: GraphFilter | null, extra: string[], revisions: string[]): string[] {
   return [
     'log',
-    // Stashes get their own list; their internal commits only clutter the graph,
-    // as do the lanes' backups and set-aside changes.
-    '--exclude=refs/stash',
-    '--exclude=refs/sillygit/*',
-    '--all',
+    ...revisions,
     '--date-order',
     ...(filter ? ['--parents'] : []),
     ...extra,
-    ...(filter ? ['--', ...filterPathspecs(filter)] : [])
+    // Ends the revisions, so a ref is never read as a path; a path search brings its own.
+    ...(filter ? ['--', ...filterPathspecs(filter)] : extra.includes('--') ? [] : ['--'])
   ]
+}
+
+/** The revisions the graph draws for a repo's scope: hidden, soloed or current-branch-only. */
+export async function graphRevisions(repoPath: string, scope: GraphScope = DEFAULT_GRAPH_SCOPE): Promise<string[]> {
+  if (isDefaultScope(scope)) return graphRevisionArgs(scope, [], [], null)
+  const [refs, remotes, current] = await Promise.all([
+    runGit(repoPath, ['for-each-ref', '--format=%(refname)%09%(upstream)', 'refs/heads', 'refs/remotes']).catch(() => ''),
+    runGit(repoPath, ['remote']).catch(() => ''),
+    runGit(repoPath, ['symbolic-ref', '-q', '--short', 'HEAD']).catch(() => '')
+  ])
+  const repoRefs = refs
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [refname, upstream = ''] = line.split('\t')
+      return { refname, upstream }
+    })
+  return graphRevisionArgs(scope, repoRefs, remotes.split('\n').map((r) => r.trim()).filter(Boolean), current.trim() || null)
 }
 
 export async function getGraphLog(
   repoPath: string,
   limit = GRAPH_PAGE_SIZE,
-  filter: GraphFilter | null = null
+  filter: GraphFilter | null = null,
+  scope: GraphScope = DEFAULT_GRAPH_SCOPE
 ): Promise<GraphCommit[]> {
   const format = `%x1e%H${US}%P${US}%an${US}%ae${US}%ad${US}%cd${US}%s${US}%D`
+  const revisions = await graphRevisions(repoPath, scope)
   let out: string
   try {
     out = await runGit(
       repoPath,
-      graphLogArgs(filter, [`--max-count=${limit}`, `--format=${format}`, '--date=iso-strict'])
+      graphLogArgs(filter, [`--max-count=${limit}`, `--format=${format}`, '--date=iso-strict'], revisions)
     )
   } catch {
     return []
@@ -343,19 +362,21 @@ export async function searchCommits(
   repoPath: string,
   query: string | CommitSearch,
   max = 2000,
-  filter: GraphFilter | null = null
+  filter: GraphFilter | null = null,
+  scope: GraphScope = DEFAULT_GRAPH_SCOPE
 ): Promise<CommitSearchHit[]> {
   const search = typeof query === 'string' ? { mode: 'all' as const, term: query } : query
   const term = search.term.trim()
   if (!term) return []
-  if (search.mode === 'all') return searchEverything(repoPath, term.toLowerCase(), max, filter)
+  const revisions = await graphRevisions(repoPath, scope)
+  if (search.mode === 'all') return searchEverything(repoPath, term.toLowerCase(), max, filter, revisions)
 
   const matchArgs = searchArgs({ ...search, term })
   const [order, matched] = await Promise.all([
-    runGit(repoPath, graphLogArgs(filter, ['--format=%H'])).catch(() => ''),
+    runGit(repoPath, graphLogArgs(filter, ['--format=%H'], revisions)).catch(() => ''),
     // A path search's own pathspec takes the filter's place, so commits it
     // finds outside the filter simply have no row and are left out below.
-    runGit(repoPath, graphLogArgs(search.mode === 'path' ? null : filter, ['--format=%H', ...matchArgs]))
+    runGit(repoPath, graphLogArgs(search.mode === 'path' ? null : filter, ['--format=%H', ...matchArgs], revisions))
   ])
   const index = new Map(order.split('\n').filter(Boolean).map((hash, i) => [hash, i]))
   const hits: CommitSearchHit[] = []
@@ -370,11 +391,12 @@ async function searchEverything(
   repoPath: string,
   needle: string,
   max: number,
-  filter: GraphFilter | null
+  filter: GraphFilter | null,
+  revisions: string[]
 ): Promise<CommitSearchHit[]> {
   let out: string
   try {
-    out = await runGit(repoPath, graphLogArgs(filter, [`--format=%x1e%H${US}%an${US}%ae${US}%B`]))
+    out = await runGit(repoPath, graphLogArgs(filter, [`--format=%x1e%H${US}%an${US}%ae${US}%B`], revisions))
   } catch {
     return []
   }

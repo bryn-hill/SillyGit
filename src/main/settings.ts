@@ -10,6 +10,7 @@ import { normalizeCustomCommands, type CustomCommand } from '../shared/customCom
 import { normalizeThemePreference, type ThemePreference } from '../shared/theme'
 import { normalizeEditorSettings, type EditorSettings } from '../shared/editors'
 import { normalizeHelpSettings } from '../shared/help/tour'
+import { isDefaultScope, normalizeGraphScope, type GraphScope } from '../shared/graphScope'
 import type { HelpSettings } from '../shared/help/types'
 import { normalizeRepoGroups, type RepoGroup } from '../shared/repoOverview'
 
@@ -51,6 +52,8 @@ interface StoredSettings {
   branchList?: Partial<BranchListSettings>
   /** Starred branches, per repo path, in the order they were starred. */
   favouriteBranches?: Record<string, string[]>
+  /** Branches hidden from or soloed in the commit graph, per repo path. */
+  graphScopes?: Record<string, Partial<GraphScope>>
   /** Per repo: when the branch cleanup banner may show again, in ms. */
   cleanupSnoozedUntil?: Record<string, number>
   /** The first-use walkthrough: whether it was finished (or skipped) and which version. */
@@ -265,6 +268,21 @@ export async function setFavouriteBranches(repoPath: string, names: string[]): P
     if (names.length > 0) all[repoPath] = [...new Set(names)]
     else delete all[repoPath]
     current.favouriteBranches = all
+  })
+}
+
+export async function getGraphScope(repoPath: string): Promise<GraphScope> {
+  return normalizeGraphScope((await readSettings()).graphScopes?.[repoPath])
+}
+
+export async function setGraphScope(repoPath: string, next: GraphScope): Promise<GraphScope> {
+  const scope = normalizeGraphScope(next)
+  return updateSettings((current) => {
+    const all = { ...current.graphScopes }
+    if (isDefaultScope(scope)) delete all[repoPath]
+    else all[repoPath] = scope
+    current.graphScopes = all
+    return scope
   })
 }
 

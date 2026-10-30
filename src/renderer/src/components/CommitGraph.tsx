@@ -19,6 +19,8 @@ import { MAX_CI_COMMITS, RECENT_COMMITS } from '../../../shared/ciStatus'
 import { useBisectState } from '../lib/bisectMenu'
 import { bisectMarks, markLabel } from '../../../shared/bisect'
 import Select from './Select'
+import GraphScopeBar from './commitGraph/GraphScopeBar'
+import type { GraphScopeActions } from '../hooks/useBranchActions'
 import {
   graphFilterLabel,
   SEARCH_MODES,
@@ -91,6 +93,8 @@ interface Props {
   onFilterChange: (filter: GraphFilter | null) => void
   /** Auto-fetch's interval in minutes (0 = off); CI results are looked at again this often. */
   ciPollMinutes: number
+  /** Which branches the graph draws: hide, solo, or the current branch only. */
+  scope: GraphScopeActions
 }
 
 export default function CommitGraph({
@@ -117,7 +121,8 @@ export default function CommitGraph({
   mergeAnimation,
   filter,
   onFilterChange,
-  ciPollMinutes
+  ciPollMinutes,
+  scope
 }: Props): JSX.Element {
   // The WIP node sits above the checked-out commit's lane and a dashed line
   // joins them, even when other branch tips come between.
@@ -433,6 +438,14 @@ export default function CommitGraph({
         </div>
         <span className="col-graph">Graph</span>
         <span className="col-message">Commit message</span>
+        <button
+          className={`graph-scope-toggle${scope.scope.currentOnly ? ' active' : ''}`}
+          aria-pressed={scope.scope.currentOnly}
+          title="Show only the checked-out branch and its upstream"
+          onClick={scope.toggleCurrentOnly}
+        >
+          Current branch
+        </button>
         <div className="graph-search">
           <Select<CommitSearchMode>
             className="graph-search-mode"
@@ -513,6 +526,7 @@ export default function CommitGraph({
           )}
         </div>
       )}
+      <GraphScopeBar scope={scope} />
       <div
         className="commit-graph-body"
         ref={bodyRef}

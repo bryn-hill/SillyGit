@@ -83,6 +83,16 @@ export class CommitGraph {
     return this.root.page().getByRole('button', { name: 'Clear filter' })
   }
 
+  /** The header's "Current branch" toggle, which limits the graph to the checked-out branch. */
+  get currentBranchToggle(): Locator {
+    return this.root.page().getByRole('button', { name: 'Current branch', exact: true })
+  }
+
+  /** The chips under the header naming what the graph leaves out (hidden, soloed, current only). */
+  get scopeChips(): Locator {
+    return this.root.page().getByTestId('graph-scope-chip')
+  }
+
   /** The Branch / Tag cell of a commit's row. */
   refCell(subject: string): Locator {
     return this.row(subject).getByTestId('ref-cell')

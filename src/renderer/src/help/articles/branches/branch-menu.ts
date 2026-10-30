@@ -24,6 +24,7 @@ const article: HelpArticle = {
 - **Create worktree from <name>…** to check the branch out in a second folder.
 - Stack and git-flow actions, when they apply.
 - **Add to favourites**, **Copy branch name**, **Copy commit SHA** and a link to the branch on the remote.
+- **Show only <name> in graph** and **Hide <name> in graph** to trim the graph (see [Hide, solo or limit graph branches](help:graph/hide-and-solo-branches)).
 
 The palette has **Merge into <current>**, **Rebase <current> onto**, **Delete branch** and **Rename** too.
 
