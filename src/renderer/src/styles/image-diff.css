@@ -54,11 +54,11 @@
 }
 
 .image-diff-pane.before .image-diff-canvas {
-  box-shadow: inset 0 0 0 1px rgba(255, 85, 85, 0.5);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent);
 }
 
 .image-diff-pane.after .image-diff-canvas {
-  box-shadow: inset 0 0 0 1px rgba(80, 250, 123, 0.5);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 50%, transparent);
 }
 
 /* A checkerboard behind the picture so transparent pixels read as transparent. */

@@ -1,8 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { chooseOption } from './Select'
 
 /** The Settings dialog (gear button in the top bar). */
 export class SettingsDialog {
   readonly root: Locator
+  readonly theme: Locator
   readonly accounts: Locator
   readonly addAccountButton: Locator
   readonly addAccountForm: Locator
@@ -26,6 +28,7 @@ export class SettingsDialog {
 
   constructor(private readonly page: Page) {
     this.root = page.getByRole('dialog', { name: 'Settings' })
+    this.theme = this.root.getByLabel('Appearance')
     this.accounts = this.root.getByRole('region', { name: 'Accounts' })
     this.addAccountButton = this.accounts.getByRole('button', { name: 'Add account…' })
     this.addAccountForm = this.accounts.getByRole('form', { name: 'Add account' })
@@ -55,6 +58,11 @@ export class SettingsDialog {
   async close(): Promise<void> {
     await this.root.getByRole('button', { name: 'Close', exact: true }).last().click()
     await expect(this.root).toHaveCount(0)
+  }
+
+  /** Picks "Match the system", "Light" or "Dark" under Appearance. */
+  async chooseTheme(label: 'Match the system' | 'Light' | 'Dark'): Promise<void> {
+    await chooseOption(this.theme, label)
   }
 
   async open(): Promise<void> {

@@ -1,7 +1,7 @@
 /* ---------- merge conflicts ---------- */
 
 .notice-banner {
-  background: rgba(80, 250, 123, 0.12);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
   color: var(--green);
   padding: 8px 14px;
   font-size: 12px;
@@ -67,13 +67,13 @@ button.mark-resolved-button {
 button.abort-button {
   background: transparent;
   color: var(--red);
-  border-color: rgba(255, 85, 85, 0.5);
+  border-color: color-mix(in srgb, var(--red) 50%, transparent);
 }
 
 button.danger-button {
-  background: rgba(255, 85, 85, 0.15);
+  background: color-mix(in srgb, var(--red) 15%, transparent);
   color: var(--red);
-  border-color: rgba(255, 85, 85, 0.5);
+  border-color: color-mix(in srgb, var(--red) 50%, transparent);
 }
 
 button.merge-save-button {
@@ -248,8 +248,8 @@ button.merge-line-button:hover:not(:disabled) {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   color: var(--text-dim);
-  background: rgba(255, 184, 108, 0.08);
-  border-top: 1px solid rgba(255, 184, 108, 0.25);
+  background: color-mix(in srgb, var(--orange) 8%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--orange) 25%, transparent);
 }
 
 .merge-hunk-header label {
@@ -260,20 +260,20 @@ button.merge-line-button:hover:not(:disabled) {
 
 .merge-pane-ours .merge-conflict-line,
 .merge-pane-ours .merge-pad {
-  background: rgba(139, 233, 253, 0.06);
+  background: color-mix(in srgb, var(--cyan) 6%, transparent);
 }
 
 .merge-pane-theirs .merge-conflict-line,
 .merge-pane-theirs .merge-pad {
-  background: rgba(241, 250, 140, 0.05);
+  background: color-mix(in srgb, var(--yellow) 5%, transparent);
 }
 
 .merge-pane-ours .merge-conflict-line.picked {
-  background: rgba(139, 233, 253, 0.2);
+  background: color-mix(in srgb, var(--cyan) 20%, transparent);
 }
 
 .merge-pane-theirs .merge-conflict-line.picked {
-  background: rgba(241, 250, 140, 0.16);
+  background: color-mix(in srgb, var(--yellow) 16%, transparent);
 }
 
 .merge-conflict-line.picked .merge-line-button {
@@ -281,16 +281,16 @@ button.merge-line-button:hover:not(:disabled) {
 }
 
 .output-ours {
-  background: rgba(139, 233, 253, 0.14);
+  background: color-mix(in srgb, var(--cyan) 14%, transparent);
 }
 
 .output-theirs {
-  background: rgba(241, 250, 140, 0.11);
+  background: color-mix(in srgb, var(--yellow) 11%, transparent);
 }
 
 .output-base,
 .output-marker {
-  background: rgba(255, 184, 108, 0.12);
+  background: color-mix(in srgb, var(--orange) 12%, transparent);
   color: var(--orange);
 }
 

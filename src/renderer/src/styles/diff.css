@@ -15,18 +15,18 @@
 }
 
 .diff-add {
-  background: rgba(80, 250, 123, 0.15);
-  color: #9ae6a8;
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: var(--green-soft);
 }
 
 .diff-remove {
-  background: rgba(255, 85, 85, 0.15);
-  color: #ff8383;
+  background: color-mix(in srgb, var(--red) 15%, transparent);
+  color: var(--red-soft);
 }
 
 .diff-hunk-header {
   color: var(--cyan);
-  background: rgba(139, 233, 253, 0.08);
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
 }
 
 .diff-file-header {
@@ -39,7 +39,7 @@
 }
 
 .diff-highlight {
-  background: rgba(189, 147, 249, 0.25) !important;
+  background: color-mix(in srgb, var(--accent) 25%, transparent) !important;
   box-shadow: inset 2px 0 0 var(--accent);
 }
 

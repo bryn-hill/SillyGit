@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type JSX } from 'react'
 import type { EditableFile } from '../../../shared/types'
-import { monaco } from '../lib/monaco'
+import type { Theme } from '../../../shared/theme'
+import { MONACO_THEMES, monaco } from '../lib/monaco'
 
 interface Props {
   repoPath: string
+  theme: Theme
   path: string
   /** Unsaved text from the last time this file was open, restored on top of the file on disk. */
   loadDraft: () => string | undefined
@@ -24,6 +26,7 @@ function formatSize(bytes: number): string {
 /** Edits one working-tree file in Monaco, in place of the commit graph. */
 export default function FileEditor({
   repoPath,
+  theme,
   path,
   loadDraft,
   onDraftChange,
@@ -93,6 +96,11 @@ export default function FileEditor({
   const content = file?.kind === 'text' ? file.content : null
   const absolutePath = file?.absolutePath
 
+  // Monaco's theme is global; the editor below picks up whichever is set.
+  useEffect(() => {
+    monaco.editor.setTheme(MONACO_THEMES[theme])
+  }, [theme])
+
   useEffect(() => {
     if (content == null || !absolutePath || !containerRef.current) return
     const uri = monaco.Uri.file(absolutePath)
@@ -100,7 +108,6 @@ export default function FileEditor({
     const model = monaco.editor.createModel(content, undefined, uri)
     const editor = monaco.editor.create(containerRef.current, {
       model,
-      theme: 'sillygit-dracula',
       automaticLayout: true,
       fontFamily: "'SF Mono', Menlo, ui-monospace, monospace",
       fontSize: 12.5,

@@ -173,7 +173,7 @@ export default function GraphCell({
         cy={cy}
         r={5}
         fill={row.color}
-        stroke="#282a36"
+        stroke="var(--bg)"
         strokeWidth={2}
       />
     )

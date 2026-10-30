@@ -88,7 +88,7 @@
 }
 
 .terminal-tab.running > svg:first-child {
-  color: var(--green, #50fa7b);
+  color: var(--green);
 }
 
 .terminal-tab[data-testid='run-tab'] .terminal-tab-title {
@@ -104,7 +104,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--red, #ff5555);
+  color: var(--red);
   border-radius: 3px;
 }
 
@@ -137,4 +137,9 @@
 
 .terminal-instance .xterm {
   height: 100%;
+}
+
+/* xterm paints its own themed background; its viewport's default black would show below the last row. */
+.terminal-instance .xterm .xterm-viewport {
+  background-color: transparent;
 }

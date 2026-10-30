@@ -369,6 +369,9 @@ const api = {
   testNotification: (): Wrapped<void> => ipcRenderer.invoke('notifications:test'),
   getShowAvatars: (): Promise<boolean> => ipcRenderer.invoke('settings:get-show-avatars'),
   setShowAvatars: (show: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-show-avatars', show),
+  getThemePreference: (): Promise<import('../shared/theme').ThemePreference> => ipcRenderer.invoke('settings:get-theme'),
+  setThemePreference: (preference: import('../shared/theme').ThemePreference): Wrapped<void> =>
+    ipcRenderer.invoke('settings:set-theme', preference),
   getMergeAnimation: (): Promise<boolean> => ipcRenderer.invoke('settings:get-merge-animation'),
   setMergeAnimation: (on: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-merge-animation', on),
   /** Avatar images (data: URLs) by lower-cased email; null or missing means show initials. */

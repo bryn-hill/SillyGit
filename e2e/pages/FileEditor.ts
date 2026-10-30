@@ -4,6 +4,8 @@ import { expect, type Locator, type Page } from '@playwright/test'
 export class FileEditor {
   readonly root: Locator
   readonly code: Locator
+  /** Monaco's text area, painted in the editor theme's background. */
+  readonly surface: Locator
   readonly saveButton: Locator
   readonly closeButton: Locator
   readonly externalButton: Locator
@@ -13,6 +15,7 @@ export class FileEditor {
   constructor(private readonly page: Page) {
     this.root = page.getByRole('region', { name: 'Edit file' })
     this.code = this.root.getByTestId('file-editor-monaco').locator('.view-lines')
+    this.surface = this.root.getByTestId('file-editor-monaco').locator('.monaco-editor-background')
     this.saveButton = this.root.getByRole('button', { name: 'Save', exact: true })
     this.closeButton = this.root.getByRole('button', { name: 'Close editor' })
     this.externalButton = this.root.getByRole('button', { name: 'Open in external editor' })

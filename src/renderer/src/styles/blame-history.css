@@ -130,7 +130,7 @@
 }
 
 .blame-row.hovered {
-  background: rgba(189, 147, 249, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .blame-row .line-code {

@@ -5,6 +5,8 @@ import { setNetworkEnv } from './gitExec'
 import { registerTerminalHandlers, killAllTerminals } from './terminal'
 import { registerClaudeHandlers, closeAllClaudeChats } from './claude'
 import { createWindow, getMainWindow, isE2E } from './window'
+import { applyThemePreference } from './theme'
+import * as settings from './settings'
 import { registerGitHandlers } from './ipc/git'
 import { registerMergeHandlers } from './ipc/merging'
 import { registerBranchHandlers } from './ipc/branches'
@@ -36,13 +38,15 @@ function registerIpcHandlers(): void {
   registerClaudeHandlers(getMainWindow)
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // net.fetch goes through the system's proxy settings, like the rest of Chromium.
   setFetch((url, init) => net.fetch(url, init))
   setNetworkEnv(accounts.gitAuthEnv)
   registerIpcHandlers()
   // Packaged macOS builds take the icon from the bundle; dev runs need it set here.
   if (!app.isPackaged) app.dock?.setIcon(icon)
+  // Before the window opens, so it paints in the saved theme from the start.
+  applyThemePreference(await settings.getThemePreference())
   createWindow()
   if (!isE2E) startPrNotifications()
   // A packaged build has no checkout to update, so don't fetch for one.

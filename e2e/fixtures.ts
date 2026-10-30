@@ -114,7 +114,7 @@ async function resetApp(shared: WorkerFixtures['sharedApp'], userData: string): 
   const page = await shared.app!.firstWindow()
   await parkPage(page)
   await shared.app!.evaluate(
-    async ({ app, BrowserWindow, clipboard, dialog, ipcMain, session, shell }, userData) => {
+    async ({ app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, session, shell }, userData) => {
       const g = globalThis as Record<string, unknown>
       const pristine = g['__e2ePristine'] as {
         handlers: Map<string, unknown>
@@ -136,6 +136,8 @@ async function resetApp(shared: WorkerFixtures['sharedApp'], userData: string): 
       // Values tests parked on globalThis, e.g. recorded IPC calls.
       for (const key of Object.keys(g)) if (key !== '__e2ePristine' && !pristine.globals.has(key)) delete g[key]
       app.setPath('userData', userData)
+      // What a launch with the fresh settings (no theme saved) applies.
+      nativeTheme.themeSource = 'dark'
       await session.defaultSession.clearStorageData()
       const window = BrowserWindow.getAllWindows()[0]
       if (window.isMaximized()) window.unmaximize()

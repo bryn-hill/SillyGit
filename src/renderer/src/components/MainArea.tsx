@@ -224,6 +224,7 @@ export default function MainArea({
       <Suspense key={`${repoPath}\0${editingPath}`} fallback={<div className="file-editor" />}>
         <FileEditor
           repoPath={repoPath}
+          theme={settings.theme}
           path={editingPath}
           loadDraft={() => view.loadDraft(editingPath)}
           onDraftChange={(draft) => view.saveDraft(editingPath, draft)}

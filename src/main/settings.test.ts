@@ -112,6 +112,22 @@ describe('auto fetch', () => {
   })
 })
 
+describe('theme', () => {
+  it('defaults to dark and stores a known choice', async () => {
+    expect(await settings.getThemePreference()).toBe('dark')
+    await settings.setThemePreference('light')
+    expect(await settings.getThemePreference()).toBe('light')
+    expect(stored().theme).toBe('light')
+    await settings.setThemePreference('system')
+    expect(await settings.getThemePreference()).toBe('system')
+  })
+
+  it('ignores a stored value it does not know', async () => {
+    seed({ theme: 'neon' })
+    expect(await settings.getThemePreference()).toBe('dark')
+  })
+})
+
 describe('notification and sprint settings', () => {
   it('stores what it was given, normalized', async () => {
     const saved = await settings.setNotificationSettings({

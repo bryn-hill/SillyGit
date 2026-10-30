@@ -16,7 +16,7 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow) 55%, transparent);
   overflow: hidden;
   display: flex;
   flex-direction: column;

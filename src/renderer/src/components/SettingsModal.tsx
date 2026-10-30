@@ -11,9 +11,12 @@ import MergeToolSection from './settings/MergeToolSection'
 import NotificationsSection from './settings/NotificationsSection'
 import SprintsSection from './settings/SprintsSection'
 import type { CustomCommand } from '../../../shared/customCommands'
+import type { ThemePreference } from '../../../shared/theme'
 
 interface Props {
   onClose: () => void
+  themePreference: ThemePreference
+  onThemePreferenceChange: (next: ThemePreference) => void
   autoFetchMinutes: number
   onAutoFetchChange: (minutes: number) => void
   sprints: SprintSettings
@@ -28,10 +31,18 @@ interface Props {
   onCustomCommandsChange: (next: CustomCommand[]) => void
 }
 
+const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'Match the system' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' }
+]
+
 const AUTO_FETCH_CHOICES = [0, 1, 5, 10, 30]
 
 export default function SettingsModal({
   onClose,
+  themePreference,
+  onThemePreferenceChange,
   autoFetchMinutes,
   onAutoFetchChange,
   sprints,
@@ -85,6 +96,13 @@ export default function SettingsModal({
           </button>
         </div>
         <div className="modal-body">
+          <section className="settings-section">
+            <label className="modal-label" htmlFor="theme">
+              Appearance
+            </label>
+            <Select id="theme" value={themePreference} onChange={onThemePreferenceChange} options={THEME_CHOICES} />
+          </section>
+
           <AccountsSection />
 
           <NotificationsSection />

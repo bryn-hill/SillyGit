@@ -119,7 +119,7 @@ button.select.open .select-chevron {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 45%, transparent);
   font-size: 12px;
   /* A popup over the title strip would otherwise drag the window on macOS. */
   -webkit-app-region: no-drag;

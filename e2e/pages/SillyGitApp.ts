@@ -41,6 +41,8 @@ export class SillyGitApp {
   readonly bisect: Bisect
   readonly gitFlow: GitFlow
 
+  /** <html>, whose data-theme says which theme is drawn. */
+  readonly document: Locator
   readonly emptyState: Locator
   readonly openRepositoryButton: Locator
   readonly repositoryCrumb: Locator
@@ -82,6 +84,7 @@ export class SillyGitApp {
     this.bisect = new Bisect(page)
     this.gitFlow = new GitFlow(page)
 
+    this.document = page.locator('html')
     this.emptyState = page.getByText('No repository open.')
     this.openRepositoryButton = page.getByRole('button', { name: 'Open Repository', exact: true })
     this.repositoryCrumb = page.getByRole('button', { name: /^Repository/ })

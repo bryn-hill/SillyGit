@@ -144,8 +144,8 @@ kbd {
 
 .claude-notice.error,
 .claude-turn-end.error {
-  color: #ff8383;
-  background: #44242e;
+  color: var(--red-soft);
+  background: color-mix(in srgb, var(--red) 18%, var(--bg));
   border-radius: 6px;
   padding: 6px 10px;
   text-align: left;
@@ -253,7 +253,7 @@ kbd {
 
 .md-code {
   margin: 0 0 8px;
-  background: #21222c;
+  background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
@@ -423,7 +423,7 @@ kbd {
 }
 
 .claude-tool-result.error {
-  color: #ff8383;
+  color: var(--red-soft);
 }
 
 .claude-tool-children {
@@ -538,7 +538,7 @@ button.claude-primary {
 }
 
 button.claude-primary:hover:not(:disabled) {
-  background: #cfaefb;
+  background: var(--accent-hover);
 }
 
 .claude-feedback-input {
@@ -555,7 +555,7 @@ button.claude-primary:hover:not(:disabled) {
 }
 
 .claude-permission-resolved.denied {
-  color: #ff8383;
+  color: var(--red-soft);
 }
 
 .claude-questions {
@@ -596,7 +596,7 @@ button.claude-option {
 
 button.claude-option.selected {
   border-color: var(--accent);
-  background: rgba(189, 147, 249, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .claude-option-label {
@@ -714,7 +714,7 @@ button.claude-stop {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 40%, transparent);
   z-index: 11;
   overflow-y: auto;
 }
