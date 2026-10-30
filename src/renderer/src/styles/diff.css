@@ -24,6 +24,18 @@
   color: var(--red-soft);
 }
 
+.diff-add .diff-word {
+  background: color-mix(in srgb, var(--green) 35%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.diff-remove .diff-word {
+  background: color-mix(in srgb, var(--red) 35%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
 .diff-hunk-header {
   color: var(--cyan);
   background: color-mix(in srgb, var(--cyan) 8%, transparent);

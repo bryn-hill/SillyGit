@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState, type JSX } from 'react'
 import type { PartialAction } from '../../../shared/lineStaging'
+import type { WordRange } from '../../../shared/wordDiff'
 import { pairForSplit, renderFileDiff, type RenderedDiffLine, type RenderedHunk } from '../lib/diffRender'
 import { selectDiffLine, type PickedLines } from '../lib/lineSelection'
 import { highlightLine, languageForPath } from '../lib/highlight'
@@ -46,15 +47,15 @@ function laneProps(laneOf: LaneOf | undefined, line: RenderedDiffLine | null): {
   return { className: 'lane-owned', style: { '--lane-color': laneColor(lane.color) } as React.CSSProperties }
 }
 
-function renderLineHtml(text: string, lang: string | null, showWhitespace: boolean): string {
-  if (!showWhitespace) return highlightLine(text, lang)
+function renderLineHtml(text: string, lang: string | null, showWhitespace: boolean, words?: WordRange[] | null): string {
+  if (!showWhitespace) return highlightLine(text, lang, words)
   const trailingMatch = text.match(/[ \t]+$/)
-  if (!trailingMatch) return highlightLine(text, lang)
+  if (!trailingMatch) return highlightLine(text, lang, words)
   const main = text.slice(0, text.length - trailingMatch[0].length)
   const markers = [...trailingMatch[0]]
     .map((ch) => `<span class="${ch === '\t' ? 'ws-tab' : 'ws-space'}">${ch === '\t' ? '→' : '·'}</span>`)
     .join('')
-  return highlightLine(main, lang) + markers
+  return highlightLine(main, lang, words) + markers
 }
 
 function FileViewPane({
@@ -291,7 +292,7 @@ function UnifiedDiff({
                   </LineGutter>
                   <span
                     className="line-code"
-                    dangerouslySetInnerHTML={{ __html: renderLineHtml(line.text, lang, showWhitespace) }}
+                    dangerouslySetInnerHTML={{ __html: renderLineHtml(line.text, lang, showWhitespace, line.words) }}
                   />
                 </div>
               )
@@ -339,7 +340,7 @@ function SplitCell({
       )}
       <span
         className="line-code"
-        dangerouslySetInnerHTML={{ __html: line ? renderLineHtml(line.text, lang, showWhitespace) : '' }}
+        dangerouslySetInnerHTML={{ __html: line ? renderLineHtml(line.text, lang, showWhitespace, line.words) : '' }}
       />
     </div>
   )

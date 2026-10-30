@@ -52,6 +52,24 @@ test.describe('a file with a line wider than the diff', () => {
   }
 })
 
+test.describe('a line edited in place', () => {
+  test.beforeEach(async ({ sillygit, repo }) => {
+    repo.commitFile('price.ts', 'const total = price * quantity\nconst other = 1\n', 'Add price.ts')
+    repo.commitFile('price.ts', 'const total = cost * quantity\nconst other = 1\n', 'Use cost')
+    await sillygit.openRepository(repo.path)
+    await sillygit.details.openFile('price.ts')
+    await sillygit.commitView.expectShowing('price.ts', 'cost')
+  })
+
+  for (const option of ['Unified view', 'Split view'] as const) {
+    test(`highlights only the changed words in ${option}`, async ({ sillygit }) => {
+      const view = sillygit.commitView
+      await view.show(option)
+      await expect(view.changedWords()).toHaveText(['price', 'cost'])
+    })
+  }
+})
+
 test.describe('a commit with a long file', () => {
   test.beforeEach(async ({ sillygit, repo }) => {
     repo.commitFile('long.txt', Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n') + '\n', 'Add long.txt')

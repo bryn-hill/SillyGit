@@ -1,4 +1,5 @@
 import { useEffect, useRef, type JSX } from 'react'
+import { changedWordsForHunk, splitByRanges, type WordDiffLine, type WordRange } from '../../../shared/wordDiff'
 
 function lineClass(line: string): string {
   if (line.startsWith('+++') || line.startsWith('---')) return 'diff-file-header'
@@ -9,6 +10,25 @@ function lineClass(line: string): string {
 }
 
 const HUNK_HEADER_RE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+
+/** A diff line with its changed words (offsets past the +/- marker) wrapped in `diff-word` marks. */
+function LineText({ line, words }: { line: string; words: WordRange[] | null }): JSX.Element {
+  if (!words || words.length === 0) return <>{line}</>
+  return (
+    <>
+      {line[0]}
+      {splitByRanges(line.slice(1), words).map((piece, i) =>
+        piece.changed ? (
+          <mark key={i} className="diff-word">
+            {piece.text}
+          </mark>
+        ) : (
+          piece.text
+        )
+      )}
+    </>
+  )
+}
 
 interface Props {
   diffText: string
@@ -21,6 +41,7 @@ export default function DiffBlock({ diffText, highlightLine }: Props): JSX.Eleme
 
   // Number the new-file side of each hunk as we go.
   const rendered: Array<{ line: string; cls: string; lineNum: number | undefined; key: number }> = []
+  const wordLines: WordDiffLine[] = []
   let newLineNum = 0
   let inHunk = false
   lines.forEach((line, i) => {
@@ -37,7 +58,10 @@ export default function DiffBlock({ diffText, highlightLine }: Props): JSX.Eleme
       newLineNum += 1
     }
     rendered.push({ line, cls, lineNum, key: i })
+    const type = !inHunk || cls === 'diff-hunk-header' ? 'context' : cls === 'diff-add' ? 'add' : cls === 'diff-remove' ? 'remove' : 'context'
+    wordLines.push({ type, text: line.slice(1) })
   })
+  const words = changedWordsForHunk(wordLines)
 
   useEffect(() => {
     if (highlightLine == null) return
@@ -53,7 +77,7 @@ export default function DiffBlock({ diffText, highlightLine }: Props): JSX.Eleme
           key={key}
           className={lineNum != null && lineNum === highlightLine ? `${cls} diff-highlight` : cls}
         >
-          {line.length === 0 ? ' ' : line}
+          {line.length === 0 ? ' ' : <LineText line={line} words={words[key]} />}
         </div>
       ))}
     </pre>

@@ -37,3 +37,21 @@ describe('highlightLine', () => {
     expect(highlightLine('"<img src=x onerror=alert(1)>"', 'javascript')).not.toContain('<img')
   })
 })
+
+describe('highlightLine with changed words', () => {
+  it('marks changed ranges in plain escaped text, counting entities as one character', () => {
+    expect(highlightLine('a < b', null, [[2, 3]])).toBe('a <mark class="diff-word">&lt;</mark> b')
+  })
+
+  it('closes and reopens the mark around syntax tokens instead of nesting across them', () => {
+    const html = highlightLine('const x = 1', 'typescript', [[5, 11]])
+    expect(html).toContain('<span class="token keyword">const</span><mark class="diff-word"> x </mark>')
+    expect(html).toContain('<span class="token number"><mark class="diff-word">1</mark></span>')
+    expect(html.replace(/<[^>]+>/g, '')).toBe('const x = 1')
+  })
+
+  it('leaves the line untouched with no ranges', () => {
+    expect(highlightLine('a', null, [])).toBe('a')
+    expect(highlightLine('a', null, null)).toBe('a')
+  })
+})
