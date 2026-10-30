@@ -7,7 +7,8 @@ import type { AvatarRequest } from '../../../shared/types'
  * an email is only ever asked for once (until reset).
  */
 const images = new Map<string, string | null>()
-const requested = new Set<string>()
+// Each email asked for, and whether it was asked with a commit (so GitHub could look up its author).
+const requested = new Map<string, boolean>()
 const queues = new Map<string, Map<string, AvatarRequest>>()
 const listeners = new Set<() => void>()
 let flushTimer: ReturnType<typeof setTimeout> | null = null
@@ -40,12 +41,15 @@ async function flush(): Promise<void> {
   }
 }
 
-function request(repoPath: string, email: string, hash: string): void {
-  if (requested.has(email)) return
-  requested.add(email)
+function request(repoPath: string, email: string, hash: string | undefined): void {
+  // A co-author is asked for without a commit; if they turn up as an author
+  // later and nothing was found, ask again with their commit.
+  const asked = requested.get(email)
+  if (asked === true || (asked === false && (!hash || images.get(email) !== null))) return
+  requested.set(email, !!hash)
   let queue = queues.get(repoPath)
   if (!queue) queues.set(repoPath, (queue = new Map()))
-  queue.set(email, { email, hash })
+  queue.set(email, hash ? { email, hash } : { email })
   flushTimer ??= setTimeout(() => void flush(), 30)
 }
 
@@ -63,7 +67,7 @@ export function useAvatar(repoPath: string | undefined, email: string | undefine
   const image = useSyncExternalStore(subscribe, () => (key ? (images.get(key) ?? null) : null))
   const gen = useSyncExternalStore(subscribe, () => generation)
   useEffect(() => {
-    if (repoPath && key && hash) request(repoPath, key, hash)
+    if (repoPath && key) request(repoPath, key, hash)
   }, [repoPath, key, hash, gen])
   return image
 }

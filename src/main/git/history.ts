@@ -8,6 +8,8 @@ import type {
   FileHistoryEntry
 } from '../../shared/types'
 import { runGit } from '../gitExec'
+import { parseCoAuthors, parseShortlog, type CoAuthorCandidate } from '../../shared/coAuthors'
+import { parseSignature, type CommitSignature } from '../../shared/signature'
 
 // Reading history: the log and graph, commit details and diffs, file history, blame and search.
 
@@ -86,13 +88,9 @@ function parseNameStatus(lines: string[]): CommitFileChange[] {
 
 export async function getCommitDetail(repoPath: string, hash: string): Promise<CommitDetail> {
   const format = `%H${US}%P${US}%an${US}%ae${US}%ad${US}%s${US}%b`
-  const out = await runGit(repoPath, [
-    'show',
-    '--no-color',
-    '--name-status',
-    `--format=${format}`,
-    '--date=iso-strict',
-    hash
+  const [out, signature] = await Promise.all([
+    runGit(repoPath, ['show', '--no-color', '--name-status', `--format=${format}`, '--date=iso-strict', hash]),
+    getCommitSignature(repoPath, hash)
   ])
   const lines = out.split('\n')
   const headerLine = lines[0]
@@ -114,8 +112,42 @@ export async function getCommitDetail(repoPath: string, hash: string): Promise<C
     date,
     subject,
     body: body.trim(),
-    files
+    files,
+    coAuthors: parseCoAuthors(body),
+    signature
   }
+}
+
+/**
+ * Whether a commit is signed and git trusts the signature. Checking needs
+ * gpg (or ssh's allowed signers file); without them a signed commit reads
+ * as unverified, and a failure to run git at all as unsigned.
+ */
+export async function getCommitSignature(repoPath: string, hash: string): Promise<CommitSignature> {
+  try {
+    const out = await runGit(repoPath, ['log', '-1', '--no-color', `--format=%G?${US}%GS${US}%GK`, hash])
+    if (!out.startsWith('N')) return parseSignature(out)
+    // "N" can also be an SSH signature git had nothing to check against.
+    const header = (await runGit(repoPath, ['cat-file', 'commit', hash])).split('\n\n')[0]
+    const signedWith = !/^gpgsig(-sha256)? /m.test(header) ? null : header.includes('BEGIN SSH SIGNATURE') ? 'ssh' : 'gpg'
+    return parseSignature(out, signedWith)
+  } catch {
+    return parseSignature('')
+  }
+}
+
+/**
+ * Everyone who has committed to the repo, busiest first, to suggest as
+ * co-authors; the current user is left out.
+ */
+export async function getCoAuthorCandidates(repoPath: string): Promise<CoAuthorCandidate[]> {
+  // shortlog reads stdin when given no revisions, so name them.
+  const [out, me] = await Promise.all([
+    runGit(repoPath, ['shortlog', '-sne', '--all', '--no-merges']).catch(() => ''),
+    runGit(repoPath, ['config', 'user.email']).catch(() => '')
+  ])
+  const own = me.trim().toLowerCase()
+  return parseShortlog(out).filter((p) => p.email.toLowerCase() !== own)
 }
 
 export async function getCommitFileDiff(

@@ -30,7 +30,9 @@ export { fetchAll, pull, push } from './remote'
 export {
   GRAPH_PAGE_SIZE,
   getBlame,
+  getCoAuthorCandidates,
   getCommitDetail,
+  getCommitSignature,
   getCommitFileDiff,
   getCommitFullDiff,
   getFileAtRef,

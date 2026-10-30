@@ -1,5 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { CommitDetail } from '../../../../shared/types'
+import type { CommitSignature } from '../../../../shared/signature'
+import { stripCoAuthors } from '../../../../shared/coAuthors'
 import ContextMenu from '../ContextMenu'
 import Avatar from '../Avatar'
 import AiResults, { idleAiRun, type AiRun } from '../AiResults'
@@ -19,6 +21,22 @@ function SparkleIcon(): JSX.Element {
         strokeLinejoin="round"
       />
     </svg>
+  )
+}
+
+const SIGNATURE_LABELS: Record<CommitSignature['status'], string> = {
+  verified: 'Verified',
+  unverified: 'Unverified',
+  unsigned: 'Unsigned'
+}
+
+/** Whether the commit is signed, and if git could check the signature; the tooltip says why. */
+function SignatureBadge({ signature }: { signature: CommitSignature }): JSX.Element {
+  const details = [signature.reason, signature.key && `Key ${signature.key}`].filter(Boolean).join('\n')
+  return (
+    <span className={`signature-badge signature-${signature.status}`} data-testid="signature-badge" title={details}>
+      {SIGNATURE_LABELS[signature.status]}
+    </span>
   )
 }
 
@@ -116,16 +134,19 @@ function CommitDetailBody({
   const modified = detail.files.filter((f) => f.status === 'M').length
   const added = detail.files.filter((f) => f.status === 'A').length
   const deleted = detail.files.filter((f) => f.status === 'D').length
+  // Co-authors show as avatars below, so their trailers aren't repeated in the body.
+  const body = detail.coAuthors.length > 0 ? stripCoAuthors(detail.body) : detail.body
 
   return (
     <div className="detail-panel-content" aria-busy={stale} inert={stale}>
       <div className="detail-header-row">
         <span>commit: {detail.hash.slice(0, 7)}</span>
+        <SignatureBadge signature={detail.signature} />
       </div>
       <div className="commit-subject-large" data-testid="commit-subject">
         {detail.subject}
       </div>
-      {detail.body && <div className="commit-body">{detail.body}</div>}
+      {body && <div className="commit-body">{body}</div>}
       <div className="commit-author-row">
         <Avatar name={detail.author} email={detail.authorEmail} hash={detail.hash} repoPath={repoPath} size={28} />
         <div>
@@ -136,6 +157,17 @@ function CommitDetailBody({
           </div>
         </div>
       </div>
+      {detail.coAuthors.length > 0 && (
+        <ul className="commit-co-authors" aria-label="Co-authors">
+          {detail.coAuthors.map((p) => (
+            <li key={p.email.toLowerCase()} className="commit-co-author">
+              <Avatar name={p.name} email={p.email} repoPath={repoPath} size={20} />
+              <span>{p.name}</span>
+              <span className="commit-meta-dim">co-author</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="detail-section">
         <div className="detail-section-header">

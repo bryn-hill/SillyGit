@@ -4,10 +4,42 @@ import { expect, type Locator, type Page } from '@playwright/test'
 export class DetailPanel {
   readonly root: Locator
   readonly subject: Locator
+  readonly commitMessage: Locator
+  /** The selected commit's Verified / Unverified / Unsigned badge. */
+  readonly signatureBadge: Locator
+  /** The co-authors credited on the selected commit. */
+  readonly commitCoAuthors: Locator
+  /** The commit box's co-author chips. */
+  readonly coAuthorChips: Locator
+  readonly coAuthorPicker: Locator
 
   constructor(page: Page) {
     this.root = page.getByRole('complementary', { name: 'Details' })
     this.subject = this.root.getByTestId('commit-subject')
+    this.commitMessage = this.root.getByRole('textbox', { name: 'Commit message' })
+    this.signatureBadge = this.root.getByTestId('signature-badge')
+    this.commitCoAuthors = this.root.locator('.commit-co-authors').getByRole('listitem')
+    this.coAuthorChips = this.root.locator('.co-author-chips').getByRole('listitem')
+    this.coAuthorPicker = page.getByRole('dialog', { name: 'Add co-authors' })
+  }
+
+  /** Opens the commit box's co-author picker and searches it. */
+  async searchCoAuthors(query: string): Promise<void> {
+    await this.root.getByRole('button', { name: /^Co-authors/ }).click()
+    await this.coAuthorPicker.getByRole('combobox', { name: 'Search co-authors' }).fill(query)
+  }
+
+  coAuthorOption(name: string): Locator {
+    return this.coAuthorPicker.getByRole('option', { name: new RegExp(name) })
+  }
+
+  async closeCoAuthors(): Promise<void> {
+    await this.root.page().keyboard.press('Escape')
+    await expect(this.coAuthorPicker).toHaveCount(0)
+  }
+
+  async removeCoAuthor(name: string): Promise<void> {
+    await this.root.getByRole('button', { name: `Remove co-author ${name}` }).click()
   }
 
   file(path: string): Locator {

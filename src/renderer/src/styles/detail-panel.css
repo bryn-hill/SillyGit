@@ -16,6 +16,10 @@
 }
 
 .detail-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 12px;
   border-bottom: 1px solid var(--border);
   font-size: 12px;
@@ -44,6 +48,46 @@
   gap: 10px;
   padding: 12px;
   font-size: 12px;
+}
+
+/* Verified / Unverified / Unsigned, from git's %G? */
+.signature-badge {
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: default;
+}
+
+.signature-verified {
+  color: var(--green);
+}
+
+.signature-unverified {
+  color: var(--orange);
+}
+
+.signature-unsigned {
+  color: var(--text-dim);
+  border-style: dashed;
+}
+
+.commit-co-authors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -4px;
+  padding: 0 12px 12px 16px;
+  font-size: 12px;
+}
+
+.commit-co-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .author-avatar {
@@ -220,4 +264,110 @@
 
 .file-row:focus {
   outline: none;
+}
+
+/* ---------- co-authors in the commit box ---------- */
+
+.co-author-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.co-author-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 2px 2px 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 11px;
+}
+
+.co-author-chip .co-author-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.co-author-remove {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.co-author-remove:hover {
+  color: var(--red);
+}
+
+/* Fixed above its button, like a context menu; no-drag for the same reason. */
+.co-author-picker {
+  position: fixed;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  max-height: min(360px, 60vh);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  -webkit-app-region: no-drag;
+}
+
+.co-author-picker input {
+  margin: 8px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.co-author-list {
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.co-author-option {
+  display: grid;
+  grid-template-columns: 12px 20px minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.co-author-option.active {
+  background: var(--bg-hover);
+}
+
+.co-author-check {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.co-author-option .co-author-name,
+.co-author-option .co-author-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.co-author-email {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.co-author-empty {
+  padding: 4px 10px 10px;
+  color: var(--text-dim);
+  font-size: 12px;
 }
