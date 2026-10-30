@@ -19,6 +19,7 @@ import { commandsFor, type CustomCommand } from '../../shared/customCommands'
 import type { OpenPullRequest } from '../../shared/types'
 import { resolveBranchRemote } from '../../shared/branchRemote'
 import { canOpenPullRequests } from '../../shared/createPullRequest'
+import { helpCommands } from './help/commands'
 
 /** The Actions list and command palette, wired to the app's features. */
 export function appCommands(app: {
@@ -70,7 +71,7 @@ export function appCommands(app: {
   const branchRemote = branchTarget && resolveBranchRemote(branchTarget, repo.branches, repo.remotes, branches.pullRequests)
   const prRemote =
     branchRemote?.remote && !branchRemote.pullRequest && canOpenPullRequests(branchRemote.webUrl) ? branchRemote.remote : null
-  return paletteCommands({
+  const commands = paletteCommands({
     repoPath,
     status: repo.status,
     customCommands,
@@ -167,4 +168,5 @@ export function appCommands(app: {
       installLfs: app.lfs.installLfs
     }
   })
+  return [...commands, ...helpCommands()]
 }
