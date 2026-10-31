@@ -12,16 +12,28 @@ const CHECK_ICONS: Record<PrCheckState, string> = {
 
 const POPOVER_HEIGHT = 280
 
+/** The symbol for a commit's overall result when Settings asks for symbols. */
+const RESULT_SYMBOLS: Record<CommitCiStatus['state'], string> = {
+  success: '✓',
+  failure: '✕',
+  pending: '●',
+  neutral: '–'
+}
+
 /**
- * A commit's CI result as a dot in the Branch / Tag column. Clicking it
- * lists the checks, each opening its job on the host, with "Re-run failed"
- * when the failures can be started again.
+ * A commit's CI result at the start of the Branch / Tag column: a coloured line
+ * the height of the row, so neighbouring commits with the same result join up,
+ * or a ✓ ✕ ● symbol when Settings asks for symbols. Clicking it lists the
+ * checks, each opening its job on the host, with "Re-run failed" when the
+ * failures can be started again.
  */
 export default function CiStatusDot({
   status,
+  symbols,
   onRerun
 }: {
   status: CommitCiStatus
+  symbols: boolean
   onRerun: (targets: CiRerun[]) => Promise<{ ok: true } | { ok: false; error: string }>
 }): JSX.Element {
   const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
@@ -78,7 +90,7 @@ export default function CiStatusDot({
     <>
       <span
         ref={dotRef}
-        className={`ci-dot ci-dot-${status.state}`}
+        className={`ci-dot ${symbols ? 'ci-dot-symbol' : 'ci-dot-line'} ci-dot-${status.state}`}
         role="button"
         tabIndex={-1}
         data-testid="ci-dot"
@@ -94,7 +106,9 @@ export default function CiStatusDot({
           else open()
         }}
         onDoubleClick={(e) => e.stopPropagation()}
-      />
+      >
+        {symbols ? RESULT_SYMBOLS[status.state] : null}
+      </span>
       {pos && (
         <div
           ref={popRef}

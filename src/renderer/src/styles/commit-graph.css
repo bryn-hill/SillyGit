@@ -311,40 +311,67 @@ body.ref-dragging * {
   color: var(--accent);
 }
 
-/* CI status: a dot before the row's refs, and its list of checks. */
+/* CI status before the row's refs: a line the height of the row (so runs of
+   the same result join up), or a symbol when Settings asks for symbols. Rows
+   without a result keep a gap the same width so pills line up. */
 .ci-dot,
 .ci-dot-gap {
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  margin-right: 6px;
-  border-radius: 50%;
+}
+
+.ci-dot-line {
+  position: relative;
+  align-self: stretch;
+  width: 3px;
+  margin: 0 8px 0 -4px;
+}
+
+.ci-dot-symbol {
+  width: 14px;
+  margin-right: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
 }
 
 .ci-dot {
   cursor: pointer;
-  background: var(--text-dim);
-  box-shadow: 0 0 0 2px transparent;
+  color: var(--text-dim);
 }
 
-.ci-dot:hover,
-.ci-dot[aria-expanded='true'] {
-  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
+.ci-dot-line {
+  background: currentColor;
+}
+
+/* The line is thin; give it a wider target. */
+.ci-dot-line::after {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+}
+
+.ci-dot-line:hover,
+.ci-dot-line[aria-expanded='true'] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.ci-dot-symbol:hover,
+.ci-dot-symbol[aria-expanded='true'] {
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }
 
 .ci-dot-success {
   color: var(--green);
-  background: var(--green);
 }
 
 .ci-dot-failure {
   color: var(--red);
-  background: var(--red);
 }
 
 .ci-dot-pending {
   color: var(--yellow);
-  background: var(--yellow);
   animation: ci-pulse 1.4s ease-in-out infinite;
 }
 

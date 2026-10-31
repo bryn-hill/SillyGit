@@ -156,6 +156,10 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('settings:set-merge-animation', (_e, on: boolean) => wrap(() => settings.setMergeAnimation(on)))
 
+  ipcMain.handle('settings:get-ci-symbols', () => settings.getCiSymbols())
+
+  ipcMain.handle('settings:set-ci-symbols', (_e, on: boolean) => wrap(() => settings.setCiSymbols(on)))
+
   ipcMain.handle('settings:get-diff-layout', () => settings.getDiffLayout())
 
   ipcMain.handle('settings:set-diff-layout', (_e, layout: DiffLayout) => wrap(() => settings.setDiffLayout(layout)))

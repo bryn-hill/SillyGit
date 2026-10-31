@@ -471,6 +471,8 @@ export default function App(): JSX.Element {
             onRescanEditors={editor.rescan}
             mergeAnimation={settings.mergeAnimation}
             onMergeAnimationChange={settings.setMergeAnimation}
+            ciSymbols={settings.ciSymbols}
+            onCiSymbolsChange={settings.setCiSymbols}
             diffLayout={settings.diffLayout}
             onDiffLayoutChange={settings.setDiffLayout}
             customCommands={settings.customCommands}

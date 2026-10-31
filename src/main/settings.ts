@@ -35,6 +35,8 @@ interface StoredSettings {
   theme?: ThemePreference
   /** Play the lanes-colliding animation on the graph when a merge lands. */
   mergeAnimation?: boolean
+  /** Show CI results as ✓ ✕ ● symbols rather than a coloured line, for colour-blind users. */
+  ciSymbols?: boolean
   /** Unified or side-by-side text diffs. */
   diffLayout?: DiffLayout
   /** Desktop notifications about pull requests. */
@@ -170,6 +172,16 @@ export async function getMergeAnimation(): Promise<boolean> {
 export async function setMergeAnimation(on: boolean): Promise<void> {
   await updateSettings((current) => {
     current.mergeAnimation = on
+  })
+}
+
+export async function getCiSymbols(): Promise<boolean> {
+  return (await readSettings()).ciSymbols === true
+}
+
+export async function setCiSymbols(on: boolean): Promise<void> {
+  await updateSettings((current) => {
+    current.ciSymbols = on
   })
 }
 

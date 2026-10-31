@@ -62,6 +62,8 @@ export function useAppSettings(onError: (message: string) => void) {
     true,
     onError
   )
+  // CI results as symbols instead of a coloured line (off by default).
+  const [ciSymbols, setCiSymbols] = useSavedSetting(window.api.getCiSymbols, window.api.setCiSymbols, false, onError)
   // Unified or side-by-side text diffs, everywhere a file's diff is shown.
   const [diffLayout, setDiffLayout] = useSavedSetting(
     window.api.getDiffLayout,
@@ -97,6 +99,8 @@ export function useAppSettings(onError: (message: string) => void) {
     setBranchList,
     mergeAnimation,
     setMergeAnimation,
+    ciSymbols,
+    setCiSymbols,
     diffLayout,
     setDiffLayout
   }

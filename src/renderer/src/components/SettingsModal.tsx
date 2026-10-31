@@ -37,6 +37,9 @@ interface Props {
   onRescanEditors: () => void
   mergeAnimation: boolean
   onMergeAnimationChange: (on: boolean) => void
+  /** CI results as ✓ ✕ ● symbols rather than a coloured line. */
+  ciSymbols: boolean
+  onCiSymbolsChange: (on: boolean) => void
   diffLayout: DiffLayout
   onDiffLayoutChange: (layout: DiffLayout) => void
   customCommands: CustomCommand[]
@@ -70,6 +73,8 @@ export default function SettingsModal({
   onRescanEditors,
   mergeAnimation,
   onMergeAnimationChange,
+  ciSymbols,
+  onCiSymbolsChange,
   diffLayout,
   onDiffLayoutChange,
   customCommands,
@@ -155,6 +160,17 @@ export default function SettingsModal({
             <div className="modal-hint">
               When commits arrive, whether you commit, merge, pull or fetch, their lines grow into them like a metro
               map. If your system asks for reduced motion, nothing moves.
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <label className="settings-checkbox">
+              <input type="checkbox" checked={ciSymbols} onChange={(e) => onCiSymbolsChange(e.target.checked)} />
+              Show CI results as symbols
+            </label>
+            <div className="modal-hint">
+              Commits on the graph show ✓ passed, ✕ failed and ● running instead of a green, red or yellow line, so the
+              result doesn&apos;t depend on telling colours apart.
             </div>
           </section>
 
