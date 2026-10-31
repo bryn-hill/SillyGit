@@ -9,16 +9,19 @@
  * `useCached` (hooks/useCached.tsx) so components re-render on writes.
  */
 
-// Oldest keys go first once there are this many (about 10 per open repo).
-const MAX_ENTRIES = 400
+// Oldest keys of a kind go first once it has this many, so browsing many
+// commits' details never pushes out the CI results of an open tab.
+const MAX_PER_KIND = 200
 
 const values = new Map<string, unknown>()
 const listeners = new Map<string, Set<() => void>>()
 
-/** The key for `kind` of result in `repoPath`. */
-export function cacheKey(kind: string, repoPath: string): string {
-  return `${kind}\u0000${repoPath}`
+/** The key for `kind` of result in `repoPath`, optionally narrowed to one `item` (a commit, say). */
+export function cacheKey(kind: string, repoPath: string, item?: string): string {
+  return item === undefined ? `${kind}\u0000${repoPath}` : `${kind}\u0000${repoPath}\u0000${item}`
 }
+
+const kindOf = (key: string): string => key.slice(0, key.indexOf('\u0000'))
 
 export function hasCached(key: string): boolean {
   return values.has(key)
@@ -34,9 +37,16 @@ export function writeCached<T>(key: string, value: T): void {
   if (values.has(key) && Object.is(values.get(key), value)) return
   values.delete(key)
   values.set(key, value)
-  while (values.size > MAX_ENTRIES) {
-    const oldest = values.keys().next().value as string
-    values.delete(oldest)
+  const kind = kindOf(key)
+  let ofKind = 0
+  for (const k of values.keys()) if (kindOf(k) === kind) ofKind++
+  // Map keys run oldest first, so this drops the least recently written.
+  for (const k of values.keys()) {
+    if (ofKind <= MAX_PER_KIND) break
+    if (kindOf(k) === kind && k !== key) {
+      values.delete(k)
+      ofKind--
+    }
   }
   for (const listener of listeners.get(key) ?? []) listener()
 }
