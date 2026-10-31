@@ -90,7 +90,8 @@ export function useRepo({
         // so whoever awaits this one (to show the conflicts after a merge, say)
         // sees state at least as new as when they asked.
         if (seq !== refreshSeq.current) return latestRefresh.current
-        setRemotes(remotesRes.ok ? remotesRes.data : [])
+        // A failed read (git busy) keeps the remotes, so Pull and Push don't turn into Publish for a moment.
+        if (remotesRes.ok) setRemotes(remotesRes.data)
         if (statusRes.ok) setStatus(statusRes.data)
         else onError(statusRes.error)
         setOperation(operationRes.ok ? operationRes.data : null)
@@ -113,7 +114,7 @@ export function useRepo({
           graphFilter: graphOk ? filter : (previous?.graphFilter ?? null),
           operation: operationRes.ok ? operationRes.data : null,
           bisect: bisectRes.ok ? bisectRes.data : null,
-          remotes: remotesRes.ok ? remotesRes.data : [],
+          remotes: remotesRes.ok ? remotesRes.data : (previous?.remotes ?? []),
           stashes: stashesRes.ok ? stashesRes.data : [],
           undoLabel: undoRes.ok ? undoRes.data : null,
           redoLabel: redoRes.ok ? redoRes.data : null,

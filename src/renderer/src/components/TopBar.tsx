@@ -32,6 +32,11 @@ import {
 import { PULL_OPTIONS, RUN_OPTIONS, runTitle, updateTitle } from './topBar/options'
 import HelpMenu from '../help/HelpMenu'
 
+// Every label each changing button can show, so it keeps one width (see ToolButton).
+const PULL_LABELS = ['Pull', 'Fetching']
+const RUN_LABELS = ['Run', 'Stop', 'Preparing']
+const UPDATE_LABELS = ['Update', 'Updating']
+
 interface Props {
   repoPath: string | null
   status: RepoStatus | null
@@ -289,6 +294,7 @@ export default function TopBar({
           <div className="tool-split" data-tour="toolbar-pull">
             <ToolButton
               label={fetching ? 'Fetching' : 'Pull'}
+              labels={PULL_LABELS}
               ariaLabel="Pull"
               icon={<PullIcon />}
               disabled={busy || !hasRemotes}
@@ -344,12 +350,13 @@ export default function TopBar({
               </>
             )}
           </div>
-          {hasRemotes ? (
+          {/* Until the repo has loaded, Push holds its place rather than Publish swapping in. */}
+          {hasRemotes || !status ? (
             <div className="tool-split">
               <ToolButton
                 label="Push"
                 icon={<PushIcon />}
-                disabled={busy}
+                disabled={busy || !status}
                 onClick={onPush}
                 title={`Push to remote (${MOD}⇧U)`}
                 badge={status?.ahead}
@@ -468,6 +475,7 @@ export default function TopBar({
           <div className="tool-split">
             <ToolButton
               label={running ? 'Stop' : preparingRun ? 'Preparing' : 'Run'}
+              labels={RUN_LABELS}
               icon={running ? <StopIcon /> : <RunIcon />}
               disabled={preparingRun}
               active={running}
@@ -619,6 +627,7 @@ export default function TopBar({
         {selfUpdate.supported && (
           <ToolButton
             label={updating ? 'Updating' : 'Update'}
+            labels={UPDATE_LABELS}
             ariaLabel="Update SillyGit"
             icon={<UpdateIcon />}
             active={updating || selfUpdate.behind > 0}

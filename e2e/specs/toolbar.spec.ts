@@ -37,6 +37,20 @@ test.describe('toolbar', () => {
     await expect(pop).toBeDisabled()
   })
 
+  test('buttons whose label changes keep their width, so the toolbar never shifts', async ({ sillygit, repo }) => {
+    await sillygit.openRepository(repo.path)
+    for (const [name, longer] of [
+      ['Pull', 'Fetching'],
+      ['Run', 'Preparing']
+    ]) {
+      const button = sillygit.toolbarButton(name)
+      const before = (await button.boundingBox())!.width
+      // Show the longer label, as a fetch or a run starting would.
+      await button.locator('.tool-label > span').evaluate((el, text) => (el.textContent = text), longer)
+      expect((await button.boundingBox())!.width, `${name} → ${longer}`).toBe(before)
+    }
+  })
+
   test('without a remote Pull is disabled and Push becomes Publish', async ({ sillygit, repo }) => {
     await sillygit.openRepository(repo.path)
     await expect(sillygit.toolbarButton('Pull')).toBeDisabled()
