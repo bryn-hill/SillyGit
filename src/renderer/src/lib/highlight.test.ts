@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { highlightLine, languageForPath } from './highlight'
+import { highlightLine, highlightLines, languageForPath } from './highlight'
 
 describe('languageForPath', () => {
   it('maps extensions to Prism languages, ignoring case', () => {
@@ -53,5 +53,56 @@ describe('highlightLine with changed words', () => {
   it('leaves the line untouched with no ranges', () => {
     expect(highlightLine('a', null, [])).toBe('a')
     expect(highlightLine('a', null, null)).toBe('a')
+  })
+})
+
+describe('highlightLines', () => {
+  it('keeps a block comment coloured on every line', () => {
+    const lines = highlightLines('/**\n * for new in\n */\nconst x = 1', 'typescript')
+    expect(lines).toHaveLength(4)
+    expect(lines[1]).toBe('<span class="token comment"> * for new in</span>')
+    expect(lines[3]).toContain('<span class="token keyword">const</span>')
+  })
+
+  it('splits plain text by line when there is no language', () => {
+    expect(highlightLines('a <\nb', null)).toEqual(['a &lt;', 'b'])
+  })
+})
+
+describe('TypeScript extras', () => {
+  it('marks parameters and their uses, but not properties', () => {
+    const html = highlightLine(
+      'function f(source: string, n?: number) { return source.trim() + x.source + n }',
+      'typescript'
+    )
+    expect(html.match(/token parameter">source</g)).toHaveLength(2)
+    expect(html.match(/token parameter">n</g)).toHaveLength(2)
+    expect(html).toContain('x<span class="token punctuation">.</span>source')
+  })
+
+  it('marks arrow function parameters', () => {
+    expect(highlightLine('xs.map(x => x + 1)', 'typescript')).toContain(
+      '<span class="token parameter">x</span> <span class="token operator">=&gt;</span> <span class="token parameter">x</span>'
+    )
+    expect(
+      highlightLine('const f = (key: string): string => key', 'typescript').match(/token parameter">key</g)
+    ).toHaveLength(2)
+  })
+
+  it('leaves call arguments and conditions alone', () => {
+    expect(highlightLine('if (a) { b(a) }', 'typescript')).not.toContain('parameter')
+    expect(highlightLine('foo(a, b);', 'typescript')).not.toContain('parameter')
+  })
+
+  it('colours PascalCase names and generic parameters as types', () => {
+    const html = highlightLine('let r: Record<string, unknown>', 'typescript')
+    expect(html).toContain('<span class="token type-name class-name">Record</span>')
+    expect(html).toContain('<span class="token builtin">string</span>')
+  })
+
+  it('colours undefined and null as constants', () => {
+    expect(highlightLine('x === undefined || y === null', 'typescript')).toContain(
+      '<span class="token constant">undefined</span>'
+    )
   })
 })

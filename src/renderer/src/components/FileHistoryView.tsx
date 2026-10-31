@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
 import type { BlameLine, FileHistoryEntry } from '../../../shared/types'
 import { blameBlocks, blameHeatScale } from '../lib/blame'
-import { highlightLine, languageForPath } from '../lib/highlight'
+import { highlightLines, languageForPath } from '../lib/highlight'
 import { timeAgo } from '../lib/time'
 import Avatar from './Avatar'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
@@ -361,6 +361,7 @@ function BlameTable({
     if (all.length > 0 && all[all.length - 1] === '') all.pop()
     return all
   }, [content])
+  const lineHtml = useMemo(() => highlightLines(lines.join('\n'), lang), [lines, lang])
   const blocks = useMemo(() => blameBlocks(blame), [blame])
   const heat = useMemo(() => blameHeatScale(blame), [blame])
   const blockStarts = useMemo(() => new Map(blocks.map((b) => [b.start, b])), [blocks])
@@ -369,7 +370,7 @@ function BlameTable({
   return (
     <div className="diff-body blame-body" data-testid="blame">
       <div className="blame-table">
-        {lines.map((text, idx) => {
+        {lines.map((_text, idx) => {
           const lineNo = idx + 1
           const line = byLine.get(lineNo)
           const block = blockStarts.get(lineNo)
@@ -412,7 +413,7 @@ function BlameTable({
                 )}
               </div>
               <span className="line-num">{lineNo}</span>
-              <span className="line-code" dangerouslySetInnerHTML={{ __html: highlightLine(text, lang) }} />
+              <span className="line-code" dangerouslySetInnerHTML={{ __html: lineHtml[idx] }} />
             </div>
           )
         })}

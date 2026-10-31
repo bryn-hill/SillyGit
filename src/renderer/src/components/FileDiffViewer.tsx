@@ -3,7 +3,7 @@ import type { PartialAction } from '../../../shared/lineStaging'
 import type { WordRange } from '../../../shared/wordDiff'
 import { pairForSplit, renderFileDiff, type RenderedDiffLine, type RenderedHunk } from '../lib/diffRender'
 import { selectDiffLine, type PickedLines } from '../lib/lineSelection'
-import { highlightLine, languageForPath } from '../lib/highlight'
+import { highlightLine, highlightLines, languageForPath } from '../lib/highlight'
 import { formatBytes, imageMime } from '../../../shared/imageDiff'
 import { LFS_MISSING_NOTE, isLfsPointerDiff, type LfsDiff } from '../../../shared/lfs'
 import { LfsContext } from '../lib/lfs'
@@ -58,10 +58,7 @@ function renderLineHtml(text: string, lang: string | null, showWhitespace: boole
   const trailingMatch = text.match(/[ \t]+$/)
   if (!trailingMatch) return highlightLine(text, lang, words)
   const main = text.slice(0, text.length - trailingMatch[0].length)
-  const markers = [...trailingMatch[0]]
-    .map((ch) => `<span class="${ch === '\t' ? 'ws-tab' : 'ws-space'}">${ch === '\t' ? '→' : '·'}</span>`)
-    .join('')
-  return highlightLine(main, lang, words) + markers
+  return highlightLine(main, lang, words) + whitespaceMarkers(trailingMatch[0])
 }
 
 /** A file's lines, numbered and highlighted. */
@@ -81,23 +78,38 @@ export function FileViewPane({
 
   const lines = content.split('\n')
   if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+  const html = fileLinesHtml(lines, lang, showWhitespace)
 
   return (
     <pre className="file-view-content">
-      {lines.map((line, idx) => {
+      {html.map((lineHtml, idx) => {
         const lineNo = idx + 1
         return (
           <div className="file-view-row" key={lineNo}>
             <span className="line-num">{lineNo}</span>
-            <span
-              className="line-code"
-              dangerouslySetInnerHTML={{ __html: renderLineHtml(line, lang, showWhitespace) }}
-            />
+            <span className="line-code" dangerouslySetInnerHTML={{ __html: lineHtml }} />
           </div>
         )
       })}
     </pre>
   )
+}
+
+/**
+ * Highlights a file's lines together, so block comments and template strings keep their colour
+ * past their first line, with markers for trailing whitespace when asked.
+ */
+function fileLinesHtml(lines: string[], lang: string | null, showWhitespace: boolean): string[] {
+  if (!showWhitespace) return highlightLines(lines.join('\n'), lang)
+  const trailing = lines.map((line) => line.match(/[ \t]+$/)?.[0] ?? '')
+  const code = lines.map((line, i) => line.slice(0, line.length - trailing[i].length)).join('\n')
+  return highlightLines(code, lang).map((lineHtml, i) => lineHtml + whitespaceMarkers(trailing[i]))
+}
+
+function whitespaceMarkers(whitespace: string): string {
+  return [...whitespace]
+    .map((ch) => `<span class="${ch === '\t' ? 'ws-tab' : 'ws-space'}">${ch === '\t' ? '→' : '·'}</span>`)
+    .join('')
 }
 
 interface HunkListProps {

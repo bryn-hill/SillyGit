@@ -415,7 +415,7 @@
   opacity: 0.6;
 }
 
-/* -- Prism token colors (Dracula-consistent) -- */
+/* -- Prism token colors, after the Dracula theme for VS Code -- */
 
 .token.comment,
 .token.prolog,
@@ -428,47 +428,73 @@
   color: var(--text);
 }
 
-.token.property,
-.token.attr-name,
 .token.boolean,
 .token.number,
 .token.constant,
 .token.symbol {
-  color: var(--cyan);
+  color: var(--purple);
 }
 
-.token.selector,
 .token.string,
 .token.char,
-.token.builtin,
 .token.attr-value {
   color: var(--yellow);
 }
 
 .token.operator,
-.token.entity,
-.token.url {
-  color: var(--pink);
-}
-
+.token.keyword,
 .token.atrule,
-.token.keyword {
+.token.tag,
+.token.entity {
   color: var(--pink);
 }
 
 .token.function,
-.token.class-name {
+.token.selector {
   color: var(--green);
 }
 
-.token.tag {
-  color: var(--pink);
+/* Types: `string`, `Record`, `Error`, a generic `T`. */
+.token.builtin,
+.token.class-name,
+.token.generic .token.constant,
+.token.property,
+.token.url {
+  color: var(--cyan);
 }
 
-.token.regex,
+.token.builtin,
+.token.class-name,
+.token.generic .token.constant {
+  font-style: italic;
+}
+
+.token.attr-name {
+  color: var(--green);
+  font-style: italic;
+}
+
+.token.parameter {
+  color: var(--orange);
+  font-style: italic;
+}
+
+.token.regex {
+  color: var(--red);
+}
+
 .token.important,
 .token.variable {
   color: var(--orange);
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
 }
 
 /* -- picking lines to stage, unstage or discard -- */
