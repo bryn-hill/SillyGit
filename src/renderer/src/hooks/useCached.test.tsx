@@ -5,7 +5,7 @@ import type { CiStatusMap } from '../../../shared/ciStatus'
 import type { ConflictForecast } from '../../../shared/conflictForecast'
 import type { BranchInfo } from '../../../shared/types'
 import { useCiStatus } from '../components/commitGraph/useCiStatus'
-import { cacheKey, clearCached, writeCached } from '../lib/swrCache'
+import { cacheKey, clearCached, hasCached, writeCached } from '../lib/swrCache'
 import { useCached } from './useCached'
 import { useConflictForecast } from './useConflictForecast'
 
@@ -38,6 +38,16 @@ describe('useCached', () => {
     expect(result.current).toBe('a')
     rerender({ repo: '/b' })
     expect(result.current).toBe('none')
+  })
+})
+
+describe('swrCache', () => {
+  it('drops the oldest of a kind past its limit, leaving other kinds alone', () => {
+    writeCached(cacheKey('ci-status', '/a'), {})
+    for (let i = 0; i < 250; i++) writeCached(cacheKey('commit-detail', '/a', String(i)), i)
+    expect(hasCached(cacheKey('ci-status', '/a'))).toBe(true)
+    expect(hasCached(cacheKey('commit-detail', '/a', '0'))).toBe(false)
+    expect(hasCached(cacheKey('commit-detail', '/a', '249'))).toBe(true)
   })
 })
 

@@ -15,6 +15,8 @@ import { onFileListKeyDown } from '../../lib/fileListNav'
 import JiraText from '../JiraText'
 import CommitFilesTab from './CommitFilesTab'
 import type { OpenFileView } from './types'
+import { cacheKey, writeCached } from '../../lib/swrCache'
+import { useCached } from '../../hooks/useCached'
 
 function SparkleIcon(): JSX.Element {
   return (
@@ -88,9 +90,14 @@ export default function CommitDetailView({ repoPath, hash, ...rest }: Props): JS
       return next
     })
 
+  // A commit never changes, so its details are cached: coming back to a tab
+  // (or to a commit seen before) shows them at once, with no "Loading…" flash.
+  const cached = useCached<CommitDetail | null>(cacheKey('commit-detail', repoPath, hash), null)
+
   useEffect(() => {
     let cancelled = false
     window.api.commitDetail(repoPath, hash).then((res) => {
+      if (res.ok) writeCached(cacheKey('commit-detail', repoPath, hash), res.data)
       if (cancelled) return
       setLoaded({ repoPath, hash, detail: res.ok ? res.data : null, error: res.ok ? null : res.error })
     })
@@ -99,7 +106,11 @@ export default function CommitDetailView({ repoPath, hash, ...rest }: Props): JS
     }
   }, [repoPath, hash])
 
-  const shown = loaded?.repoPath === repoPath ? loaded : null
+  const shown = cached
+    ? { repoPath, hash, detail: cached, error: null }
+    : loaded?.repoPath === repoPath
+      ? loaded
+      : null
   if (!shown) return <div className="detail-panel-content">Loading…</div>
   if (!shown.detail) return <div className="detail-panel-content">{shown.error}</div>
   return (
