@@ -39,7 +39,7 @@ Releases come from `main`, after `dev` has been promoted to it.
 
 The tag starts the workflow. It checks that the tag matches `package.json`, runs typecheck, lint
 and unit tests, packages every target, and publishes the release with generated notes plus the
-download table from [`.github/release-notes.md`](.github/release-notes.md). Assets go onto a draft
+download table from [`.github/release-notes.md`](.github/release-notes.md) (with `<version>` filled in). Assets go onto a draft
 first, so a release only appears once every file is uploaded. It takes 15 to 25 minutes.
 
 You can also run it from **Actions > Release > Run workflow**, picking the branch and typing the
