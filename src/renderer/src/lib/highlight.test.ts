@@ -100,9 +100,10 @@ describe('TypeScript extras', () => {
     expect(html).toContain('<span class="token builtin">string</span>')
   })
 
-  it('colours undefined and null as constants', () => {
+  it('colours undefined and null as language constants, and this as a language variable', () => {
     expect(highlightLine('x === undefined || y === null', 'typescript')).toContain(
-      '<span class="token constant">undefined</span>'
+      '<span class="token language-constant">undefined</span>'
     )
+    expect(highlightLine('this.x', 'typescript')).toContain('<span class="token keyword language-variable">this</span>')
   })
 })

@@ -291,24 +291,23 @@ function markParameters(input: Stream): Stream {
   return items
 }
 
-/** Recolours value keywords; nested streams are left to Prism. */
-function markValueKeywords(stream: Stream): void {
+/**
+ * Gives keywords Dracula colours by word: `null` and `undefined` are language constants,
+ * `this` and `super` language variables, and `new` is bold. Nested streams are left to Prism.
+ */
+function markKeywords(stream: Stream): void {
   for (const item of stream) {
-    if (
-      typeof item !== 'string' &&
-      item.type === 'keyword' &&
-      typeof item.content === 'string' &&
-      VALUE_KEYWORDS.has(item.content)
-    ) {
-      item.type = 'constant'
-    }
+    if (typeof item === 'string' || item.type !== 'keyword' || typeof item.content !== 'string') continue
+    if (VALUE_KEYWORDS.has(item.content)) item.type = 'language-constant'
+    else if (item.content === 'this' || item.content === 'super') item.alias = 'language-variable'
+    else if (item.content === 'new') item.alias = 'keyword-new'
   }
 }
 
 function tokenize(text: string, lang: string): Stream {
   const tokens = Prism.tokenize(text, Prism.languages[lang]) as Stream
   if (!SCRIPT_LANGUAGES.includes(lang)) return tokens
-  markValueKeywords(tokens)
+  markKeywords(tokens)
   return markParameters(tokens)
 }
 

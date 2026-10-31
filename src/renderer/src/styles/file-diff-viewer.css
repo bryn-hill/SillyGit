@@ -415,58 +415,61 @@
   opacity: 0.6;
 }
 
-/* -- Prism token colors, after the Dracula theme for VS Code -- */
+/* -- Prism token colors, after Dracula for VS Code (github.com/dracula/visual-studio-code) -- */
 
 .token.comment,
 .token.prolog,
 .token.doctype,
-.token.cdata {
+.token.cdata,
+.token.hr {
   color: var(--text-dim);
 }
 
-.token.punctuation {
+/* Plain names, brackets and ALL_CAPS constants stay the text colour, as in Dracula. */
+.token.punctuation,
+.token.constant,
+.token.variable {
   color: var(--text);
 }
 
 .token.boolean,
 .token.number,
-.token.constant,
-.token.symbol {
+.token.symbol,
+.token.language-constant {
   color: var(--purple);
+}
+
+.token.language-variable {
+  color: var(--purple);
+  font-style: italic;
 }
 
 .token.string,
 .token.char,
-.token.attr-value {
+.token.attr-value,
+.token.regex {
   color: var(--yellow);
+}
+
+.token.regex-delimiter {
+  color: var(--red);
 }
 
 .token.operator,
 .token.keyword,
 .token.atrule,
 .token.tag,
-.token.entity {
+.token.selector,
+.token.entity,
+.token.regex-flags,
+.token.interpolation-punctuation,
+.token.important {
   color: var(--pink);
 }
 
 .token.function,
-.token.selector {
+.token.code {
   color: var(--green);
-}
-
-/* Types: `string`, `Record`, `Error`, a generic `T`. */
-.token.builtin,
-.token.class-name,
-.token.generic .token.constant,
-.token.property,
-.token.url {
-  color: var(--cyan);
-}
-
-.token.builtin,
-.token.class-name,
-.token.generic .token.constant {
-  font-style: italic;
 }
 
 .token.attr-name {
@@ -474,27 +477,55 @@
   font-style: italic;
 }
 
+/* Types: `string`, `Record`, `Error`, a `T` that's in use. */
+.token.builtin,
+.token.class-name {
+  color: var(--cyan);
+  font-style: italic;
+}
+
+/* JSON keys, CSS properties, YAML keys, links and list bullets. */
+.token.property,
+.token.key,
+.token.url,
+.token.list {
+  color: var(--cyan);
+}
+
+/* Parameters, and a generic's type parameters where they're declared (`<T>`). */
 .token.parameter {
   color: var(--orange);
   font-style: italic;
 }
 
-.token.regex {
-  color: var(--red);
-}
-
-.token.important,
-.token.variable {
+.token.generic .token.constant {
   color: var(--orange);
+  font-style: normal;
 }
 
-.token.important,
-.token.bold {
+/* Markdown */
+.token.title {
+  color: var(--purple);
   font-weight: bold;
 }
 
-.token.italic {
+.token.bold {
+  color: var(--orange);
+  font-weight: bold;
+}
+
+.token.keyword-new {
+  font-weight: bold;
+}
+
+.token.italic,
+.token.blockquote {
+  color: var(--yellow);
   font-style: italic;
+}
+
+.token.important {
+  font-weight: bold;
 }
 
 /* -- picking lines to stage, unstage or discard -- */
