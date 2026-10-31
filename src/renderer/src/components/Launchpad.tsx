@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useCached } from '../hooks/useCached'
+import { cacheKey, writeCached } from '../lib/swrCache'
 import type { LaunchpadBucketId, LaunchpadData, LaunchpadIssue, LaunchpadPullRequest } from '../../../shared/types'
 import { LAUNCHPAD_BUCKET_COLOR_VAR, LAUNCHPAD_BUCKET_LABELS, LAUNCHPAD_BUCKET_ORDER } from '../../../shared/launchpad'
 import { timeAgo } from '../lib/timeAgo'
@@ -32,6 +34,10 @@ interface Props {
 }
 
 const NO_REPOS: string[] = []
+// Launchpad spans every repo, so its answers are cached once for the window.
+const LAUNCHPAD_KEY = cacheKey('launchpad', '')
+const JIRA_KEY = cacheKey('launchpad-jira', '')
+const WORKSPACE_KEY = cacheKey('workspace-repos', '')
 
 function repoDisplayName(path: string): string {
   return path.split('/').filter(Boolean).pop() ?? path
@@ -195,7 +201,9 @@ export default function Launchpad({
   onCheckout,
   onStartedWork
 }: Props): JSX.Element {
-  const [data, setData] = useState<LaunchpadData | null>(null)
+  // Stale-while-revalidate: the last answers show at once each time Launchpad
+  // opens, and are swapped for fresh ones when those land.
+  const data = useCached<LaunchpadData | null>(LAUNCHPAD_KEY, null)
   // The request the last answer was for, and its error; loading until it's the current one.
   const [answered, setAnswered] = useState<{ request: string; error: string | null } | null>(null)
   const [reloads, setReloads] = useState(0)
@@ -204,18 +212,17 @@ export default function Launchpad({
   const [merging, setMerging] = useState<LaunchpadPullRequest | null>(null)
   // The card whose Check out is running (repoPath#number).
   const [checkingOut, setCheckingOut] = useState<string | null>(null)
-  const [workspaceRepos, setWorkspaceRepos] = useState<string[]>([])
-  const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
+  const savedWorkspaceRepos = useCached<string[] | null>(WORKSPACE_KEY, null)
+  const workspaceRepos = savedWorkspaceRepos ?? NO_REPOS
+  const workspaceLoaded = savedWorkspaceRepos !== null
+  const setWorkspaceRepos = (repos: string[]): void => writeCached(WORKSPACE_KEY, repos)
   const [addingRepo, setAddingRepo] = useState(false)
   const [reviewing, setReviewing] = useState<PullRequestRef | null>(initialReview)
   const [startingWork, setStartingWork] = useState<WorkItem | null>(null)
-  const [jira, setJira] = useState<JiraIssues | null>(null)
+  const jira = useCached<JiraIssues | null>(JIRA_KEY, null)
 
   useEffect(() => {
-    window.api.getWorkspaceRepos().then((repos) => {
-      setWorkspaceRepos(repos)
-      setWorkspaceLoaded(true)
-    })
+    window.api.getWorkspaceRepos().then((repos) => writeCached(WORKSPACE_KEY, repos))
   }, [])
 
   const allRepoPaths = useMemo(
@@ -237,7 +244,7 @@ export default function Launchpad({
     let cancelled = false
     window.api.launchpadGetData(allRepoPaths).then((res) => {
       if (cancelled) return
-      if (res.ok) setData(res.data)
+      if (res.ok) writeCached(LAUNCHPAD_KEY, res.data)
       setAnswered({ request, error: res.ok ? null : res.error })
     })
     return () => {
@@ -250,7 +257,8 @@ export default function Launchpad({
     let cancelled = false
     window.api.jiraAssignedIssues().then((res) => {
       if (cancelled) return
-      setJira(
+      writeCached(
+        JIRA_KEY,
         res.ok ? res.data : { connected: true, issues: [], problems: [{ host: 'Jira', message: res.error }] }
       )
     })
