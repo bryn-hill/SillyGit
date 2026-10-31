@@ -14,6 +14,7 @@ export class SettingsDialog {
   readonly emailInput: Locator
   readonly showAvatars: Locator
   readonly mergeAnimation: Locator
+  readonly sideBySideDiffs: Locator
   readonly notifications: Locator
   readonly notificationsEnabled: Locator
   readonly notificationInterval: Locator
@@ -41,6 +42,7 @@ export class SettingsDialog {
     this.organizationInput = this.addAccountForm.getByLabel('Organization')
     this.showAvatars = this.root.getByRole('checkbox', { name: 'Show author avatars' })
     this.mergeAnimation = this.root.getByRole('checkbox', { name: 'Animate new commits and merges on the graph' })
+    this.sideBySideDiffs = this.root.getByRole('checkbox', { name: 'Show diffs side by side' })
     this.notifications = this.root.getByRole('region', { name: 'Notifications' })
     this.notificationsEnabled = this.notifications.getByRole('checkbox', { name: 'Pull request notifications' })
     this.notificationInterval = this.notifications.getByLabel('Check')

@@ -9,11 +9,11 @@ import { LFS_MISSING_NOTE, isLfsPointerDiff, type LfsDiff } from '../../../share
 import { LfsContext } from '../lib/lfs'
 import ImageDiff from './ImageDiff'
 import { EditorContext } from '../lib/editorMenu'
+import { DiffLayoutContext } from '../lib/diffLayout'
 import ContextMenu from './ContextMenu'
 import { laneColor, type DiffLanes } from '../lib/lanes'
 
 type Mode = 'file' | 'diff'
-type Layout = 'unified' | 'split'
 
 interface Props {
   repoPath: string
@@ -368,7 +368,7 @@ function SplitDiff({
 }: HunkListProps): JSX.Element {
   if (hunks.length === 0) return <div className="diff-empty">No changes.</div>
   return (
-    <div className={`diff-split ${onSelectLine ? 'selectable' : ''}`}>
+    <div className={`diff-split ${onSelectLine ? 'selectable' : ''}`} data-testid="split-diff">
       {hunks.map((hunk, hi) => {
         const rows = pairForSplit(hunk.lines)
         const selected = selection?.hunkId === hunk.id ? selection.lines : null
@@ -427,7 +427,14 @@ export default function FileDiffViewer({
   onUncommitHunk
 }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('diff')
-  const [layout, setLayout] = useState<Layout>('unified')
+  const savedLayout = useContext(DiffLayoutContext)
+  // Jumping to a line shows it in the unified diff without changing the saved choice.
+  const [jumpUnified, setJumpUnified] = useState(false)
+  const layout = jumpUnified ? 'unified' : savedLayout.layout
+  const setLayout = (next: typeof layout): void => {
+    setJumpUnified(false)
+    savedLayout.setLayout(next)
+  }
   const [showWhitespace, setShowWhitespace] = useState(false)
   const [wrapLines, setWrapLines] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -484,10 +491,8 @@ export default function FileDiffViewer({
   const [shownHighlight, setShownHighlight] = useState<string | null>(null)
   if (shownHighlight !== highlightRequest) {
     setShownHighlight(highlightRequest)
-    if (highlightRequest != null) {
-      setMode('diff')
-      setLayout('unified')
-    }
+    setJumpUnified(highlightRequest != null)
+    if (highlightRequest != null) setMode('diff')
   }
 
   useEffect(() => {
@@ -736,12 +741,22 @@ export default function FileDiffViewer({
             </div>
           )}
           {mode === 'diff' && !showImage && (
-            <div className="toggle-group">
-              <button className={layout === 'unified' ? 'active' : ''} onClick={() => setLayout('unified')} title="Unified view">
-                ▤
+            <div className="toggle-group diff-layout-toggle" role="group" aria-label="Diff layout">
+              <button
+                className={layout === 'unified' ? 'active' : ''}
+                aria-pressed={layout === 'unified'}
+                onClick={() => setLayout('unified')}
+                title="Old and new lines in one column"
+              >
+                Unified
               </button>
-              <button className={layout === 'split' ? 'active' : ''} onClick={() => setLayout('split')} title="Split view">
-                ▥
+              <button
+                className={layout === 'split' ? 'active' : ''}
+                aria-pressed={layout === 'split'}
+                onClick={() => setLayout('split')}
+                title="Old on the left, new on the right"
+              >
+                Side by side
               </button>
             </div>
           )}

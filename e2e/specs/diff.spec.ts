@@ -27,6 +27,32 @@ test.describe('a changed file', () => {
   })
 })
 
+test('side by side sticks for every diff, the stash view too, and shows in Settings', async ({ sillygit, repo }) => {
+  repo.writeFile('hello.txt', 'hello\nstashed line\n')
+  repo.git('stash', 'push', '-m', 'half done')
+  await sillygit.openRepository(repo.path)
+  await sillygit.details.openFile('hello.txt')
+  const view = sillygit.commitView
+  await expect(view.toolbarButton('Unified')).toHaveAttribute('aria-pressed', 'true')
+
+  await view.show('Side by side')
+  await expect(view.toolbarButton('Side by side')).toHaveAttribute('aria-pressed', 'true')
+  await expect(view.diff.getByTestId('split-diff')).toBeVisible()
+  await view.back()
+
+  await sillygit.page.getByRole('list', { name: 'Stashes' }).getByRole('listitem').filter({ hasText: 'half done' }).click()
+  await sillygit.details.file('hello.txt').click()
+  const stashDiff = sillygit.page.getByRole('region', { name: 'Stash diff' })
+  await expect(stashDiff.getByTestId('split-diff')).toContainText('stashed line')
+
+  await sillygit.settings.open()
+  await expect(sillygit.settings.sideBySideDiffs).toBeChecked()
+  await sillygit.settings.sideBySideDiffs.uncheck()
+  await sillygit.settings.close()
+  await expect(stashDiff.getByTestId('split-diff')).toHaveCount(0)
+  await expect(stashDiff.getByRole('button', { name: 'Unified', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
+
 test.describe('a file with a line wider than the diff', () => {
   test.beforeEach(async ({ sillygit, repo }) => {
     repo.commitFile('long.ts', `short\n${LONG_LINE}\n`, 'Add long.ts')
@@ -35,7 +61,7 @@ test.describe('a file with a line wider than the diff', () => {
     await sillygit.commitView.expectShowing('long.ts', 'END-OF-LONG-LINE')
   })
 
-  for (const option of ['Unified view', 'Split view', 'File View'] as const) {
+  for (const option of ['Unified', 'Side by side', 'File View'] as const) {
     test(`scrolls horizontally to the end of the line in ${option}`, async ({ sillygit }) => {
       const view = sillygit.commitView
       await view.show(option)
@@ -61,7 +87,7 @@ test.describe('a line edited in place', () => {
     await sillygit.commitView.expectShowing('price.ts', 'cost')
   })
 
-  for (const option of ['Unified view', 'Split view'] as const) {
+  for (const option of ['Unified', 'Side by side'] as const) {
     test(`highlights only the changed words in ${option}`, async ({ sillygit }) => {
       const view = sillygit.commitView
       await view.show(option)

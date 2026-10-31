@@ -4,14 +4,14 @@ const article: HelpArticle = {
   id: 'graph/diffs',
   title: 'Read diffs',
   category: 'graph',
-  summary: 'Unified and split diffs, changed-word highlights, ignoring whitespace, image diffs and the full-window file view.',
-  keywords: ['diff', 'unified', 'split', 'side by side', 'whitespace', 'image', 'swipe', 'onion skin', 'syntax', 'file view', 'changed words', 'word diff', 'inline changes'],
+  summary: 'Unified and side-by-side diffs, changed-word highlights, ignoring whitespace, image diffs and the full-window file view.',
+  keywords: ['diff', 'unified', 'split', 'side by side', 'side-by-side', 'two columns', 'whitespace', 'image', 'swipe', 'onion skin', 'syntax', 'file view', 'changed words', 'word diff', 'inline changes'],
   related: ['commits/line-staging', 'graph/blame-and-file-history', 'commits/edit-files'],
   body: `Click a file in the detail panel to open its diff in the middle of the window. The file list stays beside it, so you can click another file or use **Up** and **Down** to step through them.
 
 The diff toolbar lets you:
 
-- switch between **unified** and **split** (side by side) views;
+- switch between **Unified** (one column) and **Side by side** (old on the left, new on the right). SillyGit remembers your choice for every diff, whether it's a commit, your working changes, a stash, a comparison or a file's history. You can also set it with **Show diffs side by side** in Settings;
 - **ignore whitespace** changes, handy after a reformat (staging single lines is turned off while it's on);
 - open **Blame** or **History** for the file;
 - **Edit file** in the built-in editor, or open it in your own editor.

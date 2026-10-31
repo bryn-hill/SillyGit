@@ -544,6 +544,9 @@ const api = {
   ): Wrapped<import('../shared/help/types').HelpSettings> => ipcRenderer.invoke('settings:set-help', next),
   getMergeAnimation: (): Promise<boolean> => ipcRenderer.invoke('settings:get-merge-animation'),
   setMergeAnimation: (on: boolean): Wrapped<void> => ipcRenderer.invoke('settings:set-merge-animation', on),
+  getDiffLayout: (): Promise<import('../shared/diffLayout').DiffLayout> => ipcRenderer.invoke('settings:get-diff-layout'),
+  setDiffLayout: (layout: import('../shared/diffLayout').DiffLayout): Wrapped<void> =>
+    ipcRenderer.invoke('settings:set-diff-layout', layout),
   /** Avatar images (data: URLs) by lower-cased email; null or missing means show initials. */
   resolveAvatars: (
     repoPath: string,

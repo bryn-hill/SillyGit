@@ -33,10 +33,14 @@ export class CommitView {
     return this.files.locator('.file-row').filter({ hasText: path })
   }
 
-  /** Picks a toolbar option: 'File View', 'Diff View', 'Unified view' or 'Split view'. */
-  async show(option: 'File View' | 'Diff View' | 'Unified view' | 'Split view'): Promise<void> {
-    const button = option.endsWith('View') ? this.diff.getByRole('button', { name: option }) : this.diff.getByTitle(option)
-    await button.click()
+  /** Picks a toolbar option: 'File View', 'Diff View', 'Unified' or 'Side by side'. */
+  async show(option: DiffOption): Promise<void> {
+    await this.toolbarButton(option).click()
+  }
+
+  /** A toolbar button; the layout ones are pressed while their layout shows. */
+  toolbarButton(option: DiffOption): Locator {
+    return this.diff.getByRole('button', { name: option, exact: true })
   }
 
   async scrollToRightEdge(): Promise<void> {
@@ -77,3 +81,5 @@ export class CommitView {
     await expect(this.root).toHaveCount(0)
   }
 }
+
+export type DiffOption = 'File View' | 'Diff View' | 'Unified' | 'Side by side'

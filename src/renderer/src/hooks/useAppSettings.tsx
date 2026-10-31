@@ -4,6 +4,7 @@ import { DEFAULT_MERGE_TOOL_SETTINGS, mergeToolName } from '../../../shared/merg
 import type { CustomCommand } from '../../../shared/customCommands'
 import type { ThemePreference } from '../../../shared/theme'
 import { DEFAULT_EDITOR_SETTINGS } from '../../../shared/editors'
+import { DEFAULT_DIFF_LAYOUT } from '../../../shared/diffLayout'
 import { useSavedSetting } from './useSavedSetting'
 import { useTheme } from './useTheme'
 
@@ -61,6 +62,13 @@ export function useAppSettings(onError: (message: string) => void) {
     true,
     onError
   )
+  // Unified or side-by-side text diffs, everywhere a file's diff is shown.
+  const [diffLayout, setDiffLayout] = useSavedSetting(
+    window.api.getDiffLayout,
+    window.api.setDiffLayout,
+    DEFAULT_DIFF_LAYOUT,
+    onError
+  )
   // The user's own commands for the menus and palette.
   const [customCommands, setCustomCommands] = useSavedSetting(
     window.api.getCustomCommands,
@@ -88,7 +96,9 @@ export function useAppSettings(onError: (message: string) => void) {
     branchList,
     setBranchList,
     mergeAnimation,
-    setMergeAnimation
+    setMergeAnimation,
+    diffLayout,
+    setDiffLayout
   }
 }
 

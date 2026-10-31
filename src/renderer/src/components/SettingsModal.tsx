@@ -15,6 +15,7 @@ import SprintsSection from './settings/SprintsSection'
 import SigningSection from './settings/SigningSection'
 import type { CustomCommand } from '../../../shared/customCommands'
 import type { ThemePreference } from '../../../shared/theme'
+import type { DiffLayout } from '../../../shared/diffLayout'
 
 interface Props {
   onClose: () => void
@@ -36,6 +37,8 @@ interface Props {
   onRescanEditors: () => void
   mergeAnimation: boolean
   onMergeAnimationChange: (on: boolean) => void
+  diffLayout: DiffLayout
+  onDiffLayoutChange: (layout: DiffLayout) => void
   customCommands: CustomCommand[]
   onCustomCommandsChange: (next: CustomCommand[]) => void
 }
@@ -67,6 +70,8 @@ export default function SettingsModal({
   onRescanEditors,
   mergeAnimation,
   onMergeAnimationChange,
+  diffLayout,
+  onDiffLayoutChange,
   customCommands,
   onCustomCommandsChange
 }: Props): JSX.Element {
@@ -150,6 +155,21 @@ export default function SettingsModal({
             <div className="modal-hint">
               When commits arrive, whether you commit, merge, pull or fetch, their lines grow into them like a metro
               map. If your system asks for reduced motion, nothing moves.
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <label className="settings-checkbox">
+              <input
+                type="checkbox"
+                checked={diffLayout === 'split'}
+                onChange={(e) => onDiffLayoutChange(e.target.checked ? 'split' : 'unified')}
+              />
+              Show diffs side by side
+            </label>
+            <div className="modal-hint">
+              Old lines on the left, new on the right, in every file diff. The Unified and Side by side buttons above a
+              diff switch it too.
             </div>
           </section>
 

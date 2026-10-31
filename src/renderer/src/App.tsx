@@ -14,6 +14,7 @@ import { CustomCommandsContext } from './lib/customCommandMenu'
 import { BisectContext } from './lib/bisectMenu'
 import { LfsContext } from './lib/lfs'
 import { EditorContext } from './lib/editorMenu'
+import { DiffLayoutContext } from './lib/diffLayout'
 import BranchCleanupDialog from './components/BranchCleanupDialog'
 import AbsorbDialog from './components/AbsorbDialog'
 import StashDialog from './components/StashDialog'
@@ -311,24 +312,26 @@ export default function App(): JSX.Element {
                 <EditorContext value={{ name: editor.current?.name ?? null, open: editor.open }}>
                   <BisectContext value={{ state: bisect.state, start: bisect.start, mark: bisect.mark }}>
                     <LfsContext value={{ info: lfs.info, track: lfs.track }}>
-                      <MainArea
-                        repo={repo}
-                        view={view}
-                        settings={settings}
-                        layout={layout}
-                        git={actions}
-                        branches={branches}
-                        cleanup={cleanup}
-                        conflicts={conflicts}
-                        commitBox={commitBox}
-                        tabs={tabs}
-                        lanes={lanes}
-                        hasWorkingChanges={hasWorkingChanges}
-                        onOpenTerminal={() => setShowTerminal(true)}
-                        onCheckoutPullRequest={checkoutPullRequest}
-                        showError={showError}
-                        setNotice={setNotice}
-                      />
+                      <DiffLayoutContext value={{ layout: settings.diffLayout, setLayout: settings.setDiffLayout }}>
+                        <MainArea
+                          repo={repo}
+                          view={view}
+                          settings={settings}
+                          layout={layout}
+                          git={actions}
+                          branches={branches}
+                          cleanup={cleanup}
+                          conflicts={conflicts}
+                          commitBox={commitBox}
+                          tabs={tabs}
+                          lanes={lanes}
+                          hasWorkingChanges={hasWorkingChanges}
+                          onOpenTerminal={() => setShowTerminal(true)}
+                          onCheckoutPullRequest={checkoutPullRequest}
+                          showError={showError}
+                          setNotice={setNotice}
+                        />
+                      </DiffLayoutContext>
                     </LfsContext>
                   </BisectContext>
                 </EditorContext>
@@ -468,6 +471,8 @@ export default function App(): JSX.Element {
             onRescanEditors={editor.rescan}
             mergeAnimation={settings.mergeAnimation}
             onMergeAnimationChange={settings.setMergeAnimation}
+            diffLayout={settings.diffLayout}
+            onDiffLayoutChange={settings.setDiffLayout}
             customCommands={settings.customCommands}
             onCustomCommandsChange={settings.setCustomCommands}
           />
