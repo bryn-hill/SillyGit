@@ -89,6 +89,8 @@ interface Props {
   sprints: SprintSettings
   /** Animate a merge landing on the checked-out branch (Settings). */
   mergeAnimation: boolean
+  /** CI results as ✓ ✕ ● symbols rather than a coloured line (Settings). */
+  ciSymbols: boolean
   /** The path filter `rows` were read with, shown as a chip that clears it. */
   filter: GraphFilter | null
   onFilterChange: (filter: GraphFilter | null) => void
@@ -120,6 +122,7 @@ export default function CommitGraph({
   onRefColumnWidthChange,
   sprints,
   mergeAnimation,
+  ciSymbols,
   filter,
   onFilterChange,
   ciPollMinutes,
@@ -304,9 +307,9 @@ export default function CommitGraph({
     if (!showCi) return undefined
     const status = ci.statuses[hash]
     return status ? (
-      <CiStatusDot status={status} onRerun={(targets) => ci.rerun(hash, targets)} />
+      <CiStatusDot status={status} symbols={ciSymbols} onRerun={(targets) => ci.rerun(hash, targets)} />
     ) : (
-      <span className="ci-dot-gap" aria-hidden="true" />
+      <span className={`ci-dot-gap ${ciSymbols ? 'ci-dot-symbol' : 'ci-dot-line'}`} aria-hidden="true" />
     )
   }
 

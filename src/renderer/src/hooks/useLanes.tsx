@@ -3,6 +3,8 @@ import { WORKSPACE_BRANCH, type LaneMove, type LanesStatus } from '../../../shar
 import type { PromptRequest } from '../components/PromptDialog'
 import type { Repo } from './useRepo'
 import type { GitRunner } from './useGitRunner'
+import { cacheKey, writeCached } from '../lib/swrCache'
+import { useCached } from './useCached'
 
 /**
  * Lanes (virtual branches): the repo's lanes status, reloaded on every repo
@@ -25,7 +27,8 @@ export function useLanes({
   const { repoPath, status, branches } = repo
   // Ownership moves don't change git status, so they reload the lanes themselves.
   const [version, setVersion] = useState(0)
-  const [loaded, setLoaded] = useState<{ repoPath: string; lanes: LanesStatus | null } | null>(null)
+  // Cached per repo, so switching back to a tab shows its lanes at once.
+  const lanes = useCached<LanesStatus | null>(repoPath ? cacheKey('lanes', repoPath) : null, null)
   // Reads are numbered so an answer only replaces a newer one's. A newer ask
   // doesn't throw away the answer still on its way: on a busy machine a read
   // takes seconds and the repo refreshes again meanwhile, so dropping
@@ -38,10 +41,9 @@ export function useLanes({
     window.api.lanesStatus(repoPath).then((res) => {
       if (seq < shown.current) return
       shown.current = seq
-      setLoaded({ repoPath, lanes: res.ok ? res.data : null })
+      writeCached(cacheKey('lanes', repoPath), res.ok ? res.data : null)
     })
   }, [repoPath, status, version])
-  const lanes = loaded?.repoPath === repoPath ? loaded.lanes : null
   const reload = (): void => setVersion((v) => v + 1)
 
   const localBranches = branches.filter((b) => !b.remote && b.name !== WORKSPACE_BRANCH).map((b) => b.name)

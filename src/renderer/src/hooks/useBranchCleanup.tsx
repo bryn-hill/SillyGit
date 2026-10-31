@@ -19,7 +19,7 @@ export function useBranchCleanup({
 }) {
   const { repoPath, branchesListedAt, refresh } = repo
   // When the banner may show again, per repo.
-  const [snoozedUntil, setSnoozedUntil] = useRepoValue(repoPath, window.api.getCleanupSnooze, null)
+  const [snoozedUntil, setSnoozedUntil] = useRepoValue('cleanup-snooze', repoPath, window.api.getCleanupSnooze, null)
   const snoozed = snoozedUntil !== null && snoozedUntil > branchesListedAt
   const [dialogOpen, setDialogOpen] = useState(false)
   // The last batch of branches the dialog deleted, for Restore.

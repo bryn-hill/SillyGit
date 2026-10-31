@@ -1,8 +1,13 @@
 # SillyGit
 
-Branch new work from `dev` and merge it back into `dev`. `main` is the stable branch: it only
-receives `dev` when the owner asks for a promotion. The in-app "Update SillyGit" button
-deliberately pulls `main`.
+Branch new work from `dev` and merge it back into `dev` (direct pushes to `dev` are fine). `main`
+is the stable branch: it only receives `dev` when the owner asks for a promotion. The in-app
+"Update SillyGit" button deliberately pulls `main`.
+
+Nobody can push to `main`, admins included. To promote, open a pull request from `dev` into
+`main`, wait for the `commits`, `test` and `e2e` checks to go green (e2e runs the full suite on
+the self-hosted Mac mini and takes a while), then merge it with a merge commit (the only method
+allowed, so `main` keeps `dev`'s commits). Don't try to bypass a red check; fix it on `dev`.
 
 Commit messages must follow Conventional Commits (`type(scope): subject`, lowercase
 subject, no trailing period). See CONTRIBUTING.md for the types and scopes, and run

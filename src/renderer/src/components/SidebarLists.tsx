@@ -3,6 +3,8 @@ import { shortRemoteUrl } from '../../../shared/remotes'
 import type { RepoRemote, SubmoduleInfo, TagInfo, WorktreeInfo } from '../../../shared/types'
 import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import { pressable } from '../lib/pressable'
+import { cacheKey, writeCached } from '../lib/swrCache'
+import { useCached } from '../hooks/useCached'
 
 export interface SidebarListActions {
   selectCommit: (hash: string) => void
@@ -28,7 +30,6 @@ export interface SidebarListActions {
 }
 
 interface Lists {
-  repoPath: string
   tags: TagInfo[]
   worktrees: WorktreeInfo[]
   submodules: SubmoduleInfo[]
@@ -86,7 +87,8 @@ function GroupHeader({
  * when there's a linked one, and Submodules only when the repo has any.
  */
 export default function SidebarLists({ repoPath, refreshKey, remotes, filter, collapsed, onToggle, actions }: Props): JSX.Element {
-  const [lists, setLists] = useState<Lists | null>(null)
+  // Cached per repo, so switching back to a tab shows its lists at once.
+  const shown = useCached<Lists | null>(cacheKey('sidebar-lists', repoPath), null)
   const [menu, setMenu] = useState<{ x: number; y: number; sections: ContextMenuItem[][] } | null>(null)
 
   useEffect(() => {
@@ -94,8 +96,7 @@ export default function SidebarLists({ repoPath, refreshKey, remotes, filter, co
     Promise.all([window.api.tags(repoPath), window.api.worktrees(repoPath), window.api.submodules(repoPath)]).then(
       ([tags, worktrees, submodules]) => {
         if (cancelled) return
-        setLists({
-          repoPath,
+        writeCached(cacheKey('sidebar-lists', repoPath), {
           tags: tags.ok ? tags.data : [],
           worktrees: worktrees.ok ? worktrees.data : [],
           submodules: submodules.ok ? submodules.data : []
@@ -107,8 +108,6 @@ export default function SidebarLists({ repoPath, refreshKey, remotes, filter, co
     }
   }, [repoPath, refreshKey])
 
-  // Another repo's lists never show while this one's load.
-  const shown = lists?.repoPath === repoPath ? lists : null
   const needle = filter.toLowerCase()
   const hasRemotes = remotes.length > 0
   const shownRemotes = remotes.filter((r) => r.name.toLowerCase().includes(needle))

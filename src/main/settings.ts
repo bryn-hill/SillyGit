@@ -8,6 +8,7 @@ import { normalizeMergeToolSettings, type MergeToolSettings } from '../shared/me
 import { normalizeBranchListSettings, type BranchListSettings } from '../shared/branchStatus'
 import { normalizeCustomCommands, type CustomCommand } from '../shared/customCommands'
 import { normalizeThemePreference, type ThemePreference } from '../shared/theme'
+import { normalizeDiffLayout, type DiffLayout } from '../shared/diffLayout'
 import { normalizeEditorSettings, type EditorSettings } from '../shared/editors'
 import { normalizeHelpSettings } from '../shared/help/tour'
 import { isDefaultScope, normalizeGraphScope, type GraphScope } from '../shared/graphScope'
@@ -34,6 +35,10 @@ interface StoredSettings {
   theme?: ThemePreference
   /** Play the lanes-colliding animation on the graph when a merge lands. */
   mergeAnimation?: boolean
+  /** Show CI results as ✓ ✕ ● symbols rather than a coloured line, for colour-blind users. */
+  ciSymbols?: boolean
+  /** Unified or side-by-side text diffs. */
+  diffLayout?: DiffLayout
   /** Desktop notifications about pull requests. */
   notifications?: Partial<NotificationSettings>
   /** Sprint markers on the commit graph. */
@@ -167,6 +172,26 @@ export async function getMergeAnimation(): Promise<boolean> {
 export async function setMergeAnimation(on: boolean): Promise<void> {
   await updateSettings((current) => {
     current.mergeAnimation = on
+  })
+}
+
+export async function getCiSymbols(): Promise<boolean> {
+  return (await readSettings()).ciSymbols === true
+}
+
+export async function setCiSymbols(on: boolean): Promise<void> {
+  await updateSettings((current) => {
+    current.ciSymbols = on
+  })
+}
+
+export async function getDiffLayout(): Promise<DiffLayout> {
+  return normalizeDiffLayout((await readSettings()).diffLayout)
+}
+
+export async function setDiffLayout(layout: DiffLayout): Promise<void> {
+  await updateSettings((current) => {
+    current.diffLayout = normalizeDiffLayout(layout)
   })
 }
 

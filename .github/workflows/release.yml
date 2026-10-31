@@ -137,8 +137,10 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
           else
+            # The notes template says <version> where each file name has the version.
+            sed "s/<version>/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/release-notes.md"
             gh release create "$TAG" --draft --target "$GITHUB_SHA" \
-              --title "SillyGit $VERSION" --generate-notes --notes-file .github/release-notes.md
+              --title "SillyGit $VERSION" --generate-notes --notes-file "$RUNNER_TEMP/release-notes.md"
             gh release upload "$TAG" "${assets[@]}"
           fi
           gh release edit "$TAG" --draft=false --latest

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { LFS_INSTALL_URL, NO_LFS, type LfsInfo } from '../../../shared/lfs'
+import { LFS_INSTALL_URL, NO_LFS } from '../../../shared/lfs'
+import { cacheKey, writeCached } from '../lib/swrCache'
+import { useCached } from './useCached'
 import type { GitRunner } from './useGitRunner'
 
 const DONE: Record<'fetch' | 'pull' | 'prune', string> = {
@@ -24,7 +26,8 @@ export function useLfs({
   git: GitRunner
   setNotice: (message: string | null) => void
 }) {
-  const [loaded, setLoaded] = useState<{ repoPath: string; info: LfsInfo } | null>(null)
+  // Cached per repo, so switching back to a tab shows its LFS state at once.
+  const info = useCached(repoPath ? cacheKey('lfs', repoPath) : null, NO_LFS)
   // The repo whose "git-lfs isn't installed" note was closed.
   const [dismissedFor, setDismissedFor] = useState<string | null>(null)
 
@@ -32,17 +35,16 @@ export function useLfs({
     if (!repoPath) return
     let current = true
     window.api.lfsInfo(repoPath).then((res) => {
-      if (current && res.ok) setLoaded({ repoPath, info: res.data })
+      if (current && res.ok) writeCached(cacheKey('lfs', repoPath), res.data)
     })
     return () => {
       current = false
     }
   }, [repoPath, refreshKey])
 
-  // Another repo's patterns never show while this one's load.
-  const info = loaded?.repoPath === repoPath ? loaded.info : NO_LFS
+  // Another repo's patterns never show while this one's load (it's NO_LFS until then).
   const used = info.patterns.length > 0
-  const missing = !!repoPath && !!loaded && loaded.repoPath === repoPath && used && !info.installed
+  const missing = !!repoPath && used && !info.installed
 
   const track = (pattern: string): void =>
     git.runGit(

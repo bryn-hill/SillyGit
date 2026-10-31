@@ -22,6 +22,12 @@ Branch new work from `dev` and open pull requests against `dev`. `main` is the s
 branch and only receives `dev` when a release is promoted. The in-app "Update SillyGit"
 button pulls `main`.
 
+`main` is protected for everyone, the maintainer included: no direct pushes, force pushes or
+deletion. A promotion is a pull request from `dev` into `main` that merges (with a merge
+commit) only once the `commits`, `test` and `e2e` checks pass. The full end-to-end suite only
+runs for pull requests into `main`; pull requests into `dev` run the commit check, typecheck,
+lint and unit tests.
+
 ## Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/):

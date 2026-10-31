@@ -137,6 +137,23 @@
   white-space: nowrap;
 }
 
+/* A button whose label changes (Pull / Fetching) keeps the longest one's
+   width: it sits invisibly in the same grid cell as the shown label. */
+.tool-label[data-sizer] {
+  display: grid;
+  justify-items: center;
+}
+
+.tool-label[data-sizer] > span,
+.tool-label[data-sizer]::after {
+  grid-area: 1 / 1;
+}
+
+.tool-label[data-sizer]::after {
+  content: attr(data-sizer);
+  visibility: hidden;
+}
+
 .tool-icon {
   position: relative;
   display: flex;

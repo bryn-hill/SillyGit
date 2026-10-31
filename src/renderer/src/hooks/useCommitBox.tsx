@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { cacheKey, writeCached } from '../lib/swrCache'
+import { useCached } from './useCached'
 import type { OperationState } from '../../../shared/types'
 import type { GitRunner } from './useGitRunner'
 import { addCoAuthor, hasMessage, parseCoAuthors } from '../../../shared/coAuthors'
@@ -27,8 +29,8 @@ export function useCommitBox({
   const [absorbOpen, setAbsorbOpen] = useState(false)
 
   // The template, recent messages and Conventional Commits scopes, per repo.
-  const [loadedHints, setLoadedHints] = useState<{ repoPath: string; hints: CommitHints } | null>(null)
-  const hints = loadedHints && loadedHints.repoPath === repoPath ? loadedHints.hints : NO_HINTS
+  // Cached per repo, so switching back to a tab shows its recent messages at once.
+  const hints = useCached<CommitHints>(repoPath ? cacheKey('commit-hints', repoPath) : null, NO_HINTS)
   const { template } = hints
   // The template last put in the box, so another repo's (or a changed one) can replace it.
   const prefilledTemplate = useRef<string | null>(null)
@@ -37,7 +39,7 @@ export function useCommitBox({
     let cancelled = false
     window.api.commitHints(repoPath).then((res) => {
       if (cancelled || !res.ok) return
-      setLoadedHints({ repoPath, hints: res.data })
+      writeCached(cacheKey('commit-hints', repoPath), res.data)
       // Start an empty box (or one holding only the old template) from commit.template.
       const previous = prefilledTemplate.current
       prefilledTemplate.current = res.data.template

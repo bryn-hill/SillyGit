@@ -399,6 +399,7 @@ export default function MainArea({
           refColumnWidth={layout.refColumnWidth}
           sprints={settings.sprints}
           mergeAnimation={settings.mergeAnimation}
+          ciSymbols={settings.ciSymbols}
           onRefColumnWidthChange={layout.setRefColumnWidth}
           filter={repo.graphFilter}
           onFilterChange={view.filterHistory}

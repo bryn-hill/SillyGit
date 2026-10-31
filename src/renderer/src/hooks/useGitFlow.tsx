@@ -10,25 +10,30 @@ import type { BranchInfo } from '../../../shared/types'
 import type { PromptRequest } from '../components/PromptDialog'
 import type { GitRunner } from './useGitRunner'
 import type { MainView } from './useMainView'
+import { cacheKey, writeCached } from '../lib/swrCache'
+import { useCached } from './useCached'
 
-/** The repo's git-flow settings, reloaded whenever `refreshKey` changes (each repo refresh). */
+/**
+ * The repo's git-flow settings, reloaded whenever `refreshKey` changes (each
+ * repo refresh), and cached per repo so switching back to a tab shows them at once.
+ */
 function useGitFlowConfig(repoPath: string | null, refreshKey: unknown): [GitFlowConfig | null, (config: GitFlowConfig) => void] {
-  const [loaded, setLoaded] = useState<{ repoPath: string; config: GitFlowConfig | null } | null>(null)
+  const config = useCached<GitFlowConfig | null>(repoPath ? cacheKey('git-flow', repoPath) : null, null)
   useEffect(() => {
     if (!repoPath) return
     let current = true
     window.api.gitFlowConfig(repoPath).then((res) => {
-      if (current) setLoaded({ repoPath, config: res.ok ? res.data : null })
+      if (current) writeCached(cacheKey('git-flow', repoPath), res.ok ? res.data : null)
     })
     return () => {
       current = false
     }
   }, [repoPath, refreshKey])
-  const set = (config: GitFlowConfig): void => {
-    if (repoPath) setLoaded({ repoPath, config })
+  const set = (next: GitFlowConfig): void => {
+    if (repoPath) writeCached(cacheKey('git-flow', repoPath), next)
   }
   // Another repo's settings never show while this one's load.
-  return [loaded?.repoPath === repoPath ? loaded.config : null, set]
+  return [config, set]
 }
 
 /**

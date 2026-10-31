@@ -13,6 +13,11 @@ interface ToolButtonProps {
   className?: string
   /** The walkthrough step that points at this button (its `data-tour` target). */
   tour?: string
+  /**
+   * Every label the button can show (e.g. Pull and Fetching). The button is
+   * as wide as the widest, so it and its neighbours don't move when the label changes.
+   */
+  labels?: string[]
 }
 
 /** A GitKraken-style toolbar button: a small label above its icon. */
@@ -26,7 +31,8 @@ export default function ToolButton({
   active,
   badge,
   className,
-  tour
+  tour,
+  labels
 }: ToolButtonProps): JSX.Element {
   return (
     <button
@@ -37,7 +43,14 @@ export default function ToolButton({
       aria-label={ariaLabel ?? label}
       data-tour={tour}
     >
-      <span className="tool-label">{label}</span>
+      {labels ? (
+        // The longest label sits invisibly behind the shown one (in CSS, so it's not in the text).
+        <span className="tool-label" data-sizer={labels.reduce((a, b) => (b.length > a.length ? b : a), label)}>
+          <span>{label}</span>
+        </span>
+      ) : (
+        <span className="tool-label">{label}</span>
+      )}
       <span className="tool-icon">
         {icon}
         {badge ? <span className="tool-badge">{badge}</span> : null}

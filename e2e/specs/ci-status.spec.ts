@@ -56,6 +56,9 @@ test('pushed commits show their CI result, and failed checks can be re-run', asy
   await expect(graph.ciDot('Add hello.txt')).toHaveAttribute('data-state', 'failure')
   await expect(graph.ciDot('Add hello.txt')).toHaveAccessibleName('CI: 1 of 2 checks failed')
   await expect(graph.ciDot('Initial commit')).toHaveAttribute('data-state', 'success')
+  // A line by default, with no text in it.
+  await expect(graph.ciDot('Add hello.txt')).toHaveClass(/ci-dot-line/)
+  await expect(graph.ciDot('Add hello.txt')).toHaveText('')
 
   // Clicking the dot opens its checks without selecting a different commit.
   await graph.row('Initial commit').click()
@@ -84,4 +87,21 @@ test('repos without CI show no dots', async ({ sillygit, repo }) => {
   await sillygit.openRepository(repo.path)
   await expect(sillygit.graph.row('Add hello.txt')).toBeVisible()
   await expect(sillygit.graph.root.getByTestId('ci-dot')).toHaveCount(0)
+})
+
+test('CI results can show as symbols for colour-blind users', async ({ sillygit, electronApp, repo }) => {
+  await stubCi(electronApp)
+  await sillygit.openRepository(repo.path)
+  const { graph, settings } = sillygit
+  await expect(graph.ciDot('Add hello.txt')).toHaveClass(/ci-dot-line/)
+
+  await settings.open()
+  await settings.ciSymbols.check()
+  await settings.close()
+
+  await expect(graph.ciDot('Add hello.txt')).toHaveText('✕')
+  await expect(graph.ciDot('Initial commit')).toHaveText('✓')
+  await expect(graph.ciDot('Add hello.txt')).toHaveAccessibleName('CI: 1 of 2 checks failed')
+  await graph.ciDot('Add hello.txt').click()
+  await expect(graph.ciPopover).toBeVisible()
 })
