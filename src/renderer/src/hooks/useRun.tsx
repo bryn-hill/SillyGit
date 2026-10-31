@@ -44,7 +44,7 @@ export function useRun({
   const [mode, setMode] = useState<RunMode>(loadRunMode)
   const [preparing, setPreparing] = useState(false)
   // The repo's saved Run command, or null until one is set.
-  const [command, setCommand] = useRepoValue(repoPath, async (path) => (await window.api.getRunCommand(path)).command, null)
+  const [command, setCommand] = useRepoValue('run-command', repoPath, async (path) => (await window.api.getRunCommand(path)).command, null)
 
   // The commit Run acts on: the selected one, if just one is selected. A
   // clean HEAD is just the working tree, so that runs in the repo.

@@ -58,9 +58,9 @@ export function useBranchActions({
   const { repoPath, status, branches, remotes, headHash, refresh } = repo
   const { runGit, runGitThen, withBusy } = git
   // Starred branches, per repo.
-  const [favourites, setFavourites] = useRepoValue(repoPath, window.api.getFavouriteBranches, NO_FAVOURITES)
+  const [favourites, setFavourites] = useRepoValue('favourite-branches', repoPath, window.api.getFavouriteBranches, NO_FAVOURITES)
   // Which branches the graph draws, per repo; main reads the same setting when it reads the graph.
-  const [graphScope, setGraphScopeValue] = useRepoValue(repoPath, window.api.getGraphScope, DEFAULT_GRAPH_SCOPE)
+  const [graphScope, setGraphScopeValue] = useRepoValue('graph-scope', repoPath, window.api.getGraphScope, DEFAULT_GRAPH_SCOPE)
   const stacks = useStacks(repoPath, branches)
   // The open Create pull request dialog, and the repo it's for.
   const [creatingPr, setCreatingPr] = useState<{ repoPath: string; request: CreatePullRequestRequest } | null>(null)
