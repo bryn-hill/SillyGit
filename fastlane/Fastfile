@@ -1,0 +1,76 @@
+# Code signing for macOS release builds, with Fastlane Match. The certificate
+# lives encrypted in the certificates repo (see Matchfile); these lanes create
+# it once and install it on the release runner. electron-builder does the
+# actual signing and notarizing. See "Code signing" in RELEASING.md.
+#
+#   bundle exec fastlane mac certificates   create or renew the certificate (run once, on a Mac)
+#   bundle exec fastlane mac ci_keychain    install it into a throwaway keychain (release.yml)
+#   bundle exec fastlane mac ci_cleanup     delete that keychain (release.yml)
+
+opt_out_usage
+default_platform(:mac)
+
+# Lives in ~/Library/Keychains; macOS adds the -db suffix itself.
+KEYCHAIN = "sillygit-release.keychain"
+IDENTITY_PREFIX = "Developer ID Application: "
+
+# The same App Store Connect API key electron-builder notarizes with, under
+# the same environment variable names.
+def api_key
+  app_store_connect_api_key(
+    key_id: ENV.fetch("APPLE_API_KEY_ID"),
+    issuer_id: ENV.fetch("APPLE_API_ISSUER"),
+    key_filepath: ENV.fetch("APPLE_API_KEY")
+  )
+end
+
+def keychain_path
+  FastlaneCore::Helper.keychain_path(KEYCHAIN)
+rescue StandardError
+  nil
+end
+
+platform :mac do
+  desc "Create the Developer ID Application certificate (or renew an expired one) and push it, encrypted, to the certificates repo"
+  lane :certificates do
+    match(readonly: false, api_key: api_key)
+  end
+
+  desc "Install the signing certificate into a throwaway keychain and tell later workflow steps its path and identity"
+  lane :ci_keychain do
+    password = ENV.fetch("SIGNING_KEYCHAIN_PASSWORD")
+    # A cancelled run can leave the last one behind.
+    delete_keychain(name: KEYCHAIN) if keychain_path
+
+    create_keychain(
+      name: KEYCHAIN,
+      password: password,
+      default_keychain: false,
+      unlock: true,
+      timeout: 0,
+      lock_when_sleeps: false,
+      add_to_search_list: true
+    )
+    match(readonly: true, keychain_name: KEYCHAIN, keychain_password: password)
+
+    path = keychain_path
+    identities = sh("security", "find-identity", "-v", "-p", "codesigning", path, log: false)
+    full_name = identities[/"(#{Regexp.escape(IDENTITY_PREFIX)}[^"]+)"/, 1]
+    UI.user_error!("No Developer ID Application identity in #{path} after match") unless full_name
+
+    # electron-builder wants the name without the certificate type prefix.
+    identity = full_name.delete_prefix(IDENTITY_PREFIX)
+    UI.success("Signing as #{identity}")
+    if ENV["GITHUB_ENV"]
+      File.open(ENV["GITHUB_ENV"], "a") do |env|
+        env.puts("CSC_KEYCHAIN=#{path}")
+        env.puts("MAC_IDENTITY=#{identity}")
+      end
+    end
+  end
+
+  desc "Delete the keychain ci_keychain made"
+  lane :ci_cleanup do
+    delete_keychain(name: KEYCHAIN) if keychain_path
+  end
+end

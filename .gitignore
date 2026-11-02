@@ -6,3 +6,9 @@ dist/
 playwright-report/
 test-results/
 coverage/
+
+# Fastlane (code signing)
+fastlane/README.md
+fastlane/report.xml
+.bundle/
+vendor/bundle/

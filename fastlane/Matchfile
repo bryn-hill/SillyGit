@@ -1,0 +1,21 @@
+# Fastlane Match keeps SillyGit's Developer ID certificate, encrypted with
+# MATCH_PASSWORD, in a private git repo, so any Mac (the release runner or a
+# laptop) can install the same signing identity. See "Code signing" in
+# RELEASING.md.
+#
+# The certificates repo must stay private. Its URL isn't a secret, but it can
+# be overridden with MATCH_GIT_URL.
+git_url(ENV.fetch("MATCH_GIT_URL", "https://github.com/bryn-hill/sillygit-certificates.git"))
+storage_mode("git")
+git_branch("main")
+
+# Developer ID Application: for apps distributed outside the Mac App Store.
+type("developer_id")
+platform("macos")
+app_identifier(["com.brynhill.sillygit"])
+
+# SillyGit isn't sandboxed and uses no capabilities that need a provisioning
+# profile, so Match only manages the certificate.
+skip_provisioning_profiles(true)
+
+readonly(true)

@@ -62,20 +62,68 @@ release notes tell them how to get past it:
 
 ## Code signing
 
-The workflow signs as soon as these repository secrets exist (Settings > Secrets and variables >
-Actions). Leave them unset for unsigned builds.
+macOS builds are signed with a Developer ID Application certificate that
+[Fastlane Match](https://docs.fastlane.tools/actions/match/) keeps, encrypted, in a private git
+repo (`bryn-hill/sillygit-certificates`, set in `fastlane/Matchfile`). On each release the
+workflow runs `fastlane mac ci_keychain`, which decrypts the certificate into a throwaway keychain
+on the runner; electron-builder signs from it with the hardened runtime, notarizes with an App
+Store Connect API key, and the keychain is deleted at the end. Until the `MATCH_PASSWORD` secret
+exists, builds stay ad hoc signed.
 
-| Secret | What it is |
-| --- | --- |
-| `MAC_CSC_LINK` | Developer ID Application certificate as a base64 `.p12` |
-| `MAC_CSC_KEY_PASSWORD` | Its password |
-| `MAC_IDENTITY` | The certificate's name, e.g. `Bryn Hill (ABCDE12345)` |
-| `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | Turn on notarization |
-| `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows code signing certificate (`.pfx`, base64) |
+### Setting it up
 
-With `MAC_CSC_LINK` set, the macOS step overrides the ad hoc identity with `MAC_IDENTITY` and
-turns on the hardened runtime, and with `APPLE_ID` set it also notarizes. Signed builds no longer
-need the right-click workaround, so drop that part of `.github/release-notes.md` too.
+1. **Apple Developer Program.** A paid membership (individual is fine). Developer ID certificates
+   can only be made by the account holder.
+2. **Certificates repo.** Create an empty **private** repo, `bryn-hill/sillygit-certificates`.
+   It must never be public: anyone with it and `MATCH_PASSWORD` can sign as you.
+3. **App Store Connect API key.** In App Store Connect, **Users and Access > Integrations > App
+   Store Connect API > Team Keys**, generate a key with the **Admin** role. Download the
+   `AuthKey_<id>.p8` file (Apple only lets you download it once) and note the key ID and the
+   issuer ID shown above the list.
+4. **Create the certificate**, on a Mac with this repo cloned and Ruby from Homebrew
+   (`brew install ruby`, then put `/opt/homebrew/opt/ruby/bin` first on your `PATH`):
+
+   ```sh
+   bundle install
+   export APPLE_API_KEY=~/Downloads/AuthKey_ABC123XYZ.p8 APPLE_API_KEY_ID=ABC123XYZ APPLE_API_ISSUER=<issuer id>
+   bundle exec fastlane mac certificates
+   ```
+
+   Match asks for a passphrase: that's `MATCH_PASSWORD`, so keep it in your password manager. It
+   then creates the certificate and pushes it, encrypted, to the certificates repo.
+
+   If Apple refuses to create a Developer ID certificate through the API, make it in Xcode
+   instead (**Settings > Accounts > Manage Certificates > + > Developer ID Application**). In
+   Keychain Access, export the certificate as a `.cer`, and the certificate together with its
+   private key as a `.p12`, then hand both to Match:
+
+   ```sh
+   bundle exec fastlane match import --readonly false --skip_certificate_matching true
+   ```
+
+5. **Read-only token for the runner.** Make a fine-grained personal access token with access to
+   only `sillygit-certificates` and **Contents: Read-only**. The secret below is
+   `printf 'bryn-hill:<token>' | base64`.
+6. **Repository secrets** (Settings > Secrets and variables > Actions):
+
+   | Secret | What it is |
+   | --- | --- |
+   | `MATCH_PASSWORD` | The Match passphrase from step 4. Turns signing on. |
+   | `MATCH_GIT_BASIC_AUTHORIZATION` | The base64 token from step 5 |
+   | `APPLE_API_KEY_P8` | The whole contents of the `.p8` file. Turns notarization on. |
+   | `APPLE_API_KEY_ID` | The key ID |
+   | `APPLE_API_ISSUER` | The issuer ID |
+   | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows code signing certificate (`.pfx`, base64), if there ever is one |
+
+7. **Runner.** The runner Mac needs Homebrew's Ruby (`brew install ruby`;
+   `scripts/bootstrap-mac.sh` installs it). The workflow installs Fastlane itself, into
+   `~/.cache/sillygit-release/bundle`.
+
+Signed and notarized builds no longer need the right-click workaround, so once a signed release
+is out, drop the macOS part of "Unsigned builds" above and of `.github/release-notes.md`.
+
+The certificate lasts five years. To replace it, run `bundle exec fastlane mac certificates`
+again once it has expired (or been revoked) and Match makes a new one.
 
 ## Windows installer
 
