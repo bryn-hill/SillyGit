@@ -92,14 +92,22 @@ exists, builds stay ad hoc signed.
    Match asks for a passphrase: that's `MATCH_PASSWORD`, so keep it in your password manager. It
    then creates the certificate and pushes it, encrypted, to the certificates repo.
 
-   If Apple refuses to create a Developer ID certificate through the API, make it in Xcode
-   instead (**Settings > Accounts > Manage Certificates > + > Developer ID Application**). In
-   Keychain Access, export the certificate as a `.cer`, and the certificate together with its
-   private key as a `.p12`, then hand both to Match:
+   Apple refuses to create a Developer ID certificate through the API ("can only be performed by
+   the Account Holder"), so in practice make it by hand. Don't use Xcode's Manage Certificates
+   button: it makes a cloud-managed certificate whose private key stays with Apple, which Match
+   can't store. Instead:
 
    ```sh
-   bundle exec fastlane match import --readonly false --skip_certificate_matching true
+   openssl genrsa -out devid.key 2048
+   openssl req -new -key devid.key -out devid.certSigningRequest -subj "/CN=Bryn Hill/C=GB"
    ```
+
+   Upload the request at developer.apple.com > Certificates > + > **Developer ID Application**
+   (G2 Sub-CA) and download the `.cer`. Build the `.p12` with macOS's `security` tool rather than
+   OpenSSL 3+, whose `.p12` files macOS rejects ("MAC verification failed"): import the key and
+   certificate into a temporary keychain and `security export -t identities -f pkcs12` from it.
+   Then load both into Match with `bundle exec fastlane match import` (it prompts for the paths),
+   and delete the key, the `.p12` and the request.
 
 5. **Read-only token for the runner.** Make a fine-grained personal access token with access to
    only `sillygit-certificates` and **Contents: Read-only**. The secret below is
