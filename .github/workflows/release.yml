@@ -117,6 +117,23 @@ jobs:
           } | tee -a "$GITHUB_ENV" > "$RUNNER_TEMP/fastlane.env"
           set -a; . "$RUNNER_TEMP/fastlane.env"; set +a
           bundle install --quiet
+          # `printf ... | base64 | gh secret set` stores base64's trailing
+          # newline, which breaks the Authorization header git sends.
+          MATCH_GIT_BASIC_AUTHORIZATION=$(printf '%s' "$MATCH_GIT_BASIC_AUTHORIZATION" | tr -d '[:space:]')
+          export MATCH_GIT_BASIC_AUTHORIZATION
+          # Fail with a clear message if the token can't read the certificates repo.
+          if ! git -c "http.extraheader=Authorization: Basic $MATCH_GIT_BASIC_AUTHORIZATION" \
+              ls-remote --heads https://github.com/bryn-hill/sillygit-certificates.git >/dev/null 2>&1; then
+            # Describe the decoded secret's shape without printing any of it.
+            creds=$(printf '%s' "$MATCH_GIT_BASIC_AUTHORIZATION" | base64 -D 2>/dev/null || true)
+            case "$creds" in
+              *'<'*|*'>'*) echo "The decoded secret still contains < or >" ;;
+              *:github_pat_*|*:ghp_*) echo "The decoded secret looks like user:token, so the token itself is refused (expired, revoked, or no access to the repo)" ;;
+              *) echo "The decoded secret isn't user:github_pat_… (${#creds} characters)" ;;
+            esac
+            echo "::error::MATCH_GIT_BASIC_AUTHORIZATION can't read bryn-hill/sillygit-certificates: check the token hasn't expired and the secret is base64 of 'bryn-hill:<token>'"
+            exit 1
+          fi
           echo "fastlane=true" >> "$GITHUB_OUTPUT"
           SIGNING_KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
           echo "::add-mask::$SIGNING_KEYCHAIN_PASSWORD"
