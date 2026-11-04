@@ -51,14 +51,13 @@ in the GitHub UI, say), replaces its assets rather than failing.
 
 ## Unsigned builds
 
-Nothing is signed with a paid certificate yet, so people see a warning on first launch. The
-release notes tell them how to get past it:
+macOS builds are signed and notarized (see "Code signing" below). If the signing secrets are ever
+removed they fall back to ad hoc signing, and people then need right-click > **Open** (or
+**System Settings > Privacy & Security > Open Anyway**) on first launch; put that back in
+`.github/release-notes.md` if so.
 
-- **macOS** builds are ad hoc signed (`identity: '-'` in `electron-builder.yml`) and not
-  notarized. Right-click the app, choose **Open**, then **Open** again. If macOS calls the app
-  damaged, use **System Settings > Privacy & Security > Open Anyway**, or run
-  `xattr -dr com.apple.quarantine /Applications/SillyGit.app`.
-- **Windows** builds trigger SmartScreen: **More info > Run anyway**.
+**Windows** builds aren't signed, so they trigger SmartScreen: **More info > Run anyway**. The
+release notes say so.
 
 ## Code signing
 
@@ -126,9 +125,6 @@ exists, builds stay ad hoc signed.
 7. **Runner.** The runner Mac needs Homebrew's Ruby (`brew install ruby`;
    `scripts/bootstrap-mac.sh` installs it). The workflow installs Fastlane itself, into
    `~/.cache/sillygit-release/bundle`.
-
-Signed and notarized builds no longer need the right-click workaround, so once a signed release
-is out, drop the macOS part of "Unsigned builds" above and of `.github/release-notes.md`.
 
 The certificate lasts five years. To replace it, run `bundle exec fastlane mac certificates`
 again once it has expired (or been revoked) and Match makes a new one.
