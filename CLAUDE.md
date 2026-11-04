@@ -1,6 +1,12 @@
 # SillyGit
 
-Branch new work from `dev` and merge it back into `dev` (direct pushes to `dev` are fine). `main`
+Branch new work from `dev` and merge it back into `dev` (direct pushes to `dev` are fine).
+Name work branches `<type>/<short-kebab-description>`, like `feature/blame-view` or
+`fix/toolbar-clicks`, never `claude/*` or other session names. The type is `feature/` for
+`feat` work, otherwise the Conventional Commits type (`fix/`, `perf/`, `refactor/`, `docs/`,
+`test/`, `build/`, `ci/`, `chore/`, `style/`, `revert/`). If your session hands you a
+`claude/...` branch, rename it locally (`git branch -m`) before the first push. Merged branches
+are deleted for you by `.github/workflows/prune-branches.yml` after each push to `dev` or `main`. `main`
 is the stable branch: it only receives `dev` when the owner asks for a promotion. The in-app
 "Update SillyGit" button deliberately pulls `main`.
 

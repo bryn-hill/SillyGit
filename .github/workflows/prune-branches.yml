@@ -1,0 +1,43 @@
+name: Prune merged branches
+
+# Threads push finished work straight to dev without a pull request, so
+# GitHub's "automatically delete head branches" never fires for them. This
+# deletes any remote branch whose work is already on dev or main after each
+# push to either, and once a week as a catch-all. See
+# scripts/prune-merged-branches.sh for what counts as merged.
+on:
+  push:
+    branches: [main, dev]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: prune-branches
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prune:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 5
+    steps:
+      - name: Clean workspace
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Delete merged branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/prune-merged-branches.sh

@@ -22,6 +22,12 @@ Branch new work from `dev` and open pull requests against `dev`. `main` is the s
 branch and only receives `dev` when a release is promoted. The in-app "Update SillyGit"
 button pulls `main`.
 
+Name your branch `<type>/<short-kebab-description>`, for example `feature/blame-view`,
+`fix/toolbar-clicks` or `docs/signing-guide`. Use `feature/` for new features; for anything
+else use the matching commit type (`fix/`, `perf/`, `refactor/`, `docs/`, `test/`, `build/`,
+`ci/`, `chore/`, `style/`, `revert/`). Head branches are deleted once their pull request
+merges, and a workflow deletes any other branch whose work is already on `dev` or `main`.
+
 `main` is protected for everyone, the maintainer included: no direct pushes, force pushes or
 deletion. A promotion is a pull request from `dev` into `main` that merges (with a merge
 commit) only once the `commits`, `test` and `e2e` checks pass. The full end-to-end suite only
