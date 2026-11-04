@@ -512,5 +512,10 @@ resources/      App icon and bot avatars
 
 ## Licence and security
 
-SillyGit is open source under the [MIT licence](LICENSE). To report a security problem, follow
+SillyGit is open source under the [MIT licence](LICENSE). It comes with no warranty: it is
+provided as is, and its authors aren't liable for any damage or lost work that comes from using
+it, including bugs. SillyGit runs real Git commands on real repositories, so keep your work pushed
+or backed up, as you would with any Git client.
+
+To report a security problem, follow
 [SECURITY.md](SECURITY.md) rather than opening a public issue.

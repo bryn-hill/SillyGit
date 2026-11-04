@@ -5,7 +5,7 @@ const article: HelpArticle = {
   title: 'Welcome to SillyGit',
   category: 'getting-started',
   summary: 'What SillyGit is, what it runs, and where to start.',
-  keywords: ['intro', 'overview', 'start', 'first use', 'tour', 'walkthrough', 'new'],
+  keywords: ['intro', 'overview', 'start', 'first use', 'tour', 'walkthrough', 'new', 'licence', 'license', 'warranty', 'liability', 'disclaimer'],
   related: [
     'getting-started/open-a-repository',
     'getting-started/the-window',
@@ -27,7 +27,11 @@ Press **Cmd+K** (Ctrl+K on Windows and Linux) at any time to search for a comman
 
 ## Example
 
-You've just installed SillyGit and want to see a project you already have on disk. Click the folder button at the left of the tab bar, pick the project folder, and its history appears. Choose **Help > Start walkthrough** from the **?** button in the top bar for a one-minute tour of what you're looking at.`
+You've just installed SillyGit and want to see a project you already have on disk. Click the folder button at the left of the tab bar, pick the project folder, and its history appears. Choose **Help > Start walkthrough** from the **?** button in the top bar for a one-minute tour of what you're looking at.
+
+## No warranty
+
+SillyGit is free software under the MIT licence and comes with no warranty. It is provided as is, and its authors aren't liable for any damage or lost work that comes from using it, including bugs. Git keeps most things recoverable (see [the reflog](help:rebase-history/reflog)), but keep your work pushed or backed up.`
 }
 
 export default article
