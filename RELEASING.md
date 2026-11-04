@@ -51,31 +51,83 @@ in the GitHub UI, say), replaces its assets rather than failing.
 
 ## Unsigned builds
 
-Nothing is signed with a paid certificate yet, so people see a warning on first launch. The
-release notes tell them how to get past it:
+macOS builds are signed and notarized (see "Code signing" below). If the signing secrets are ever
+removed they fall back to ad hoc signing, and people then need right-click > **Open** (or
+**System Settings > Privacy & Security > Open Anyway**) on first launch; put that back in
+`.github/release-notes.md` if so.
 
-- **macOS** builds are ad hoc signed (`identity: '-'` in `electron-builder.yml`) and not
-  notarized. Right-click the app, choose **Open**, then **Open** again. If macOS calls the app
-  damaged, use **System Settings > Privacy & Security > Open Anyway**, or run
-  `xattr -dr com.apple.quarantine /Applications/SillyGit.app`.
-- **Windows** builds trigger SmartScreen: **More info > Run anyway**.
+**Windows** builds aren't signed, so they trigger SmartScreen: **More info > Run anyway**. The
+release notes say so.
 
 ## Code signing
 
-The workflow signs as soon as these repository secrets exist (Settings > Secrets and variables >
-Actions). Leave them unset for unsigned builds.
+macOS builds are signed with a Developer ID Application certificate that
+[Fastlane Match](https://docs.fastlane.tools/actions/match/) keeps, encrypted, in a private git
+repo (`bryn-hill/sillygit-certificates`, set in `fastlane/Matchfile`). On each release the
+workflow runs `fastlane mac ci_keychain`, which decrypts the certificate into a throwaway keychain
+on the runner; electron-builder signs from it with the hardened runtime, notarizes with an App
+Store Connect API key, and the keychain is deleted at the end. Until the `MATCH_PASSWORD` secret
+exists, builds stay ad hoc signed.
 
-| Secret | What it is |
-| --- | --- |
-| `MAC_CSC_LINK` | Developer ID Application certificate as a base64 `.p12` |
-| `MAC_CSC_KEY_PASSWORD` | Its password |
-| `MAC_IDENTITY` | The certificate's name, e.g. `Bryn Hill (ABCDE12345)` |
-| `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | Turn on notarization |
-| `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows code signing certificate (`.pfx`, base64) |
+### Setting it up
 
-With `MAC_CSC_LINK` set, the macOS step overrides the ad hoc identity with `MAC_IDENTITY` and
-turns on the hardened runtime, and with `APPLE_ID` set it also notarizes. Signed builds no longer
-need the right-click workaround, so drop that part of `.github/release-notes.md` too.
+1. **Apple Developer Program.** A paid membership (individual is fine). Developer ID certificates
+   can only be made by the account holder.
+2. **Certificates repo.** Create an empty **private** repo, `bryn-hill/sillygit-certificates`.
+   It must never be public: anyone with it and `MATCH_PASSWORD` can sign as you.
+3. **App Store Connect API key.** In App Store Connect, **Users and Access > Integrations > App
+   Store Connect API > Team Keys**, generate a key with the **Admin** role. Download the
+   `AuthKey_<id>.p8` file (Apple only lets you download it once) and note the key ID and the
+   issuer ID shown above the list.
+4. **Create the certificate**, on a Mac with this repo cloned and Ruby from Homebrew
+   (`brew install ruby`, then put `/opt/homebrew/opt/ruby/bin` first on your `PATH`):
+
+   ```sh
+   bundle install
+   export APPLE_API_KEY=~/Downloads/AuthKey_ABC123XYZ.p8 APPLE_API_KEY_ID=ABC123XYZ APPLE_API_ISSUER=<issuer id>
+   bundle exec fastlane mac certificates
+   ```
+
+   Match asks for a passphrase: that's `MATCH_PASSWORD`, so keep it in your password manager. It
+   then creates the certificate and pushes it, encrypted, to the certificates repo.
+
+   Apple refuses to create a Developer ID certificate through the API ("can only be performed by
+   the Account Holder"), so in practice make it by hand. Don't use Xcode's Manage Certificates
+   button: it makes a cloud-managed certificate whose private key stays with Apple, which Match
+   can't store. Instead:
+
+   ```sh
+   openssl genrsa -out devid.key 2048
+   openssl req -new -key devid.key -out devid.certSigningRequest -subj "/CN=Bryn Hill/C=GB"
+   ```
+
+   Upload the request at developer.apple.com > Certificates > + > **Developer ID Application**
+   (G2 Sub-CA) and download the `.cer`. Build the `.p12` with macOS's `security` tool rather than
+   OpenSSL 3+, whose `.p12` files macOS rejects ("MAC verification failed"): import the key and
+   certificate into a temporary keychain and `security export -t identities -f pkcs12` from it.
+   Then load both into Match with `bundle exec fastlane match import` (it prompts for the paths),
+   and delete the key, the `.p12` and the request.
+
+5. **Read-only token for the runner.** Make a fine-grained personal access token with access to
+   only `sillygit-certificates` and **Contents: Read-only**. The secret below is
+   `printf 'bryn-hill:<token>' | base64`.
+6. **Repository secrets** (Settings > Secrets and variables > Actions):
+
+   | Secret | What it is |
+   | --- | --- |
+   | `MATCH_PASSWORD` | The Match passphrase from step 4. Turns signing on. |
+   | `MATCH_GIT_BASIC_AUTHORIZATION` | The base64 token from step 5 |
+   | `APPLE_API_KEY_P8` | The whole contents of the `.p8` file. Turns notarization on. |
+   | `APPLE_API_KEY_ID` | The key ID |
+   | `APPLE_API_ISSUER` | The issuer ID |
+   | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows code signing certificate (`.pfx`, base64), if there ever is one |
+
+7. **Runner.** The runner Mac needs Homebrew's Ruby (`brew install ruby`;
+   `scripts/bootstrap-mac.sh` installs it). The workflow installs Fastlane itself, into
+   `~/.cache/sillygit-release/bundle`.
+
+The certificate lasts five years. To replace it, run `bundle exec fastlane mac certificates`
+again once it has expired (or been revoked) and Match makes a new one.
 
 ## Windows installer
 

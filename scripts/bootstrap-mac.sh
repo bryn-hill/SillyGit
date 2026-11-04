@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Sets up a Mac (Apple silicon) as a development machine and CI runner:
 #
-#   1. Xcode Command Line Tools, Homebrew, git, git-lfs, gh, jq and Node 22
+#   1. Xcode Command Line Tools, Homebrew, git, git-lfs, gh, jq, Node 22 and
+#      Ruby (Fastlane, for signing release builds)
 #   2. clones every non-archived repo of the signed-in GitHub user into
 #      ~/Projects (existing clones are fetched, never touched otherwise)
 #   3. npm installs each clone that has a package.json and no node_modules
@@ -100,8 +101,9 @@ if ! grep -qs 'brew shellenv' "$HOME/.zprofile"; then
   note "added brew to ~/.zprofile"
 fi
 
-step "git, git-lfs, gh, jq, Node $NODE_MAJOR"
-for formula in git git-lfs gh jq "node@$NODE_MAJOR"; do
+step "git, git-lfs, gh, jq, Node $NODE_MAJOR, Ruby"
+# Ruby is keg-only; release.yml finds it at /opt/homebrew/opt/ruby/bin.
+for formula in git git-lfs gh jq "node@$NODE_MAJOR" ruby; do
   if brew list --formula "$formula" >/dev/null 2>&1; then
     note "$formula already installed"
   else

@@ -20,6 +20,7 @@
   --yellow: #f1fa8c;
   --cyan: #8be9fd;
   --pink: #ff79c6;
+  --purple: #bd93f9;
   --shadow: #000;
   /* Graph lanes, handed out in this order (see lib/graphLayout.ts). */
   --lane-0: #bd93f9;
@@ -56,6 +57,7 @@
   --yellow: #8a7300;
   --cyan: #0a7a99;
   --pink: #c02f7e;
+  --purple: #7048d8;
   --shadow: rgb(30 32 50 / 45%);
   --lane-0: #7c55e0;
   --lane-1: #1f9a45;

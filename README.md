@@ -11,7 +11,7 @@
 [![MIT licence](https://img.shields.io/badge/licence-MIT-8b5cf6)](LICENSE)
 ![macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555)
 
-[**Download**](#download) · [Website](https://bryn-hill.github.io/SillyGit/) · [Features](#features) · [Compared](#how-it-compares) · [Run from source](#run-from-source) · [Contributing](#contributing)
+[**Download**](#download) · [Website](https://bryn-hill.github.io/SillyGit/) · [Features](#features) · [Compared](#how-it-compares) · [Getting started](#getting-started) · [Contributing](#contributing)
 
 <br>
 
@@ -58,7 +58,7 @@ The latest build is on **[GitHub Releases](https://github.com/bryn-hill/sillygit
 | macOS, Apple silicon | `SillyGit-<version>-mac-arm64.dmg` |
 | macOS, Intel | `SillyGit-<version>-mac-x64.dmg` |
 | Windows 10/11, 64-bit | `SillyGit-<version>-win-x64.zip` (portable: unzip and run `SillyGit.exe`) |
-| Linux | Build an AppImage from source with `npm run dist` (see [below](#run-from-source)) |
+| Linux | Build an AppImage from source with `npm run dist` (see [Getting started](#getting-started)) |
 
 The builds aren't signed yet, so your system warns you the first time you open SillyGit. On
 macOS, right-click the app and choose **Open**, or use **System Settings → Privacy &
@@ -313,37 +313,75 @@ something here is wrong or out of date, please [open an issue](https://github.co
 - **Run in isolation** runs any commit in a private copy, without touching your branch.
 - **Undo** reads Git's reflog, so it can take back things you did in the terminal too.
 
-## Run from source
+## Getting started
 
-You need Node.js 22 (the version CI uses), npm, and Git on your `PATH`. Git LFS is optional;
-SillyGit tells you when it's missing.
+These steps run SillyGit from source and build your own copy of the app. If you only want to
+use it, the [download](#download) is quicker.
+
+### 1. Install the prerequisites
+
+- [Node.js](https://nodejs.org/) 22 (the version CI uses), which comes with npm
+- [Git](https://git-scm.com/) on your `PATH`
+- Optional: [Git LFS](https://git-lfs.com/). SillyGit tells you when it's missing.
+- Optional: the [GitHub CLI](https://cli.github.com/) signed in with `gh auth login`, for the
+  GitHub features, and [Claude Code](https://claude.com/claude-code) signed in (or an
+  Anthropic API key in Settings) for the Claude features.
+
+### 2. Clone and install
 
 ```bash
 git clone https://github.com/bryn-hill/sillygit.git
 cd sillygit
 git checkout dev     # day-to-day work happens on dev; main is the stable branch
 npm install
-npm run dev          # Electron with hot reload
 ```
 
 `npm install` also downloads Electron, fixes native-module permissions and points git at the
-repo's hooks in `.githooks/` (see [Commit messages](#commit-messages)). If `npm run dev`
-reports that Electron is not installed, run `node node_modules/electron/install.js`. After
-pulling changes that add dependencies, run `npm install` again; a stale `node_modules` causes
-confusing type errors.
+repo's hooks in `.githooks/` (see [Commit messages](#commit-messages)). After pulling changes
+that add dependencies, run `npm install` again; a stale `node_modules` causes confusing type
+errors.
 
-| Command | What it does |
+### 3. Run it in development
+
+```bash
+npm run dev
+```
+
+This opens SillyGit with hot reload, so changes to the React UI show up straight away and
+changes to the main process restart the app. If it reports that Electron is not installed,
+run `node node_modules/electron/install.js` and try again.
+
+### 4. Build a production version
+
+To run the production build without packaging it:
+
+```bash
+npm run build        # compiles main, preload and renderer into out/
+npm start            # runs the built app from out/
+```
+
+To package an app you can install or hand to someone else:
+
+```bash
+npm run dist
+```
+
+This builds for the platform you're on and writes the result to `dist/`:
+
+| Built on | You get |
 | --- | --- |
-| `npm run dev` | Development mode with hot reload (Vite + Fast Refresh). |
-| `npm run build` | Builds main, preload and renderer into `out/`. |
-| `npm start` | Runs the built app from `out/` without the dev server. |
-| `npm run dist` | Installer in `dist/`: `.dmg` + `.zip` on macOS, NSIS on Windows, AppImage on Linux. |
-| `npm run dist:dir` | Unpacked app in `dist/` that you can run straight away. |
+| macOS | `SillyGit-<version>-mac-<arch>.dmg` and a `.zip` |
+| Windows | `SillyGit-<version>-win-<arch>.exe` (an NSIS installer) |
+| Linux | `SillyGit-<version>-linux-<arch>.AppImage` |
+
+`npm run dist:dir` skips the installer and leaves an unpacked app in `dist/` (for example
+`dist/mac-arm64/SillyGit.app`) that you can run straight away, which is faster when you're
+just checking a build.
 
 macOS builds are ad hoc signed and not notarized, so the first launch needs right-click >
 **Open**. If the integrated terminal fails in a packaged build on Linux, run
 `npm rebuild node-pty` and build again. [RELEASING.md](RELEASING.md) covers how the published
-releases are made.
+releases are made, including the Windows build from a Mac and code signing.
 
 ### Keeping a checkout up to date
 
