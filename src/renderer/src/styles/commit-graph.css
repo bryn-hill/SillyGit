@@ -180,7 +180,7 @@
   flex: 1 1 0;
   min-width: 6px;
   height: 2px;
-  opacity: 0.8;
+  /* Full strength: GraphCell carries the same line on to the node, and any dimming shows as a two-tone line. */
 }
 
 .ref-overflow {
