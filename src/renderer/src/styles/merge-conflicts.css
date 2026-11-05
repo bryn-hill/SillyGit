@@ -247,9 +247,11 @@ button.merge-line-button:hover:not(:disabled) {
   padding-left: 4px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
-  color: var(--text-dim);
-  background: color-mix(in srgb, var(--orange) 8%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--orange) 25%, transparent);
+  font-weight: 600;
+  color: var(--text-soft);
+  /* Neutral, so a header never reads as one of the two tinted sides. */
+  background: var(--bg-elevated);
+  border-top: 1px solid color-mix(in srgb, var(--orange) 45%, transparent);
 }
 
 .merge-hunk-header label {
@@ -258,38 +260,64 @@ button.merge-line-button:hover:not(:disabled) {
   gap: 4px;
 }
 
-.merge-pane-ours .merge-conflict-line,
-.merge-pane-ours .merge-pad {
-  background: color-mix(in srgb, var(--cyan) 6%, transparent);
+/*
+ * Each side keeps its badge colour (A cyan, B yellow) everywhere it shows up,
+ * as a tint plus a solid stripe down the left edge. The two tints are about
+ * the same lightness, so the stripe and the hue tell them apart; the tints
+ * stay light enough that text on them keeps at least 6:1 in both themes.
+ */
+.merge-pane-ours {
+  --side: var(--cyan);
 }
 
-.merge-pane-theirs .merge-conflict-line,
-.merge-pane-theirs .merge-pad {
-  background: color-mix(in srgb, var(--yellow) 5%, transparent);
+.merge-pane-theirs {
+  --side: var(--yellow);
 }
 
-.merge-pane-ours .merge-conflict-line.picked {
-  background: color-mix(in srgb, var(--cyan) 20%, transparent);
+.merge-conflict-line,
+.merge-pad {
+  background: color-mix(in srgb, var(--side) 10%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--side) 45%, transparent);
 }
 
-.merge-pane-theirs .merge-conflict-line.picked {
-  background: color-mix(in srgb, var(--yellow) 16%, transparent);
+.merge-conflict-line .merge-lineno,
+button.merge-line-button {
+  color: var(--text-soft);
+}
+
+.merge-conflict-line.picked {
+  background: color-mix(in srgb, var(--side) 24%, transparent);
+  box-shadow: inset 3px 0 0 var(--side);
+}
+
+.merge-conflict-line.picked .merge-lineno {
+  color: var(--text);
 }
 
 .merge-conflict-line.picked .merge-line-button {
-  color: var(--green);
+  color: var(--green-soft);
+}
+
+.output-ours,
+.output-theirs,
+.output-base,
+.output-marker {
+  box-shadow: inset 3px 0 0 var(--side);
 }
 
 .output-ours {
-  background: color-mix(in srgb, var(--cyan) 14%, transparent);
+  --side: var(--cyan);
+  background: color-mix(in srgb, var(--side) 20%, transparent);
 }
 
 .output-theirs {
-  background: color-mix(in srgb, var(--yellow) 11%, transparent);
+  --side: var(--yellow);
+  background: color-mix(in srgb, var(--side) 20%, transparent);
 }
 
 .output-base,
 .output-marker {
+  --side: var(--orange);
   background: color-mix(in srgb, var(--orange) 12%, transparent);
   color: var(--orange);
 }

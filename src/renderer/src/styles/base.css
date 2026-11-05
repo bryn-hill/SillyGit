@@ -53,7 +53,8 @@
   --red: #d03434;
   --red-soft: #b02626;
   --green-soft: #176b31;
-  --orange: #b85d00;
+  /* Dark enough for 4.5:1 text on --bg and on its own tints (conflict markers). */
+  --orange: #9e5000;
   --yellow: #8a7300;
   --cyan: #0a7a99;
   --pink: #c02f7e;
