@@ -42,7 +42,7 @@ button.merge-ai-button {
 .merge-ai-confidence {
   white-space: nowrap;
   text-transform: capitalize;
-  color: var(--text-dim);
+  color: var(--text-soft);
 }
 
 .merge-ai-header.confidence-high .merge-ai-confidence {
@@ -64,7 +64,7 @@ button.merge-ai-button {
 
 .output-proposal {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--text-dim);
+  color: var(--text-soft);
   font-style: italic;
 }
 
