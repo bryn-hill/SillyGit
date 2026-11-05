@@ -1,5 +1,6 @@
 import type { CSSProperties, JSX } from 'react'
 import type { GraphRow } from '../lib/graphLayout'
+import type { BurstEdge, BurstSegment } from '../lib/mergeBurst'
 import Avatar from './Avatar'
 
 export const ROW_HEIGHT = 32
@@ -20,7 +21,8 @@ export default function GraphCell({
   repoPath,
   connector = false,
   wipLink,
-  burst
+  burst,
+  held
 }: {
   row: GraphRow
   repoPath: string
@@ -34,14 +36,26 @@ export default function GraphCell({
   wipLink?: { kind: 'pass' | 'end'; lane: number; color: string }
   /**
    * Set on a commit that has just arrived: plays its animation after `delay`
-   * ms, again whenever `id` changes.
+   * ms, again whenever `id` changes, growing along `edges` to its parents.
    */
-  burst?: { id: number; delay: number }
+  burst?: { id: number; delay: number; edges: BurstEdge[] }
+  /**
+   * Pieces of this row (by key) that an arriving commit's line grows along:
+   * they wait, hidden, until it has grown, from that commit's delay.
+   */
+  held?: { id: number; keys: Map<string, number> }
 }): JSX.Element {
   const maxLanes = Math.max(row.before.length, row.after.length, row.lane + 1, (wipLink?.lane ?? 0) + 1)
   const width = graphWidth(maxLanes)
   const cy = ROW_HEIGHT / 2
   const elements: JSX.Element[] = []
+  /** The key and, while an arriving line covers it, the hiding class for one of this row's pieces. */
+  const piece = (key: string): { key: string; className?: string; style?: CSSProperties } => {
+    const delay = held?.keys.get(key)
+    if (held === undefined || delay === undefined) return { key }
+    // Keyed by the animation so it starts over with each new one.
+    return { key: `${key}-${held.id}`, className: 'merge-burst-join', style: { '--burst-delay': `${delay}ms` } as CSSProperties }
+  }
 
   if (wipLink) {
     elements.push(
@@ -85,7 +99,7 @@ export default function GraphCell({
     if (hasAbove && hasBelow && !row.incomingLanes.includes(k)) {
       elements.push(
         <line
-          key={`p-${k}`}
+          {...piece(`p-${k}`)}
           x1={laneX(k)}
           y1={0}
           x2={laneX(k)}
@@ -104,8 +118,8 @@ export default function GraphCell({
   if (hasAboveOwn) {
     elements.push(
       <line
-        key="own-top"
         className={joinClass}
+        {...piece('own-top')}
         x1={laneX(row.lane)}
         y1={0}
         x2={laneX(row.lane)}
@@ -137,7 +151,7 @@ export default function GraphCell({
     const x1 = laneX(row.lane)
     elements.push(
       <path
-        key={`in-${k}`}
+        {...piece(`in-${k}`)}
         d={`M ${x0} 0 C ${x0} ${cy}, ${x1} ${cy}, ${x1} ${cy}`}
         stroke={row.beforeColors[k]}
         strokeWidth={2}
@@ -188,7 +202,7 @@ export default function GraphCell({
       <svg width={width} height={ROW_HEIGHT} className="graph-svg">
         {elements}
       </svg>
-      {burst !== undefined && <MergeBurst key={`burst-${burst.id}`} row={row} />}
+      {burst !== undefined && <MergeBurst key={`burst-${burst.id}`} row={row} edges={burst.edges} />}
       {!isMerge && (
         <Avatar
           // Keyed so the pop replays for each new animation.
@@ -208,35 +222,68 @@ export default function GraphCell({
 }
 
 /**
- * The new commit / merge animation, in the style of Mini Metro: each parent's
- * line grows up into the new commit like a metro line being extended, a clean
- * station (a merge's dot, or a commit's avatar) pops in where it ends, and
- * everything settles into the normal graph. Drawn over the rows below, so it
- * can't take clicks.
+ * A segment's geometry in the arriving commit's cell, top end first, matching
+ * what GraphCell draws for it in its own row: a straight run, or the curve the
+ * graph uses to move between lanes.
  */
-function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
+function segmentShape(seg: BurstSegment): { from: [number, number]; to: [number, number]; c1?: [number, number]; c2?: [number, number] } {
+  const cy = ROW_HEIGHT / 2
+  const top = seg.row * ROW_HEIGHT
+  switch (seg.kind) {
+    case 'own-bottom':
+      return { from: [laneX(seg.lane), cy], to: [laneX(seg.lane), ROW_HEIGHT] }
+    case 'out': {
+      const x0 = laneX(seg.from)
+      const x1 = laneX(seg.to)
+      return { from: [x0, cy], c1: [x0, cy], c2: [x1, cy], to: [x1, ROW_HEIGHT] }
+    }
+    case 'pass':
+      return { from: [laneX(seg.lane), top], to: [laneX(seg.lane), top + ROW_HEIGHT] }
+    case 'own-top':
+      return { from: [laneX(seg.lane), top], to: [laneX(seg.lane), top + cy] }
+    case 'in': {
+      const x0 = laneX(seg.from)
+      const x1 = laneX(seg.to)
+      return { from: [x0, top], c1: [x0, top + cy], c2: [x1, top + cy], to: [x1, top + cy] }
+    }
+  }
+}
+
+/** An edge as one path from the parent up to the arriving commit, the way the line grows. */
+function edgePath(edge: BurstEdge): string {
+  const pt = ([x, y]: [number, number]): string => `${x} ${y}`
+  const shapes = edge.segments.map(segmentShape).reverse()
+  let d = `M ${pt(shapes[0].to)}`
+  for (const s of shapes) {
+    d += s.c1 && s.c2 ? ` C ${pt(s.c2)}, ${pt(s.c1)}, ${pt(s.from)}` : ` L ${pt(s.from)}`
+  }
+  return d
+}
+
+/**
+ * The new commit / merge animation, in the style of Mini Metro: each parent's
+ * line grows up into the new commit like a metro line being extended, along
+ * the same lanes and curves the graph settles into, a clean station (a
+ * merge's dot, or a commit's avatar) pops in where it ends, and everything
+ * settles into the normal graph. Drawn over the rows below, so it can't take
+ * clicks.
+ */
+function MergeBurst({ row, edges }: { row: GraphRow; edges: BurstEdge[] }): JSX.Element {
   const cy = ROW_HEIGHT / 2
   const x0 = laneX(row.lane)
   const isMerge = row.commit.parents.length > 1
-  // How far below the commit the lines start growing from, in rows: a plain
-  // commit's parent is usually the next row down.
-  const startY = cy + ROW_HEIGHT * (isMerge ? 2.5 : 1)
-  const lines: { key: string; d: string; color: string }[] = []
-  if (row.lane < row.after.length && row.after[row.lane] !== null) {
-    lines.push({ key: 'own', d: `M ${x0} ${startY} L ${x0} ${cy}`, color: row.color })
-  }
-  for (const k of row.mergeParentLanes) {
-    const x1 = laneX(k)
-    lines.push({
-      key: `in-${k}`,
-      d: `M ${x1} ${startY} L ${x1} ${ROW_HEIGHT} C ${x1} ${cy}, ${x0} ${cy}, ${x0} ${cy}`,
-      color: row.afterColors[k]
-    })
+  let rowsDown = 0
+  let lanes = row.lane + 1
+  for (const edge of edges) {
+    for (const seg of edge.segments) {
+      rowsDown = Math.max(rowsDown, seg.row)
+      lanes = Math.max(lanes, ('lane' in seg ? seg.lane : Math.max(seg.from, seg.to)) + 1)
+    }
   }
   // Room for the station's pulse ring around the node.
   const pad = 24
-  const width = graphWidth(Math.max(row.after.length, row.lane + 1)) + pad * 2
-  const height = startY + pad
+  const width = graphWidth(lanes) + pad * 2
+  const height = (rowsDown + 1) * ROW_HEIGHT + pad * 2
   return (
     <svg
       className="merge-burst"
@@ -247,13 +294,13 @@ function MergeBurst({ row }: { row: GraphRow }): JSX.Element {
       viewBox={`${-pad} ${-pad} ${width} ${height}`}
       style={{ left: -pad, top: -pad }}
     >
-      {lines.map((l, i) => (
+      {edges.map((edge, i) => (
         <path
-          key={l.key}
+          key={i}
           className="merge-burst-line"
-          d={l.d}
+          d={edgePath(edge)}
           pathLength={1}
-          stroke={l.color}
+          stroke={edge.color}
           // The second parent's line follows a beat behind the first.
           style={{ '--line-delay': `${i * 70}ms` } as CSSProperties}
         />

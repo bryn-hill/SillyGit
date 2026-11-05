@@ -189,7 +189,8 @@ export function useBranchActions({
     withBusy(async () => {
       const res = await window.api.setGraphScope(repoPath, next)
       if (!res.ok) showError(res.error)
-      await refresh(repoPath)
+      // Branches coming back into view aren't new commits, so they don't animate in.
+      await refresh(repoPath, { newView: true })
     })
   }
 

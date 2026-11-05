@@ -381,6 +381,7 @@ export default function MainArea({
         <CommitGraph
           repoPath={repoPath}
           rows={repo.graphRows}
+          graphView={repo.graphView}
           selection={selection}
           hasWorkingChanges={hasWorkingChanges}
           wipConflictLabel={wipConflictLabel}

@@ -55,6 +55,70 @@ test.describe('new commit animation', () => {
     }
   })
 
+  test('grows a fetched branch along the curve it settles into', async ({ sillygit, repo }) => {
+    const clone = mkdtempSync(join(tmpdir(), 'sillygit-clone-'))
+    try {
+      repo.git('clone', '-q', repo.path, clone)
+      repo.git('remote', 'add', 'origin', clone)
+      await sillygit.openRepository(repo.path)
+      // A branch forked from an older commit, so its lane runs down and curves in.
+      repo.git('-C', clone, 'checkout', '-q', '-b', 'side', 'main~1')
+      writeFileSync(join(clone, 'side.txt'), 'side\n')
+      repo.git('-C', clone, 'add', '.')
+      repo.git('-C', clone, 'commit', '-q', '-m', 'Side work')
+      // Newer work on main takes the first lane, leaving the side branch its own.
+      repo.git('-C', clone, 'checkout', '-q', 'main')
+      writeFileSync(join(clone, 'more.txt'), 'more\n')
+      repo.git('-C', clone, 'add', '.')
+      repo.git('-C', clone, 'commit', '-q', '-m', 'Main work')
+
+      await sillygit.pullMenu('Fetch')
+
+      const line = sillygit.graph.row('Side work').locator('.merge-burst-line')
+      await expect(line).toHaveCount(1)
+      // It starts at the parent and ends with a curve into a lane, not a straight drop.
+      await expect(line).toHaveAttribute('d', / C /)
+      await expect(sillygit.graph.mergeBurst).toHaveCount(0)
+    } finally {
+      rmSync(clone, { recursive: true, force: true })
+    }
+  })
+
+  test("doesn't play when switching to a tab that shares history", async ({ sillygit, repo }) => {
+    const clone = mkdtempSync(join(tmpdir(), 'sillygit-clone-'))
+    try {
+      repo.git('clone', '-q', repo.path, clone)
+      writeFileSync(join(clone, 'extra.txt'), 'extra\n')
+      repo.git('-C', clone, 'add', '.')
+      repo.git('-C', clone, 'commit', '-q', '-m', 'Only in the clone')
+      await sillygit.openRepository(repo.path)
+      await sillygit.openRepositoryInNewTab(clone)
+      await expect(sillygit.graph.row('Only in the clone')).toBeVisible()
+      // Counts every animation that starts, however briefly it shows.
+      await sillygit.page.evaluate(`
+        window.bursts = 0
+        new MutationObserver((records) => {
+          for (const r of records)
+            for (const node of r.addedNodes)
+              if (node instanceof Element && node.closest('.graph-cell') && (node.matches('[data-testid="merge-burst"]') || node.querySelector('[data-testid="merge-burst"]'))) window.bursts++
+        }).observe(document.body, { subtree: true, childList: true })
+      `)
+
+      const name = repo.path.split('/').pop()!
+      for (let i = 0; i < 3; i++) {
+        await sillygit.tabs.tab(name).click()
+        await expect(sillygit.graph.row('Only in the clone')).toHaveCount(0)
+        await sillygit.tabs.tab(clone.split('/').pop()!).click()
+        await expect(sillygit.graph.row('Only in the clone')).toBeVisible()
+      }
+      // Let the refresh each switch starts land too.
+      await sillygit.page.waitForTimeout(500)
+      expect(await sillygit.page.evaluate('window.bursts')).toBe(0)
+    } finally {
+      rmSync(clone, { recursive: true, force: true })
+    }
+  })
+
   test('can be turned off in Settings', async ({ sillygit, repo }) => {
     await sillygit.openRepository(repo.path)
     await sillygit.settings.open()

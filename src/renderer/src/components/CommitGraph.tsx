@@ -12,6 +12,7 @@ import { commitsLabel } from '../lib/refDrag'
 import { localDay, sprintIndexOfDay, sprintLabel, sprintMarks, type SprintSettings } from '../../../shared/sprints'
 import { timeAgo } from '../lib/time'
 import { useMergeBurst } from './commitGraph/useMergeBurst'
+import type { BurstEdge } from '../lib/mergeBurst'
 import { useGraphSearch } from './commitGraph/useGraphSearch'
 import { useCiStatus } from './commitGraph/useCiStatus'
 import CiStatusDot from './commitGraph/CiStatusDot'
@@ -65,6 +66,8 @@ export interface ClickModifiers {
 interface Props {
   repoPath: string
   rows: GraphRow[]
+  /** Changes when `rows` were read afresh (another tab, filter or scope) rather than updated, so nothing animates in. */
+  graphView: number
   selection: Selection
   hasWorkingChanges: boolean
   headHash: string | null
@@ -103,6 +106,7 @@ interface Props {
 export default function CommitGraph({
   repoPath,
   rows,
+  graphView,
   selection,
   hasWorkingChanges,
   headHash,
@@ -180,13 +184,17 @@ export default function CommitGraph({
     () => (sprints.enabled ? sprintMarks(rows.map((r) => r.commit.committedAt || r.commit.date), sprints) : null),
     [rows, sprints]
   )
-  const burst = useMergeBurst(rows, mergeAnimation)
+  const burst = useMergeBurst(rows, graphView, mergeAnimation)
   const bisect = useBisectState()
   const bisectMarkOf = useMemo(() => bisectMarks(bisect), [bisect])
 
-  const burstFor = (hash: string): { id: number; delay: number } | undefined => {
+  const burstFor = (hash: string): { id: number; delay: number; edges: BurstEdge[] } | undefined => {
     const delay = burst?.delays.get(hash)
-    return burst && delay !== undefined ? { id: burst.id, delay } : undefined
+    return burst && delay !== undefined ? { id: burst.id, delay, edges: burst.edges.get(hash) ?? [] } : undefined
+  }
+  const heldFor = (hash: string): { id: number; keys: Map<string, number> } | undefined => {
+    const keys = burst?.held.get(hash)
+    return burst && keys ? { id: burst.id, keys } : undefined
   }
 
   const now = new Date()
@@ -366,6 +374,7 @@ export default function CommitGraph({
           connector={badges.length > 0}
           wipLink={wipLinkFor(index)}
           burst={burstFor(row.commit.hash)}
+          held={heldFor(row.commit.hash)}
         />
         <div className="graph-row-message">
           {bisectMark && bisect && (

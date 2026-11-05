@@ -46,6 +46,11 @@ export function useRepo({
   const [branchesListedAt, setBranchesListedAt] = useState(() => Date.now())
   const [remotes, setRemotes] = useState<RepoRemote[]>([])
   const [graphCommits, setGraphCommits] = useState<GraphCommit[]>([])
+  // Bumped whenever the graph is read afresh rather than updated: another tab,
+  // a path filter, more history, a new branch scope. New commits only animate
+  // in within one view.
+  const [graphView, setGraphView] = useState(0)
+  const nextGraphIsNewView = useRef(false)
   const [operation, setOperation] = useState<OperationState | null>(null)
   const [bisect, setBisect] = useState<BisectState | null>(null)
   const [stashes, setStashes] = useState<StashEntry[]>([])
@@ -69,7 +74,8 @@ export function useRepo({
   const latestRefresh = useRef<Promise<void>>(Promise.resolve())
 
   const refresh = useCallback(
-    (path: string): Promise<void> => {
+    (path: string, options?: { newView?: boolean }): Promise<void> => {
+      if (options?.newView) nextGraphIsNewView.current = true
       const seq = ++refreshSeq.current
       const filter = graphFilterRef.current
       const run = (async (): Promise<void> => {
@@ -102,7 +108,13 @@ export function useRepo({
         }
         // The filter changed meanwhile and setGraphFilter is reading the graph again.
         const graphOk = graphRes.ok && graphFilterRef.current === filter
-        if (graphOk) setGraphCommits(graphRes.data)
+        if (graphOk) {
+          setGraphCommits(graphRes.data)
+          if (nextGraphIsNewView.current) {
+            nextGraphIsNewView.current = false
+            setGraphView((v) => v + 1)
+          }
+        }
         setStashes(stashesRes.ok ? stashesRes.data : [])
         setUndoLabel(undoRes.ok ? undoRes.data : null)
         setRedoLabel(redoRes.ok ? redoRes.data : null)
@@ -142,6 +154,9 @@ export function useRepo({
     setStatus(snapshot?.status ?? null)
     setBranches(snapshot?.branches ?? [])
     setGraphCommits(snapshot?.graphCommits ?? [])
+    setGraphView((v) => v + 1)
+    // Nor do the commits made since this tab last showed, when the refresh below reads them.
+    nextGraphIsNewView.current = true
     graphFilterRef.current = snapshot?.graphFilter ?? null
     setGraphFilterState(graphFilterRef.current)
     setOperation(snapshot?.operation ?? null)
@@ -200,7 +215,10 @@ export function useRepo({
       const res = await window.api.graphLog(repoPath, limit, filter)
       if (openRepo.current !== repoPath || graphLimitRef.current !== limit || graphFilterRef.current !== filter) return
       setLoadingMore(false)
-      if (res.ok) setGraphCommits(res.data)
+      if (res.ok) {
+        setGraphCommits(res.data)
+        setGraphView((v) => v + 1)
+      }
     },
     [repoPath]
   )
@@ -225,6 +243,7 @@ export function useRepo({
         return
       }
       setGraphCommits(res.data)
+      setGraphView((v) => v + 1)
       const snapshot = tabSnapshots.current.get(repoPath)
       if (snapshot) Object.assign(snapshot, { graphCommits: res.data, graphFilter: filter })
     },
@@ -308,6 +327,7 @@ export function useRepo({
     undoLabel,
     redoLabel,
     graphRows,
+    graphView,
     graphOrder,
     commitByHash,
     headHash,
