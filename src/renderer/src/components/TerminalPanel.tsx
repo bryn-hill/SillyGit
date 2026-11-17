@@ -92,6 +92,22 @@ function RunTabIcon(): JSX.Element {
   )
 }
 
+// Menlo ships with every Mac. The Nerd Font names after it are only used for
+// glyphs Menlo lacks (prompt icons from oh-my-zsh, Powerlevel10k, Starship),
+// when one of them is installed.
+const TERMINAL_FONT_FAMILY = [
+  "'SF Mono'",
+  'Menlo',
+  "'MesloLGS NF'",
+  "'MesloLGS Nerd Font'",
+  "'Hack Nerd Font'",
+  "'JetBrainsMono Nerd Font'",
+  "'FiraCode Nerd Font'",
+  "'Symbols Nerd Font Mono'",
+  "'Symbols Nerd Font'",
+  'monospace'
+].join(', ')
+
 interface TerminalInstanceProps {
   cwd: string | null
   /** Runs this shell line instead of opening an interactive shell. */
@@ -113,7 +129,7 @@ function TerminalInstance({ cwd, command, shown, theme, onExit, onPty }: Termina
     if (!container) return undefined
 
     const term = new Terminal({
-      fontFamily: "'SF Mono', Menlo, monospace",
+      fontFamily: TERMINAL_FONT_FAMILY,
       fontSize: 12,
       lineHeight: 1.3,
       cursorBlink: true,
@@ -129,17 +145,46 @@ function TerminalInstance({ cwd, command, shown, theme, onExit, onPty }: Termina
     // terminals (incl. VS Code's) show regardless of the font installed.
     // xterm 6 dropped the canvas renderer, so WebGL is the only one that
     // does this; without a GPU context it falls back to the DOM renderer.
-    try {
-      const webgl = new WebglAddon()
-      webgl.onContextLoss(() => webgl.dispose())
-      term.loadAddon(webgl)
-    } catch (err) {
-      console.warn('[terminal] WebGL renderer unavailable, using the DOM renderer', err)
+    let disposed = false
+    let webgl: WebglAddon | null = null
+    // The pixel ratio the WebGL renderer drew its glyphs for.
+    let webglRatio = 0
+    let webglFailed = false
+    const loadWebgl = (): void => {
+      try {
+        const addon = new WebglAddon()
+        addon.onContextLoss(() => {
+          addon.dispose()
+          if (webgl === addon) webgl = null
+        })
+        term.loadAddon(addon)
+        webgl = addon
+        webglRatio = window.devicePixelRatio
+      } catch (err) {
+        webglFailed = true
+        console.warn('[terminal] WebGL renderer unavailable, using the DOM renderer', err)
+      }
+    }
+    // The WebGL renderer draws its glyphs for the pixel ratio it starts with
+    // and doesn't always notice a change: a tab restored while the window is
+    // still hidden, or a window moved between a Retina and a standard screen,
+    // then showed text at half size with wide gaps between the letters. So
+    // it starts once the window is visible, and again when the ratio moves.
+    const syncRenderer = (): void => {
+      if (disposed || webglFailed || document.visibilityState !== 'visible') return
+      if (webgl && webglRatio === window.devicePixelRatio) return
+      webgl?.dispose()
+      webgl = null
+      loadWebgl()
+      try {
+        fit.fit()
+      } catch {
+        // not laid out; the resize observer refits later
+      }
+      term.refresh(0, term.rows - 1)
     }
     termRef.current = term
     fitRef.current = fit
-
-    let disposed = false
 
     if (container.clientWidth > 0 && container.clientHeight > 0) {
       try {
@@ -174,6 +219,7 @@ function TerminalInstance({ cwd, command, shown, theme, onExit, onPty }: Termina
 
     const resizeObserver = new ResizeObserver(() => {
       if (disposed || container.clientWidth === 0 || container.clientHeight === 0) return
+      syncRenderer()
       try {
         fit.fit()
       } catch {
@@ -185,9 +231,27 @@ function TerminalInstance({ cwd, command, shown, theme, onExit, onPty }: Termina
     })
     resizeObserver.observe(container)
 
+    let ratioQuery: MediaQueryList | null = null
+    const onRatioChange = (): void => {
+      watchRatio()
+      syncRenderer()
+    }
+    const watchRatio = (): void => {
+      ratioQuery?.removeEventListener('change', onRatioChange)
+      ratioQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      ratioQuery.addEventListener('change', onRatioChange)
+    }
+    watchRatio()
+    document.addEventListener('visibilitychange', syncRenderer)
+    window.addEventListener('focus', syncRenderer)
+    syncRenderer()
+
     return () => {
       disposed = true
       resizeObserver.disconnect()
+      ratioQuery?.removeEventListener('change', onRatioChange)
+      document.removeEventListener('visibilitychange', syncRenderer)
+      window.removeEventListener('focus', syncRenderer)
       offData()
       offExit()
       inputDisposable.dispose()
