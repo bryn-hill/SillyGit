@@ -8,6 +8,7 @@ import ClaudePanel from './components/claude/ClaudePanel'
 import CommandPalette from './components/CommandPalette'
 import ActivityLog from './components/ActivityLog'
 import UpdateDialog from './components/UpdateDialog'
+import AppUpdateDialog from './components/AppUpdateDialog'
 import StatusBanners from './components/StatusBanners'
 import RefDropMenu from './components/RefDropMenu'
 import { CustomCommandsContext } from './lib/customCommandMenu'
@@ -25,10 +26,12 @@ import PublishRepoDialog from './components/PublishRepoDialog'
 import PushDialog from './components/PushDialog'
 import { defaultPushTarget } from '../../shared/push'
 import { NO_SELF_UPDATE } from '../../shared/selfUpdate'
+import { NO_APP_UPDATE } from '../../shared/appUpdate'
 import { appCommands } from './appCommands'
 import { useRepo } from './hooks/useRepo'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useSelfUpdate } from './hooks/useSelfUpdate'
+import { useAppUpdate } from './hooks/useAppUpdate'
 import { usePullRequests } from './hooks/usePullRequests'
 import { usePrompt } from './hooks/usePrompt'
 import { usePanelLayout } from './hooks/usePanelLayout'
@@ -67,6 +70,7 @@ export default function App(): JSX.Element {
   const { askText, dialog: promptDialog } = usePrompt()
   const settings = useAppSettings(showError)
   const selfUpdate = useSelfUpdate()
+  const appUpdate = useAppUpdate()
 
   const repo = useRepo({ onError: showError, autoFetchMinutes: settings.autoFetchMinutes })
   const { repoPath, status, operation } = repo
@@ -275,6 +279,7 @@ export default function App(): JSX.Element {
           onToggleClaude={() => setShowClaude((v) => !v)}
           selfUpdate={selfUpdate?.status ?? NO_SELF_UPDATE}
           updating={!!selfUpdate?.step}
+          appUpdate={appUpdate ?? NO_APP_UPDATE}
           onOpenUpdate={() => dialogs.setShowUpdate(true)}
         />
         <StatusBanners
@@ -495,6 +500,7 @@ export default function App(): JSX.Element {
               dialogs,
               lanes,
               selfUpdate,
+              appUpdate,
               lfs,
               hasWorkingChanges,
               customCommands: settings.customCommands,
@@ -514,6 +520,9 @@ export default function App(): JSX.Element {
             step={selfUpdate.step}
             onClose={() => dialogs.setShowUpdate(false)}
           />
+        )}
+        {dialogs.showUpdate && !selfUpdate?.status.supported && appUpdate?.supported && (
+          <AppUpdateDialog status={appUpdate} onClose={() => dialogs.setShowUpdate(false)} />
         )}
         {dialogs.activityTab && (
           <ActivityLog

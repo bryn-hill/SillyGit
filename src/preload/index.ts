@@ -60,6 +60,19 @@ const api = {
     ipcRenderer.on('self-update:changed', listener)
     return () => ipcRenderer.removeListener('self-update:changed', listener)
   },
+  /** Whether an installed build has a newer release waiting, and how far its download is. */
+  appUpdateStatus: (): Promise<import('../shared/appUpdate').AppUpdateStatus> => ipcRenderer.invoke('app-update:status'),
+  /** Asks GitHub Releases for a newer SillyGit. */
+  checkAppUpdate: (): Wrapped<import('../shared/appUpdate').AppUpdateStatus> => ipcRenderer.invoke('app-update:check'),
+  /** Downloads the newer release; it installs on restart. */
+  downloadAppUpdate: (): Wrapped<import('../shared/appUpdate').AppUpdateStatus> => ipcRenderer.invoke('app-update:download'),
+  /** Quits, installs the downloaded release and reopens SillyGit. */
+  installAppUpdate: (): Wrapped<void> => ipcRenderer.invoke('app-update:install'),
+  onAppUpdateChanged: (callback: (status: import('../shared/appUpdate').AppUpdateStatus) => void): (() => void) => {
+    const listener = (_e: unknown, status: import('../shared/appUpdate').AppUpdateStatus): void => callback(status)
+    ipcRenderer.on('app-update:changed', listener)
+    return () => ipcRenderer.removeListener('app-update:changed', listener)
+  },
   /** Folders asked for with `sillygit <folder>` (or the Dock) since last taken. */
   takeLaunchRequests: (): Promise<import('../shared/launcher').LaunchRequest[]> => ipcRenderer.invoke('launcher:take'),
   /** Called when there are new launch requests to take. */

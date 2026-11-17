@@ -1,5 +1,6 @@
 import type { Command } from './components/CommandPalette'
 import type { SelfUpdateState } from './hooks/useSelfUpdate'
+import type { AppUpdateStatus } from '../../shared/appUpdate'
 import type { Repo } from './hooks/useRepo'
 import type { MainView } from './hooks/useMainView'
 import type { GitActions } from './hooks/useGitActions'
@@ -36,6 +37,7 @@ export function appCommands(app: {
   dialogs: Dialogs
   lanes: Lanes
   selfUpdate: SelfUpdateState | null
+  appUpdate: AppUpdateStatus | null
   lfs: Lfs
   hasWorkingChanges: boolean
   customCommands: CustomCommand[]
@@ -102,7 +104,7 @@ export function appCommands(app: {
     showTerminal: layout.showTerminal,
     showLaunchpad: view.showLaunchpad,
     showOverview: view.showOverview,
-    canSelfUpdate: !!app.selfUpdate?.status.supported,
+    canSelfUpdate: !!app.selfUpdate?.status.supported || !!app.appUpdate?.supported,
     lfs: { installed: app.lfs.info.installed, used: app.lfs.used },
     editorName: app.editor.current?.name ?? null,
     actions: {

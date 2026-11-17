@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import type { BranchInfo, PullMode, RepoStatus } from '../../../shared/types'
 import type { RunMode } from '../../../shared/run'
 import type { SelfUpdateStatus } from '../../../shared/selfUpdate'
+import { appUpdateTitle, hasAppUpdate, type AppUpdateStatus } from '../../../shared/appUpdate'
 import type { InstalledEditor } from '../../../shared/editors'
 import { SparkIcon } from './claude/ClaudePanel'
 import { repoDisplayName } from '../lib/repoName'
@@ -35,7 +36,7 @@ import HelpMenu from '../help/HelpMenu'
 // Every label each changing button can show, so it keeps one width (see ToolButton).
 const PULL_LABELS = ['Pull', 'Fetching']
 const RUN_LABELS = ['Run', 'Stop', 'Preparing']
-const UPDATE_LABELS = ['Update', 'Updating']
+const UPDATE_LABELS = ['Update', 'Updating', 'Restart']
 
 interface Props {
   repoPath: string | null
@@ -100,6 +101,8 @@ interface Props {
   /** Where SillyGit's own checkout stands against origin/main; the Update button hides for packaged builds. */
   selfUpdate: SelfUpdateStatus
   updating: boolean
+  /** An installed build against the newest GitHub release; shows the same button when selfUpdate doesn't. */
+  appUpdate: AppUpdateStatus
   onOpenUpdate: () => void
 }
 
@@ -152,6 +155,7 @@ export default function TopBar({
   onToggleClaude,
   selfUpdate,
   updating,
+  appUpdate,
   onOpenUpdate
 }: Props): JSX.Element {
   const [showBranchMenu, setShowBranchMenu] = useState(false)
@@ -624,7 +628,7 @@ export default function TopBar({
         </div>
       )}
       <div className="top-bar-right">
-        {selfUpdate.supported && (
+        {selfUpdate.supported ? (
           <ToolButton
             label={updating ? 'Updating' : 'Update'}
             labels={UPDATE_LABELS}
@@ -635,6 +639,19 @@ export default function TopBar({
             title={updateTitle(selfUpdate, updating)}
             badge={selfUpdate.behind}
           />
+        ) : (
+          appUpdate.supported && (
+            <ToolButton
+              label={appUpdate.phase === 'ready' ? 'Restart' : appUpdate.phase === 'downloading' ? 'Updating' : 'Update'}
+              labels={UPDATE_LABELS}
+              ariaLabel="Update SillyGit"
+              icon={<UpdateIcon />}
+              active={hasAppUpdate(appUpdate)}
+              onClick={onOpenUpdate}
+              title={appUpdateTitle(appUpdate)}
+              badge={hasAppUpdate(appUpdate) ? 1 : 0}
+            />
+          )
         )}
         <ToolButton
           label="Actions"

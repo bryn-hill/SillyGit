@@ -19,6 +19,7 @@ import { registerSigningHandlers } from './ipc/signing'
 import { registerNotificationHandlers, startPrNotifications } from './ipc/notifications'
 import { registerAiHandlers } from './ipc/ai'
 import { registerSelfUpdateHandlers, startUpdateChecks } from './ipc/selfUpdate'
+import { registerAppUpdateHandlers, startAppUpdateChecks } from './ipc/appUpdate'
 import { queueOpenFile, queueSecondInstance, queueStartupPaths, registerLauncherHandlers } from './ipc/launcher'
 import icon from '../../resources/icon.png?asset'
 
@@ -28,6 +29,7 @@ import icon from '../../resources/icon.png?asset'
 
 function registerIpcHandlers(): void {
   registerSelfUpdateHandlers()
+  registerAppUpdateHandlers()
   registerGitHandlers()
   registerMergeHandlers()
   registerBranchHandlers()
@@ -76,6 +78,8 @@ app.whenReady().then(async () => {
   if (!isE2E) startPrNotifications()
   // A packaged build has no checkout to update, so don't fetch for one.
   if (!app.isPackaged && (!isE2E || process.env['SILLYGIT_UPDATE_CHECKOUT'])) startUpdateChecks()
+  // Installed builds update from GitHub Releases instead (a no-op elsewhere).
+  startAppUpdateChecks()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

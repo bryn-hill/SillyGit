@@ -37,6 +37,35 @@
   padding: 8px 0;
 }
 
+/* Installed builds: downloading the next release. */
+.update-download {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.update-bar {
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border: none;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.update-bar::-webkit-progress-bar {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.update-bar::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
 .update-error {
   white-space: pre-wrap;
   word-break: break-word;
