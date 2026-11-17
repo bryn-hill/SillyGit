@@ -135,8 +135,26 @@ electron-builder needs wine to make an NSIS installer anywhere but Windows. With
 workflow ships only the portable zip. To add the installer, install wine on the runner Mac
 (`brew install --cask wine-stable`); the workflow notices and builds the `.exe` as well.
 
-## Self-update
+## Updates
 
-The in-app **Update SillyGit** button only works in a source checkout (it pulls `main` and
-rebuilds) and is turned off in packaged builds. People who download a release update by
-downloading the next one.
+Installed builds update themselves with electron-updater. electron-builder.yml's `publish`
+section points them at this repository's GitHub releases, and each build bakes that into the
+app as `app-update.yml`. On launch and every four hours the app reads `latest-mac.yml` (macOS)
+or `latest.yml` (Windows installer) from the newest release, offers the download, and installs
+it on restart. So every release must carry those files, the `.zip` for each Mac architecture,
+the `.exe`, and the `.blockmap`s; release.yml uploads them all.
+
+- The two Mac builds each write a `latest-mac.yml`; `scripts/merge-mac-update-info.mjs` merges
+  them so one file lists both architectures (electron-updater picks the zip with `arm64` in
+  its name on Apple silicon).
+- macOS only installs an update signed by the same Developer ID as the running app, so an ad
+  hoc signed build (no `MATCH_PASSWORD`) can't update in place; the dialog links to the
+  download instead when it fails.
+- Windows updates come from the NSIS installer, so a release built without wine (zip only)
+  has no `latest.yml` and Windows users aren't offered it. The zip build can't update itself
+  and the app just links to the release page.
+- Don't delete or rename a release's `latest*.yml` assets: apps already out there look for them.
+- 0.2.1 and earlier have no updater; people on those versions download the next release by hand once.
+
+The in-app **Update SillyGit** button in a source checkout is different: it pulls `main` and
+rebuilds. Packaged builds never do that.

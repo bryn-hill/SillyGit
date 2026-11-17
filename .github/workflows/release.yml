@@ -168,7 +168,12 @@ jobs:
           for arch in arm64 x64; do
             node scripts/release-sdk-binary.mjs darwin "$arch"
             npx electron-builder --mac --"$arch" --publish never "${signing[@]}"
+            # Each build writes its own latest-mac.yml (what the in-app
+            # updater reads); keep both and merge them below.
+            mv dist/latest-mac.yml "$RUNNER_TEMP/latest-mac-$arch.yml"
           done
+          node scripts/merge-mac-update-info.mjs dist/latest-mac.yml \
+            "$RUNNER_TEMP/latest-mac-arm64.yml" "$RUNNER_TEMP/latest-mac-x64.yml"
 
       # The NSIS installer needs wine to build off Windows, so it's only made
       # when the runner has wine (brew install --cask wine-stable). The zip
@@ -193,7 +198,11 @@ jobs:
       - name: Publish the release
         run: |
           shopt -s nullglob
-          assets=(dist/SillyGit-*.dmg dist/SillyGit-*.zip dist/SillyGit-*.exe dist/SHA256SUMS.txt)
+          # latest*.yml and the blockmaps are for the in-app updater: macOS
+          # updates from the zips, Windows from the installer (latest.yml only
+          # exists when the .exe was built).
+          assets=(dist/SillyGit-*.dmg dist/SillyGit-*.zip dist/SillyGit-*.exe dist/SillyGit-*.blockmap
+            dist/latest-mac.yml dist/latest.yml dist/SHA256SUMS.txt)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
           else

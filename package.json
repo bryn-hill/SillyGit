@@ -19,8 +19,8 @@
     "lint:commits": "node scripts/commit-msg.mjs --range origin/dev..HEAD",
     "postinstall": "install-electron && node scripts/fix-native-permissions.js && node scripts/brand-dev-electron.js",
     "prepare": "git config core.hooksPath .githooks || true",
-    "dist": "electron-vite build && electron-builder",
-    "dist:dir": "electron-vite build && electron-builder --dir"
+    "dist": "electron-vite build && electron-builder --publish never",
+    "dist:dir": "electron-vite build && electron-builder --dir --publish never"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.310",
@@ -29,6 +29,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^6.0.0",
+    "electron-updater": "^6.8.11",
     "monaco-editor": "^0.57.0",
     "node-pty": "^1.1.0",
     "prismjs": "^1.30.0",
@@ -41,6 +42,7 @@
     "@playwright/test": "^1.64.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
+    "@types/js-yaml": "^4.0.9",
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -51,6 +53,7 @@
     "electron-vite": "^6.0.0",
     "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "js-yaml": "^5.5.0",
     "jsdom": "^30.0.0",
     "playwright-core": "^1.64.1",
     "typescript": "^7.0.2",

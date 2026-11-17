@@ -38,4 +38,12 @@ linux:
   icon: resources/icon.png
   category: Development
   target: AppImage
-publish: null
+# Where installed builds look for updates (electron-updater reads the
+# app-update.yml this bakes into the app). Builds never upload anything
+# themselves: release.yml runs electron-builder with --publish never and
+# attaches the files, including latest*.yml, to the GitHub release.
+publish:
+  provider: github
+  owner: bryn-hill
+  repo: SillyGit
+  releaseType: release
